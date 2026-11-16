@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Log</title>
+<style>
+/* Time Log: each employee logs their own daily time in and time out on a month calendar. Part of the ACE Workbench (same look).
+   Every change is saved on this device first and sent to the Google Sheet when online (backend/time_log.gs). */
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#17181a; --muted:#6b6e73; --line:#e3e1dc; --hover:#f0eee9; --field:#ffffff;
+  --accent:#b8860b; --accent-ink:#ffffff; --accent-soft:#f7efd9;
+  --ok:#1d7a43; --ok-bg:#e3f2e8; --bad:#b3261e; --bad-bg:#fbe7e4; --warn:#8f5b00; --warn-bg:#fbf0d9;
+  --shadow:0 1px 2px rgba(0,0,0,.05); --shadow-lg:0 16px 40px rgba(0,0,0,.2);
+  --font:"Inter","IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,monospace;
+  --r:10px; --gap-l:20px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; }
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);min-height:100vh}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:12px;padding:14px var(--gap-l) 0;flex-wrap:wrap}
+.hrow h1{font-size:18px;margin:0;letter-spacing:-.01em}
+.sync{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-left:auto}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.dot.on{background:var(--ok)} .dot.off{background:var(--warn)} .dot.err{background:var(--bad)}
+.tabs{display:flex;gap:4px;padding:8px var(--gap-l) 0;overflow-x:auto;scrollbar-width:none}
+.tab{border:0;background:none;padding:8px 12px 10px;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-weight:500;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab[hidden]{display:none}
+
+main{padding:var(--gap-l);max-width:1180px;margin:0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:500;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.sm{height:28px;padding:0 9px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none}
+.btn:disabled{opacity:.5;cursor:default}
+.btn[hidden]{display:none}
+
+.banner{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:var(--r);margin-bottom:var(--gap-l);border:1px solid}
+.banner.bad{background:var(--bad-bg);border-color:var(--bad)}
+.banner b{display:block;margin-bottom:2px}
+.prob{border-top:1px solid var(--line);padding:10px 0 0;margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.empty{padding:40px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r)}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--hover);color:var(--muted);white-space:nowrap}
+.pill.pending{background:var(--accent-soft);color:var(--accent)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+
+/* Today strip */
+.today{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.today .lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.today .big{font-size:16px;font-weight:600}
+.today .grow{flex:1;min-width:180px}
+
+/* Toolbar and summary */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar h2{font-size:17px;margin:0 6px;min-width:150px}
+.toolbar select{height:34px;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 8px;max-width:100%}
+.toolbar .grow{flex:1}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px}
+.stat .k{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-size:20px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;margin-top:2px}
+.stat .v.warn{color:var(--warn)}
+
+/* Calendar */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) 92px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--line);gap:1px}
+.cal .hd{background:var(--bg);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:8px 10px}
+.cal .hd.wk{text-align:right}
+.day{background:var(--panel);min-height:92px;padding:6px 8px 8px;border:0;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;font:inherit;color:inherit;min-width:0}
+.day:hover{background:var(--hover)}
+.day.out{background:var(--bg);color:var(--muted)}
+.day.wkend:not(.out){background:color-mix(in srgb,var(--panel) 80%,var(--bg))}
+.day .n{font-size:12.5px;font-weight:600;color:var(--muted)}
+.day.is-today .n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink)}
+.day .t{font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.day .h{font-family:var(--mono);font-size:13px;font-weight:600;margin-top:auto}
+.day .h.open{color:var(--warn)}
+.day .note{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day .flag{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;margin-left:4px;vertical-align:middle}
+.wkt{background:var(--bg);padding:6px 10px;text-align:right;font-family:var(--mono);font-size:13px;font-weight:600;display:flex;flex-direction:column;justify-content:flex-end}
+.wkt span{font-family:var(--font);font-size:11px;font-weight:500;color:var(--muted)}
+.weeks{display:none}
+.legend{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+
+/* Team */
+table.tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tbl th{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);background:var(--bg);white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tbl td.num.warn{color:var(--warn);font-weight:600}
+.tbl tbody tr[data-who]{cursor:pointer}
+.tbl tbody tr[data-who]:hover td{background:var(--hover)}
+.count{font-size:12.5px;color:var(--muted);margin:0 0 8px}
+
+/* Drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--bg);z-index:21;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)}
+.scrim[hidden],.drawer[hidden]{display:none}
+.dhead{display:flex;align-items:center;gap:10px;padding:14px var(--gap-l);border-bottom:1px solid var(--line);background:var(--panel)}
+.dhead h2{margin:0;font-size:16px}
+.dbody{flex:1;overflow:auto;padding:var(--gap-l)}
+.dfoot{display:flex;gap:8px;padding:12px var(--gap-l);border-top:1px solid var(--line);background:var(--panel);flex-wrap:wrap;align-items:center}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fgrid .full{grid-column:1/-1}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;min-width:0}
+label.f input,label.f select,label.f textarea{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:8px 10px;font-size:14px;font-weight:400;width:100%}
+label.f textarea{min-height:76px;resize:vertical}
+label.f input:read-only,label.f textarea:read-only{background:var(--hover)}
+div.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;min-width:0}
+.tp{display:flex;gap:6px;align-items:center}
+.tp select{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:8px 6px;font-size:14px;font-weight:400;min-width:0;flex:1}
+.tp select:disabled{background:var(--hover);opacity:1}
+.tp b{font-weight:600}
+form.typed .timed{display:none}
+.dt .ds{display:none}
+.calc.typed{background:var(--accent-soft);border-color:var(--accent)}
+.calc.typed b{font-family:var(--font);font-size:14px;text-align:right}
+.dt{display:inline-block;align-self:flex-start;font-size:11px;font-weight:600;padding:1px 6px;border-radius:6px;background:var(--accent-soft);color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.now{font-size:12px;font-weight:500;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.now[hidden]{display:none}
+.calc{margin:16px 0 0;padding:12px 14px;border-radius:8px;background:var(--panel);border:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline}
+.calc b{font-family:var(--mono);font-size:18px}
+.ferr{color:var(--bad);font-size:13px;width:100%}
+.ferr:empty{display:none}
+.hist{font-size:12.5px;border-left:2px solid var(--line);padding-left:12px;margin-top:14px}
+.hist div{margin-bottom:6px}
+
+/* Settings */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:var(--gap-l);margin-bottom:var(--gap-l);box-shadow:var(--shadow)}
+.panel h2{font-size:15px;margin:0 0 4px}
+.panel p{margin:0 0 14px;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row label.f{flex:1;min-width:200px}
+.keybox{font-family:var(--mono);font-size:16px;padding:8px 12px;background:var(--ok-bg);color:var(--ok);border-radius:8px;display:inline-block;margin-top:10px}
+
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;font-weight:500;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+
+@media (max-width:720px){
+  .hrow,.tabs,main{padding-left:16px;padding-right:16px}
+  .sync{margin-left:0;width:100%}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cal{grid-template-columns:repeat(7,minmax(0,1fr))}
+  .cal .hd.wk,.wkt{display:none}
+  .cal .hd{padding:6px 4px;text-align:center}
+  .day{min-height:58px;padding:4px;align-items:center;text-align:center}
+  .day .t,.day .note,.dt .dl{display:none}
+  .dt .ds{display:inline}
+  .dt{padding:0 3px;font-size:10px}
+  .day .h{font-size:11.5px}
+  .weeks{display:block;margin-top:14px}
+  .toolbar h2{min-width:0;flex:1 0 auto;font-size:16px;white-space:nowrap;text-align:center}
+  .toolbar .grow{display:none}
+  .fgrid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:no-preference){ .btn,.day,.tab{transition:background .12s,border-color .12s} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="hrow">
+    <h1>Time Log</h1>
+    <div class="sync"><span class="dot" id="sDot"></span><span id="sText">Not connected</span>
+      <button class="btn sm" id="syncBtn">Sync now</button></div>
+  </div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-v="cal">Calendar</button>
+    <button class="tab" role="tab" data-v="team" hidden>Team</button>
+    <button class="tab" role="tab" data-v="settings">Settings</button>
+  </nav>
+</header>
+<main id="main"></main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-labelledby="dTitle" role="dialog">
+  <div class="dhead"><div><h2 id="dTitle">Day</h2><div class="muted" id="dWho" style="font-size:12.5px"></div></div><span id="dBadge"></span><span style="flex:1"></span><button class="btn ghost sm" id="dClose">Close</button></div>
+  <form class="dbody" id="form" novalidate>
+    <div class="fgrid">
+      <label class="f full"><span>Day type</span><select name="day_type">
+        <option value="">Regular day (time in and time out)</option>
+        <option value="Travel Order">Travel Order (no time in / out)</option>
+        <option value="R.S.O.">R.S.O. (no time in / out)</option>
+        <option value="P.S.O.">P.S.O. (no time in / out)</option></select></label>
+      <div class="f timed"><span>Time in</span><div class="tp" data-tp="time_in"></div><input type="hidden" name="time_in"><button type="button" class="now" data-now="time_in">Use the time now</button></div>
+      <div class="f timed"><span>Time out</span><div class="tp" data-tp="time_out"></div><input type="hidden" name="time_out"><button type="button" class="now" data-now="time_out">Use the time now</button></div>
+      <label class="f timed"><span>Break (minutes)</span><input type="number" name="break_min" min="0" max="600" step="5" inputmode="numeric" placeholder="e.g. 60"></label>
+      <div class="timed"></div>
+      <label class="f full"><span>Notes</span><textarea name="notes" maxlength="1000" placeholder="e.g. Field survey at Mobo, on leave, half day"></textarea></label>
+    </div>
+    <div class="calc"><span class="muted">Hours worked</span><b id="fHours">—</b></div>
+    <div id="dHist"></div>
+  </form>
+  <div class="dfoot">
+    <div class="ferr" id="fErr" role="alert"></div>
+    <button class="btn primary" id="fSave">Save</button>
+    <button class="btn" id="fCancel">Cancel</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="fHist" hidden>History</button>
+  </div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+"use strict";
+const LS = "tl.v1";
+const FIELDS = ["time_in", "time_out", "break_min", "notes", "day_type"];
+const DAY_TYPES = ["Travel Order", "R.S.O.", "P.S.O."];
+const DT_SHORT = { "Travel Order": "TO", "R.S.O.": "RSO", "P.S.O.": "PSO" };
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const today = () => ymd(new Date());
+const nowHM = () => { const d = new Date(); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+const fmtTime = iso => iso ? new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+const fmtHM = t => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return ((h + 11) % 12 + 1) + ":" + pad(m) + (h < 12 ? " AM" : " PM"); };
+// AM/PM picker <-> the stored 24-hour "HH:MM" (what the Sheet keeps and the hours maths uses).
+function tpBuild() {
+  document.querySelectorAll(".tp").forEach(tp => {
+    const n = tp.dataset.tp, lbl = n === "time_in" ? "Time in" : "Time out";
+    tp.innerHTML = `<select class="h" aria-label="${lbl} hour"><option value="">--</option>${[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => `<option>${h}</option>`).join("")}</select><b>:</b>`
+      + `<select class="m" aria-label="${lbl} minutes">${Array.from({ length: 60 }, (_, i) => `<option>${pad(i)}</option>`).join("")}</select>`
+      + `<select class="ap" aria-label="${lbl} AM or PM"><option>AM</option><option>PM</option></select>`;
+  });
+}
+function tpSet(n, t) {
+  const tp = document.querySelector(`.tp[data-tp="${n}"]`), m = /^(\d{2}):(\d{2})$/.exec(t || "");
+  tp.querySelector(".h").value = m ? String((+m[1] + 11) % 12 + 1) : "";
+  tp.querySelector(".m").value = m ? m[2] : "00";
+  tp.querySelector(".ap").value = m && +m[1] >= 12 ? "PM" : (m ? "AM" : (n === "time_out" ? "PM" : "AM"));
+  $("form").elements[n].value = m ? t : "";
+}
+function tpRead(n) {
+  const tp = document.querySelector(`.tp[data-tp="${n}"]`), h = tp.querySelector(".h").value;
+  if (!h) return "";
+  const h24 = (+h % 12) + (tp.querySelector(".ap").value === "PM" ? 12 : 0);
+  return pad(h24) + ":" + tp.querySelector(".m").value;
+}
+const fmtLong = s => new Date(s + "T00:00:00").toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+const mins = t => { const m = /^(\d{2}):(\d{2})$/.exec(t || ""); return m ? +m[1] * 60 + +m[2] : null; };
+// Worked minutes for a day, the same rule as the Sheet: time out − time in − break. null when not complete.
+function worked(r) {
+  const a = mins(r.time_in), b = mins(r.time_out);
+  if (a === null || b === null || b <= a) return null;
+  const w = b - a - (Number(r.break_min) || 0);
+  return w < 0 ? null : w;
+}
+const fmtDur = m => m == null ? "—" : Math.floor(m / 60) + "h " + pad(m % 60) + "m";
+
+/* ---------- State, kept on this device ---------- */
+function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, people: [], items: {}, outbox: [], problems: [], lastPull: "", lastSync: "", newKeys: [] }; }
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
+  s = Object.assign(blank(), s || {});
+  if (!s.cfg.device) s.cfg.device = (/Mobi|Android/i.test(navigator.userAgent) ? "PHONE-" : "PC-") + Math.random().toString(36).slice(2, 7).toUpperCase();
+  if (window.TL_HOSTED && window.TL_HOSTED.url) s.cfg.url = window.TL_HOSTED.url;
+  return s;
+}
+let state = load();
+let storeOk = true;
+function save() { try { localStorage.setItem(LS, JSON.stringify(state)); storeOk = true; } catch (e) { storeOk = false; } }
+const idOf = (name, date) => name + "|" + date;
+const pending = id => state.outbox.some(o => o.type === "save" && o.id === id);
+const boss = () => !!state.me && (state.me.role === "head" || state.me.role === "admin");
+const canEdit = name => !!state.me && (boss() || name === state.me.name);
+
+/* ---------- Talking to the Sheet ---------- */
+let syncing = false, syncAgain = false, online = navigator.onLine, lastError = "";
+async function call(method, payload) {
+  const u = state.cfg.url;
+  let r;
+  if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key }, payload)), { redirect: "follow" });
+  else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device }, payload)) });
+  const j = await r.json();
+  if (!j.ok) throw Object.assign(new Error(j.error || "The Sheet refused the request"), { server: true });
+  return j;
+}
+
+async function sync(quiet) {
+  if (!state.cfg.url || !state.cfg.key) return;
+  if (syncing) { syncAgain = true; return; }   // a save made during a sync is sent as soon as that sync ends
+  syncing = true; syncAgain = false; renderSync();
+  try {
+    if (state.outbox.length) {
+      const sent = state.outbox.slice(), revs = sent.map(o => o.rev);
+      const res = await call("POST", { changes: sent.map(o => ({ type: o.type, name: o.name, date: o.date, baseVersion: o.baseVersion, data: o.data, role: o.role, active: o.active })) });
+      res.results.forEach((r, i) => {
+        const o = sent[i];
+        const changedSince = state.outbox.includes(o) && o.rev !== revs[i];   // edited again while this send was out: keep the newer edit queued
+        if (!changedSince) state.outbox = state.outbox.filter(x => x !== o);
+        if (o.type !== "save") {
+          if (r.result === "saved" && r.key) state.newKeys.unshift({ name: r.name, role: r.role, key: r.key });
+          if (r.result !== "saved") state.problems.push({ kind: "rejected", what: o.type === "addMember" ? "Adding " + o.name : "Switching off " + o.name, error: r.error });
+          return;
+        }
+        const what = o.name + " · " + fmtLong(o.date);
+        if (r.result === "saved" || r.result === "same") {
+          state.items[o.id] = Object.assign({}, r.record);
+          if (changedSince) { o.baseVersion = r.record.version; Object.assign(state.items[o.id], o.data); }
+        } else if (r.result === "conflict") {
+          if (r.server) state.items[o.id] = Object.assign({}, r.server); else delete state.items[o.id];
+          state.problems.push({ kind: "conflict", id: o.id, name: o.name, date: o.date, mine: o.data, what,
+            detail: "This day was changed on another device or by the head first; the Sheet's copy is showing now. Yours: " + summary(o.data) + "." });
+        } else {
+          if (r.server) state.items[o.id] = Object.assign({}, r.server); else delete state.items[o.id];
+          state.problems.push({ kind: "rejected", id: o.id, name: o.name, date: o.date, mine: o.data, error: r.error, what });
+        }
+      });
+      if (res.people) state.people = res.people;
+      state.me = res.me;
+      save();
+    }
+    // Ask with 2 minutes of overlap: a save that started just before the last pull can land just after it.
+    const since = state.lastPull ? new Date(new Date(state.lastPull).getTime() - 120000).toISOString() : "";
+    const p = await call("GET", { action: "pull", since });
+    if (!state.me || state.me.name !== p.me.name) { state.items = {}; }   // a different key on this device: drop the other person's copy
+    state.me = p.me; state.people = p.people || state.people;
+    (p.items || []).forEach(s => {
+      const loc = state.items[s.id];
+      if (pending(s.id)) return;                      // a local edit is queued: the next send settles it, or flags a conflict
+      if (!loc || (Number(s.version) || 0) >= (Number(loc.version) || 0)) state.items[s.id] = s;
+    });
+    state.lastPull = p.server_time; state.lastSync = new Date().toISOString(); lastError = ""; online = true;
+    if (!who || !state.people.some(x => x.name === who)) who = state.me.name;
+    save();
+  } catch (e) {
+    lastError = e.server ? e.message : "";
+    if (!e.server) online = false;
+    if (!quiet && e.server) toast(e.message);
+  } finally {
+    syncing = false; render();
+    if (syncAgain && online && state.outbox.length) setTimeout(() => sync(true), 0);
+  }
+}
+function summary(d) {
+  const w = worked(d);
+  return [d.day_type || "", d.time_in ? "in " + fmtHM(d.time_in) : "", d.time_out ? "out " + fmtHM(d.time_out) : "", d.break_min ? d.break_min + " min break" : "", w != null ? fmtDur(w) : "", d.notes ? "“" + d.notes.slice(0, 40) + "”" : ""].filter(Boolean).join(", ") || "blank";
+}
+
+/* ---------- Local changes ---------- */
+function queueSave(name, date, data, baseOverride) {
+  const id = idOf(name, date), cur = state.items[id] || { id, name, date, version: 0 };
+  const o = state.outbox.find(x => x.type === "save" && x.id === id);
+  if (o) { o.data = data; o.rev++; if (baseOverride !== undefined) o.baseVersion = baseOverride; }
+  else state.outbox.push({ type: "save", id, name, date, baseVersion: baseOverride !== undefined ? baseOverride : Number(cur.version) || 0, data, rev: 1 });
+  state.items[id] = Object.assign({}, cur, data, { minutes: worked(data) == null ? "" : String(worked(data)) });
+  save(); render(); sync(true);
+}
+
+/* ---------- Month maths ---------- */
+let view = "cal", who = "", month = today().slice(0, 7);
+try { view = sessionStorage.getItem("tl.view") || view; month = sessionStorage.getItem("tl.month") || month; who = sessionStorage.getItem("tl.who") || ""; } catch (e) {}
+const logsOf = (name, prefix) => Object.values(state.items).filter(r => r.name === name && String(r.date).startsWith(prefix));
+function monthStats(name, ym) {
+  const rows = logsOf(name, ym);
+  const done = rows.map(worked).filter(m => m != null);
+  const open = rows.filter(r => r.time_in && !r.time_out && r.date < today()).length;
+  const total = done.reduce((a, b) => a + b, 0);
+  const typed = {}; DAY_TYPES.forEach(t => { typed[t] = rows.filter(r => r.day_type === t).length; });
+  return { total, days: done.length, avg: done.length ? Math.round(total / done.length) : null, open, rows, typed,
+    orders: DAY_TYPES.reduce((a, t) => a + typed[t], 0) };
+}
+function shiftMonth(ym, n) { const d = new Date(ym + "-01T00:00:00"); d.setMonth(d.getMonth() + n); return ymd(d).slice(0, 7); }
+
+/* ---------- Rendering ---------- */
+function render() {
+  if (view === "team" && !boss()) view = "cal";
+  document.querySelector('.tab[data-v="team"]').hidden = !boss();
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === view));
+  renderSync();
+  $("main").innerHTML = problemsHtml() + ({ cal: calHtml, team: teamHtml, settings: settingsHtml }[view])();
+  try { sessionStorage.setItem("tl.view", view); sessionStorage.setItem("tl.month", month); sessionStorage.setItem("tl.who", who); } catch (e) {}
+}
+
+function renderSync() {
+  const n = state.outbox.length;
+  let cls = "", text;
+  if (!state.cfg.url || !state.cfg.key) text = state.cfg.url ? "Not connected. Add your key in Settings." : "Not connected. Add the address and your key in Settings.";
+  else if (syncing) { cls = "on"; text = "Syncing…"; }
+  else if (lastError) { cls = "err"; text = lastError; }
+  else if (!online) { cls = "off"; text = "Offline · " + (n ? n + (n === 1 ? " change" : " changes") + " kept on this device, will send when online" : "showing the copy on this device"); }
+  else { cls = "on"; text = (state.me ? state.me.name + " · " : "") + (n ? n + " waiting to send" : "Synced " + fmtTime(state.lastSync)); }
+  if (!storeOk) { cls = "err"; text = "This browser is not keeping changes on the device. Keep the page open until it syncs."; }
+  $("sDot").className = "dot " + cls; $("sText").textContent = text;
+  $("syncBtn").disabled = syncing || !state.cfg.url || !state.cfg.key;
+}
+
+function problemsHtml() {
+  if (!state.problems.length) return "";
+  return `<div class="banner bad" role="alert"><div style="flex:1"><b>${state.problems.length} ${state.problems.length === 1 ? "change was" : "changes were"} not saved to the Sheet</b>
+    ${state.problems.map((p, i) => `<div class="prob"><div style="flex:1;min-width:220px"><span class="mono">${esc(p.what)}</span><br><span class="muted">${esc(p.kind === "conflict" ? p.detail : p.error)}</span></div>
+      ${p.kind === "conflict" ? `<button class="btn sm" data-act="mine" data-i="${i}">Use my version</button>` : ""}
+      ${p.mine && p.kind !== "conflict" ? `<button class="btn sm" data-act="fix" data-i="${i}">Fix and save</button>` : ""}
+      <button class="btn sm ghost" data-act="dismiss" data-i="${i}">Dismiss</button></div>`).join("")}</div></div>`;
+}
+
+function todayHtml() {
+  if (!state.me) return "";
+  const r = state.items[idOf(state.me.name, today())] || {};
+  let line, btn;
+  if (r.day_type) { line = r.day_type + " · no time in / out"; btn = ""; }
+  else if (!r.time_in) { line = "Not timed in yet"; btn = `<button class="btn primary" data-punch="time_in">Time in now</button>`; }
+  else if (!r.time_out) { line = "In since " + fmtHM(r.time_in); btn = `<button class="btn primary" data-punch="time_out">Time out now</button>`; }
+  else { line = fmtHM(r.time_in) + " – " + fmtHM(r.time_out) + " · " + fmtDur(worked(r)); btn = ""; }
+  return `<section class="today"><div class="grow"><div class="lbl">Today · ${esc(new Date().toLocaleDateString("en-PH", { weekday: "long", month: "short", day: "numeric" }))}</div><div class="big">${esc(line)}</div></div>
+    ${btn}<button class="btn" data-day="${today()}">Edit today</button></section>`;
+}
+
+function calHtml() {
+  if (!state.me) return `<div class="empty"><b>Connect first</b>Open Settings, paste the web app address and your key from the Admin. Your calendar then shows here, and works offline after that.<br><br><button class="btn primary" data-go="settings">Open Settings</button></div>`;
+  if (!who) who = state.me.name;
+  const st = monthStats(who, month), first = new Date(month + "-01T00:00:00");
+  const start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7));   // back to Monday
+  const title = first.toLocaleDateString("en-PH", { month: "long", year: "numeric" });
+  const people = boss() ? state.people : [state.me];
+  let cells = WEEKDAYS.map(d => `<div class="hd">${d}</div>`).join("") + `<div class="hd wk">Week</div>`, weeks = [];
+  const d = new Date(start);
+  for (let w = 0; w < 6; w++) {
+    if (w > 0 && d.getMonth() !== first.getMonth() && ymd(d).slice(0, 7) > month) break;
+    let wk = 0, wkDays = 0; const wkFrom = ymd(d);
+    for (let i = 0; i < 7; i++, d.setDate(d.getDate() + 1)) {
+      const ds = ymd(d), r = state.items[idOf(who, ds)], inMonth = ds.slice(0, 7) === month, m = r ? worked(r) : null;
+      if (m != null) { wk += m; wkDays++; }
+      const open = r && r.time_in && !r.time_out;
+      cells += `<button type="button" class="day${inMonth ? "" : " out"}${i > 4 ? " wkend" : ""}${ds === today() ? " is-today" : ""}" data-day="${ds}" aria-label="${esc(fmtLong(ds))}${r ? ", " + esc(summary(r)) : ", no log"}">
+        <span class="n">${d.getDate()}${r && pending(r.id) ? '<span class="flag" title="Not sent yet"></span>' : ""}</span>
+        ${r && r.day_type ? `<span class="dt" title="${esc(r.day_type)}"><span class="dl">${esc(r.day_type)}</span><span class="ds">${esc(DT_SHORT[r.day_type] || r.day_type)}</span></span>` : ""}
+        ${r && r.time_in ? `<span class="t">In ${esc(fmtHM(r.time_in))}</span><span class="t">Out ${esc(r.time_out ? fmtHM(r.time_out) : "—")}</span>` : ""}
+        ${r && r.notes ? `<span class="note">${esc(r.notes)}</span>` : ""}
+        ${m != null ? `<span class="h">${esc(fmtDur(m))}</span>` : open ? `<span class="h open">${ds < today() ? "No out" : "In"}</span>` : ""}
+      </button>`;
+    }
+    cells += `<div class="wkt">${wkDays ? esc(fmtDur(wk)) : ""}<span>${wkDays ? wkDays + (wkDays === 1 ? " day" : " days") : ""}</span></div>`;
+    weeks.push({ from: wkFrom, total: wk, days: wkDays });
+  }
+  return (who === state.me.name ? todayHtml() : "") + `<div class="toolbar">
+      <button class="btn" data-mon="-1" aria-label="Previous month">‹</button><h2>${esc(title)}</h2><button class="btn" data-mon="1" aria-label="Next month">›</button>
+      <button class="btn ghost" data-mon="0">This month</button><span class="grow"></span>
+      ${people.length > 1 ? `<select id="who" aria-label="Employee">${people.map(p => `<option${p.name === who ? " selected" : ""}>${esc(p.name)}</option>`).join("")}</select>` : `<span class="muted">${esc(who)}</span>`}
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Hours this month</div><div class="v">${esc(fmtDur(st.total))}</div></div>
+      <div class="stat"><div class="k">Days with full log</div><div class="v">${st.days}</div></div>
+      <div class="stat"><div class="k">Average per day</div><div class="v">${esc(fmtDur(st.avg))}</div></div>
+      <div class="stat"><div class="k">Missing time out</div><div class="v${st.open ? " warn" : ""}">${st.open}</div></div>
+    </div>
+    ${st.orders ? `<p class="count">No time in / out: ${DAY_TYPES.filter(t => st.typed[t]).map(t => esc(t) + " " + st.typed[t] + (st.typed[t] === 1 ? " day" : " days")).join(" · ")}. These days are not in the hours.</p>` : ""}
+    <div class="cal" role="grid" aria-label="${esc(title)} for ${esc(who)}">${cells}</div>
+    <div class="weeks"><table class="tbl"><thead><tr><th>Week of</th><th class="num">Days</th><th class="num">Hours</th></tr></thead><tbody>
+      ${weeks.map(w => `<tr><td>${esc(new Date(w.from + "T00:00:00").toLocaleDateString("en-PH", { month: "short", day: "numeric" }))}</td><td class="num">${w.days}</td><td class="num">${w.days ? esc(fmtDur(w.total)) : "—"}</td></tr>`).join("")}</tbody></table></div>
+    <p class="legend">Hours = time out − time in − break. Click a day to log or edit it.${canEdit(who) ? "" : " Read only."}</p>`;
+}
+
+function teamHtml() {
+  const title = new Date(month + "-01T00:00:00").toLocaleDateString("en-PH", { month: "long", year: "numeric" });
+  const rows = state.people.filter(p => p.role !== "admin" || logsOf(p.name, month).length).map(p => ({ p, s: monthStats(p.name, month) }))
+    .sort((a, b) => a.p.name.localeCompare(b.p.name));
+  const all = rows.reduce((a, r) => a + r.s.total, 0);
+  return `<div class="toolbar"><button class="btn" data-mon="-1" aria-label="Previous month">‹</button><h2>${esc(title)}</h2><button class="btn" data-mon="1" aria-label="Next month">›</button>
+      <button class="btn ghost" data-mon="0">This month</button></div>
+    <p class="count">${rows.length} ${rows.length === 1 ? "person" : "people"} · ${esc(fmtDur(all))} in all. Click a person to see their calendar.</p>
+    ${rows.length ? `<table class="tbl"><thead><tr><th>Employee</th><th class="num">Days</th><th class="num">Hours</th><th class="num">Average</th><th class="num">Missing out</th><th class="num">TO</th><th class="num">RSO</th><th class="num">PSO</th></tr></thead><tbody>
+    ${rows.map(r => `<tr data-who="${esc(r.p.name)}"><td><b>${esc(r.p.name)}</b> <span class="muted">${r.p.role === "member" ? "" : esc(r.p.role)}</span></td>
+      <td class="num">${r.s.days}</td><td class="num">${esc(fmtDur(r.s.total))}</td><td class="num">${esc(fmtDur(r.s.avg))}</td><td class="num${r.s.open ? " warn" : ""}">${r.s.open}</td>${DAY_TYPES.map(t => `<td class="num">${r.s.typed[t]}</td>`).join("")}</tr>`).join("")}</tbody></table>`
+      : `<div class="empty"><b>No members yet</b>The Admin adds members in Settings.</div>`}`;
+}
+
+function settingsHtml() {
+  const admin = state.me && state.me.role === "admin";
+  return `<section class="panel"><h2>Connection</h2><p>The web app address and your own key come from the Admin. Everything you log is kept on this device and sent when online.</p>
+      <div class="row"><label class="f"><span>Web app address</span><input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https:&#47;&#47;script.google.com/macros/s/…/exec" ${window.TL_HOSTED ? "readonly" : ""}></label>
+      <label class="f" style="max-width:220px"><span>Your key</span><input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
+      <button class="btn primary" id="cSave">Save and connect</button></div>
+      <p style="margin:12px 0 0">This device: <span class="mono">${esc(state.cfg.device)}</span>${state.me ? ` · Signed in as <b>${esc(state.me.name)}</b> (${esc(state.me.role)})` : ""}</p></section>
+    ${admin ? `<section class="panel"><h2>Employees</h2><p>Each employee gets their own key and logs only their own days. Hand the key over in person; it shows here until you hide it.</p>
+      <div class="row"><label class="f"><span>Full name</span><input id="mName" maxlength="80" placeholder="e.g. JUAN DELA CRUZ"></label>
+      <label class="f" style="max-width:220px"><span>Role</span><select id="mRole"><option value="member">Employee</option><option value="head">Head (sees and corrects all)</option><option value="admin">Admin</option></select></label>
+      <button class="btn primary" id="mAdd">Add employee</button></div>
+      ${state.newKeys.map((k, i) => `<div><span class="keybox">${esc(k.name)}: ${esc(k.key)}</span> <button class="btn sm ghost" data-hidekey="${i}">Hide</button></div>`).join("")}
+      <table class="tbl" style="margin-top:16px"><thead><tr><th>Employee</th><th>Role</th><th></th></tr></thead><tbody>
+      ${state.people.filter(p => p.name !== state.me.name).map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.role)}</td><td style="text-align:right"><button class="btn sm" data-off="${esc(p.name)}">Switch off</button></td></tr>`).join("")}
+      </tbody></table></section>` : ""}
+    <section class="panel"><h2>On this device</h2><p>${Object.keys(state.items).length} days kept here · ${state.outbox.length} waiting to send${state.lastSync ? " · last synced " + esc(fmtTime(state.lastSync)) : ""}.</p>
+      <button class="btn" id="cForget">Remove this device's copy</button></section>`;
+}
+
+/* ---------- Drawer ---------- */
+let editing = null;
+function openDrawer(date, preset) {
+  const name = who || state.me.name, id = idOf(name, date), r = state.items[id] || {}, f = $("form");
+  editing = { name, date, id };
+  const src = Object.assign({}, r, preset || {});
+  FIELDS.forEach(k => { f.elements[k].value = src[k] || ""; });
+  tpSet("time_in", src.time_in); tpSet("time_out", src.time_out);
+  const ro = !canEdit(name);
+  FIELDS.forEach(k => { f.elements[k].readOnly = ro; });
+  f.elements.day_type.disabled = ro;
+  f.querySelectorAll(".tp select").forEach(s => { s.disabled = ro; });
+  typedView();
+  const isToday = date === today();
+  f.querySelectorAll("[data-now]").forEach(b => { b.hidden = ro || !isToday; });
+  $("dTitle").textContent = fmtLong(date);
+  $("dWho").textContent = name;
+  $("dBadge").innerHTML = pending(id) ? '<span class="pill pending">Not sent yet</span>' : "";
+  $("fErr").textContent = ro ? "Read only: only " + name + " or the head can change this day." : "";
+  $("fSave").hidden = ro;
+  $("fHist").hidden = !(r.version > 0);
+  $("dHist").innerHTML = r.version ? `<p class="muted" style="font-size:12.5px;margin:14px 0 0">Logged by ${esc(r.created_by)} ${esc(fmtTime(r.created_at))}${r.updated_by ? " · last change by " + esc(r.updated_by) + " " + esc(fmtTime(r.updated_at)) : ""} · version ${esc(r.version)}</p>` : "";
+  calcHours();
+  $("scrim").hidden = $("drawer").hidden = false;
+  setTimeout(() => (ro ? $("dClose") : src.day_type ? f.elements.day_type : document.querySelector(`.tp[data-tp="${!src.time_in ? "time_in" : !src.time_out ? "time_out" : "time_in"}"] .h`)).focus(), 0);
+}
+function typedView() { const t = !!$("form").elements.day_type.value; $("form").classList.toggle("typed", t); document.querySelector(".calc").classList.toggle("typed", t); }
+function closeDrawer() { $("scrim").hidden = $("drawer").hidden = true; editing = null; }
+function formData() {
+  const f = $("form"), d = {};
+  f.elements.time_in.value = tpRead("time_in"); f.elements.time_out.value = tpRead("time_out");
+  FIELDS.forEach(k => d[k] = f.elements[k].value.trim());
+  if (d.break_min === "0") d.break_min = "";
+  if (d.day_type) { d.time_in = ""; d.time_out = ""; d.break_min = ""; }   // Travel Order / R.S.O. / P.S.O.: no time in or out
+  return d;
+}
+function check(d) {
+  if (d.day_type) return DAY_TYPES.includes(d.day_type) ? "" : "Unknown day type.";
+  if (d.time_out && !d.time_in) return "Enter the time in first.";
+  if (d.time_in && d.time_out && mins(d.time_out) <= mins(d.time_in)) return "Time out must be later than time in.";
+  if (d.break_min && (!/^\d{1,3}$/.test(d.break_min) || +d.break_min > 600)) return "Break must be whole minutes, 0 to 600.";
+  if (d.time_in && d.time_out && worked(d) == null) return "The break is longer than the time worked.";
+  if (!d.time_in && !d.notes) return "Enter a time in, choose a day type (Travel Order, R.S.O., P.S.O.), or write a note.";
+  return "";
+}
+function calcHours() {
+  const d = formData(), w = worked(d);
+  $("fHours").textContent = d.day_type ? d.day_type + " · no hours counted" : w != null ? fmtDur(w) : d.time_in && !d.time_out ? "No time out yet" : "—";
+}
+function saveDrawer() {
+  if (!editing) return;
+  const d = formData(), err = check(d);
+  if (err) { $("fErr").textContent = err; return; }
+  const { name, date } = editing;
+  closeDrawer(); queueSave(name, date, d);
+  toast(state.cfg.url && state.cfg.key ? "Saved on this device. Sending…" : "Saved on this device.");
+}
+async function showHistory() {
+  if (!editing) return;
+  $("dHist").innerHTML = `<p class="muted">Loading history…</p>`;
+  try {
+    const h = await call("GET", { action: "history", id: editing.id });
+    $("dHist").innerHTML = `<div class="hist">${h.history.map(x => { let c = {}; try { c = JSON.parse(x.changed); } catch (e) {}
+      return `<div><b>v${esc(x.version)}</b> ${esc(fmtTime(x.time))} · ${esc(x.by)}<br><span class="muted">${Object.keys(c).map(k => esc(k.replace("_", " ")) + ": " + esc(String(c[k] || "blank").slice(0, 80))).join(" · ") || "no field changes"}</span></div>`; }).join("")}</div>`;
+  } catch (e) { $("dHist").innerHTML = `<p class="muted">History needs a connection to the Sheet.</p>`; }
+}
+
+/* ---------- Events ---------- */
+let toastT;
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3200); }
+
+$("tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) { view = t.dataset.v; render(); } });
+$("syncBtn").onclick = () => sync(false);
+$("scrim").onclick = closeDrawer; $("dClose").onclick = closeDrawer; $("fCancel").onclick = closeDrawer;
+$("fSave").onclick = e => { e.preventDefault(); saveDrawer(); };
+$("form").addEventListener("submit", e => { e.preventDefault(); saveDrawer(); });
+tpBuild();
+$("form").addEventListener("input", calcHours);
+$("form").addEventListener("change", e => { if (e.target.name === "day_type") typedView(); calcHours(); });
+$("form").addEventListener("click", e => { const b = e.target.closest("[data-now]"); if (b) { tpSet(b.dataset.now, nowHM()); calcHours(); } });
+$("fHist").onclick = showHistory;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+
+$("main").addEventListener("click", e => {
+  const t = e.target;
+  const day = t.closest("[data-day]"); if (day) return openDrawer(day.dataset.day);
+  const mon = t.closest("[data-mon]"); if (mon) { month = +mon.dataset.mon ? shiftMonth(month, +mon.dataset.mon) : today().slice(0, 7); return render(); }
+  const punch = t.closest("[data-punch]");
+  if (punch) {
+    const id = idOf(state.me.name, today()), r = state.items[id] || {}, d = {};
+    FIELDS.forEach(k => d[k] = r[k] || "");
+    d[punch.dataset.punch] = nowHM();
+    const err = check(d); if (err) { toast(err); return openDrawer(today(), d); }
+    queueSave(state.me.name, today(), d);
+    return toast((punch.dataset.punch === "time_in" ? "Timed in " : "Timed out ") + fmtHM(d[punch.dataset.punch]) + ". Saved on this device.");
+  }
+  const go = t.closest("[data-go]"); if (go) { view = go.dataset.go; return render(); }
+  const w = t.closest("[data-who]"); if (w) { who = w.dataset.who; view = "cal"; return render(); }
+  const act = t.closest("[data-act]");
+  if (act) {
+    const i = +act.dataset.i, p = state.problems[i];
+    state.problems.splice(i, 1); save();
+    if (act.dataset.act === "mine") { const s = state.items[p.id]; return queueSave(p.name, p.date, p.mine, s ? Number(s.version) || 0 : 0); }
+    if (act.dataset.act === "fix") { who = p.name; month = p.date.slice(0, 7); view = "cal"; render(); return openDrawer(p.date, p.mine); }
+    return render();
+  }
+  if (t.id === "cSave") {
+    state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.lastPull = ""; lastError = ""; save();
+    return sync(false).then(() => { if (state.me) toast("Connected as " + state.me.name); });
+  }
+  if (t.id === "mAdd") {
+    const name = $("mName").value.trim(); if (!name) return toast("Type the employee's name.");
+    state.outbox.push({ type: "addMember", name, role: $("mRole").value, rev: 1 }); save(); return sync(false);
+  }
+  const off = t.closest("[data-off]");
+  if (off) { state.outbox.push({ type: "setActive", name: off.dataset.off, active: false, rev: 1 }); save(); return sync(false); }
+  const hk = t.closest("[data-hidekey]"); if (hk) { state.newKeys.splice(+hk.dataset.hidekey, 1); save(); return render(); }
+  if (t.id === "cForget") {
+    if (state.outbox.length) return toast(state.outbox.length + " changes are not sent yet. Sync first.");
+    const cfg = state.cfg; state = blank(); state.cfg = cfg; save(); return render();
+  }
+});
+$("main").addEventListener("change", e => { if (e.target.id === "who") { who = e.target.value; render(); } });
+
+// Theme from the ACE Workbench shell when shown inside it.
+window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
+window.addEventListener("online", () => { online = true; sync(true); });
+window.addEventListener("offline", () => { online = false; renderSync(); });
+window.addEventListener("storage", e => { if (e.key === LS) { state = load(); render(); } }); // another tab on this device saved
+setInterval(() => { if (!document.hidden) sync(true); }, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(true); });
+save(); render(); sync(true);
+</script>
+</body>
+</html>

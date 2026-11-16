@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit Desk</title>
+<style>
+/* Unit Desk: the survey unit's incoming / outgoing log and task list. Part of the ACE Workbench (same look).
+   Every change is saved on this device first and sent to the unit's Google Sheet when online (backend/unit_desk.gs). */
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#17181a; --muted:#6b6e73; --line:#e3e1dc; --hover:#f0eee9; --field:#ffffff;
+  --accent:#b8860b; --accent-ink:#ffffff; --accent-soft:#f7efd9;
+  --ok:#1d7a43; --ok-bg:#e3f2e8; --bad:#b3261e; --bad-bg:#fbe7e4; --warn:#8f5b00; --warn-bg:#fbf0d9;
+  --shadow:0 1px 2px rgba(0,0,0,.05); --shadow-lg:0 16px 40px rgba(0,0,0,.2);
+  --font:"Inter","IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,monospace;
+  --r:10px; --gap-s:8px; --gap-l:20px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; }
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);min-height:100vh}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:12px;padding:14px var(--gap-l) 0;flex-wrap:wrap}
+.hrow h1{font-size:18px;margin:0;letter-spacing:-.01em}
+.sync{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-left:auto}
+.sync .btn{color:var(--ink)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.dot.on{background:var(--ok)} .dot.off{background:var(--warn)} .dot.err{background:var(--bad)}
+.tabs{display:flex;gap:4px;padding:8px var(--gap-l) 0;overflow-x:auto;scrollbar-width:none}
+.tab{border:0;background:none;padding:8px 12px 10px;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-weight:500;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab .n{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:18px;text-align:center}
+
+main{padding:var(--gap-l);max-width:1180px;margin:0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:500;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.sm{height:28px;padding:0 9px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none}
+.btn:disabled{opacity:.5;cursor:default}
+.btn[hidden]{display:none}
+
+.banner{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:var(--r);margin-bottom:var(--gap-l);border:1px solid}
+.banner.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--ink)}
+.banner b{display:block;margin-bottom:2px}
+.prob{border-top:1px solid var(--line);padding:10px 0 0;margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* My work */
+.bucket{margin-bottom:28px}
+.bucket h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+.bucket h2 .c{font-family:var(--mono);color:var(--ink)}
+.bucket.overdue h2{color:var(--bad)}
+.cards{display:grid;gap:10px}
+.card{display:grid;grid-template-columns:4px 1fr auto;gap:0 14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;cursor:pointer}
+.card:hover{border-color:var(--muted)}
+.card .bar{grid-row:1/3}
+.card .body{padding:12px 0 8px;min-width:0}
+.card .side{padding:12px 14px 0 0;text-align:right;white-space:nowrap}
+.card .acts{grid-column:2/4;display:flex;gap:6px;padding:0 14px 12px 0;flex-wrap:wrap;align-items:center}
+.card .subj{font-weight:600;font-size:14.5px}
+.card .meta{font-size:12.5px;color:var(--muted);margin-top:2px}
+.p-Urgent .bar{background:var(--bad)} .p-High .bar{background:var(--warn)} .p-Normal .bar{background:var(--line)} .p-Low .bar{background:transparent}
+.due{font-size:12.5px;font-weight:600}
+.due.late{color:var(--bad)} .due.soon{color:var(--warn)} .due.ok{color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--hover);color:var(--muted);white-space:nowrap}
+.pill.Urgent{background:var(--bad-bg);color:var(--bad)} .pill.High{background:var(--warn-bg);color:var(--warn)}
+.pill.s-Done,.pill.s-Filed{background:var(--ok-bg);color:var(--ok)} .pill.s-In.progress{background:var(--accent-soft);color:var(--accent)}
+.pill.pending{background:var(--accent-soft);color:var(--accent)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r)}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+
+/* Log */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:none;padding:0 12px;height:32px;cursor:pointer;color:var(--muted);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.toolbar .drange{display:inline-flex;align-items:center;gap:6px}
+.toolbar select,.toolbar input[type=search],.toolbar input[type=date]{height:34px;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 8px}
+.toolbar input[type=search]{min-width:200px;flex:1}
+.toolbar .grow{flex:1}
+.count{font-size:12.5px;color:var(--muted);margin:0 0 8px}
+table.tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tbl th{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);background:var(--bg);white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr[data-open],.tbl tbody tr[data-who]{cursor:pointer}
+.tbl tbody tr[data-open]:hover td,.tbl tbody tr[data-who]:hover td{background:var(--hover)}
+.tbl .subj{font-weight:600}
+.tbl .sub{font-size:12px;color:var(--muted)}
+.dir{font-size:11.5px;font-weight:600}
+.dir.Incoming{color:var(--accent)} .dir.Outgoing{color:var(--muted)}
+.tbl.team td.num,.tbl.team th.num{text-align:right;font-family:var(--mono)}
+.tbl.team td.num.late{color:var(--bad);font-weight:600}
+
+/* Drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--bg);z-index:21;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)}
+.scrim[hidden],.drawer[hidden]{display:none}
+.dhead{display:flex;align-items:center;gap:10px;padding:14px var(--gap-l);border-bottom:1px solid var(--line);background:var(--panel)}
+.dhead h2{margin:0;font-size:16px}
+.dbody{flex:1;overflow:auto;padding:var(--gap-l)}
+.dfoot{display:flex;gap:8px;padding:12px var(--gap-l);border-top:1px solid var(--line);background:var(--panel);flex-wrap:wrap;align-items:center}
+fieldset{border:0;margin:0 0 22px;padding:0;min-width:0}
+legend{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0;margin-bottom:10px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fgrid .full{grid-column:1/-1}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;min-width:0}
+label.f input,label.f select,label.f textarea{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:8px 10px;font-size:14px;font-weight:400;width:100%}
+label.f textarea{min-height:76px;resize:vertical}
+label.f input:read-only{background:var(--hover)}
+.req>span::after,.req.plain::after{content:" *";color:var(--bad)}
+.ferr{color:var(--bad);font-size:13px;width:100%}
+.ferr:empty{display:none}
+.hist{font-size:12.5px;border-left:2px solid var(--line);padding-left:12px;margin-top:6px}
+.hist div{margin-bottom:6px}
+
+/* Settings */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:var(--gap-l);margin-bottom:var(--gap-l);box-shadow:var(--shadow)}
+.panel h2{font-size:15px;margin:0 0 4px}
+.panel p{margin:0 0 14px;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row label.f{flex:1;min-width:200px}
+.keybox{font-family:var(--mono);font-size:16px;padding:8px 12px;background:var(--ok-bg);color:var(--ok);border-radius:8px;display:inline-block;margin-top:10px}
+
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;font-weight:500;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+
+.tbl td.mono{white-space:nowrap}
+@media (max-width:720px){
+  .hrow,.tabs,main{padding-left:16px;padding-right:16px}
+  .sync{margin-left:0;width:100%}
+  .fgrid{grid-template-columns:1fr}
+}
+@media (max-width:900px){
+  .tbl thead{display:none}
+  table.tbl,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+  table.tbl{background:none;border:0}
+  .tbl tbody tr{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px;padding:10px 12px}
+  .tbl td{border:0;padding:2px 0}
+  .tbl td[data-l]::before{content:attr(data-l) ": ";color:var(--muted);font-size:12px}
+  .tbl.team td.num{text-align:left}
+  .toolbar input[type=search]{min-width:0;width:100%}
+}
+@media (prefers-reduced-motion:no-preference){ .btn,.card,.tab{transition:background .12s,border-color .12s} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="hrow">
+    <h1>Unit Desk</h1>
+    <div class="sync"><span class="dot" id="sDot"></span><span id="sText">Not connected</span>
+      <button class="btn sm" id="syncBtn">Sync now</button></div>
+  </div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-v="mine">My work</button>
+    <button class="tab" role="tab" data-v="log">Incoming / Outgoing</button>
+    <button class="tab" role="tab" data-v="team">Team</button>
+    <button class="tab" role="tab" data-v="settings">Settings</button>
+  </nav>
+</header>
+<main id="main"></main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-labelledby="dTitle" role="dialog">
+  <div class="dhead"><h2 id="dTitle">New entry</h2><span id="dBadge"></span><span style="flex:1"></span><button class="btn ghost sm" id="dClose">Close</button></div>
+  <form class="dbody" id="form" novalidate>
+    <fieldset><legend>Source</legend><div class="fgrid">
+      <label class="f req"><span>Direction</span><select name="direction"></select></label>
+      <label class="f req"><span>Received through</span><select name="channel"></select></label>
+      <label class="f req"><span id="lDate">Date received</span><input type="date" name="date"></label>
+      <label class="f"><span id="lParty">From (office or person)</span><input name="party" maxlength="300" placeholder="e.g. PARPO II, MARO Mobo, walk-in client"></label>
+      <label class="f"><span>Their reference no.</span><input name="ref_no" maxlength="120" placeholder="Letter, memo or order no."></label>
+      <label class="f"><span>Type</span><select name="kind"></select></label>
+    </div></fieldset>
+    <fieldset><legend>What</legend><div class="fgrid">
+      <label class="f full req"><span>Subject</span><input name="subject" maxlength="300" placeholder="One line: what it is about"></label>
+      <label class="f full"><span>Details</span><textarea name="details" maxlength="4000" placeholder="Instructions, lot and title nos., who said it (for verbal or informal)"></textarea></label>
+    </div></fieldset>
+    <fieldset><legend>Action</legend><div class="fgrid">
+      <label class="f"><span>Assigned to</span><select name="assigned_to"></select></label>
+      <label class="f"><span>Priority</span><select name="priority"></select></label>
+      <label class="f"><span>Due</span><input type="date" name="due"></label>
+      <label class="f"><span>Status</span><select name="status"></select></label>
+      <label class="f full"><span>Action taken</span><textarea name="action_taken" maxlength="4000" placeholder="What was done, and when"></textarea></label>
+      <label class="f"><span>Date done</span><input type="date" name="done_date"></label>
+    </div></fieldset>
+    <fieldset><legend>Filing</legend><div class="fgrid">
+      <label class="f"><span>Filed at</span><input name="filed_at" maxlength="300" placeholder="Cabinet / folder, e.g. Cab 2 › 2026 Incoming"></label>
+      <label class="f"><span>Linked entry</span><input name="linked_id" maxlength="60" list="idList" placeholder="e.g. IN-2026-0004"></label>
+      <label class="f full"><span>Scan or file link</span><input name="file_link" maxlength="1000" placeholder="Google Drive link to the scanned copy"></label>
+    </div></fieldset>
+    <div id="dHist"></div>
+  </form>
+  <div class="dfoot">
+    <div class="ferr" id="fErr" role="alert"></div>
+    <button class="btn primary" id="fSave">Save</button>
+    <button class="btn" id="fCancel">Cancel</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="fReply" hidden>Log a reply</button>
+    <button class="btn" id="fHist" hidden>History</button>
+  </div>
+</aside>
+<datalist id="idList"></datalist>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+"use strict";
+const LS = "ud.v1";
+const DEFAULT_LISTS = {
+  directions: ["Incoming", "Outgoing"], kinds: ["Task", "Document"],
+  channels: ["Formal letter", "Memorandum / order", "Email", "Verbal", "Informal (text, call, chat)", "Walk-in"],
+  priorities: ["Urgent", "High", "Normal", "Low"], statuses: ["New", "In progress", "Waiting", "Done", "Filed", "Cancelled"]
+};
+const OPEN = ["New", "In progress", "Waiting"];
+const PRANK = { Urgent: 0, High: 1, Normal: 2, Low: 3 };
+const FIELDS = ["direction", "kind", "channel", "date", "party", "ref_no", "subject", "details", "assigned_to", "priority", "due", "status", "action_taken", "done_date", "filed_at", "file_link", "linked_id"];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const today = () => ymd(new Date());
+const dayDiff = (a, b) => Math.round((new Date(a + "T00:00:00") - new Date(b + "T00:00:00")) / 864e5);
+const fmtDate = s => s ? new Date(s + "T00:00:00").toLocaleDateString("en-PH", { month: "short", day: "numeric", year: s.slice(0, 4) === today().slice(0, 4) ? undefined : "numeric" }) : "";
+const fmtTime = iso => iso ? new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+
+/* ---------- State, kept on this device ---------- */
+function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, people: [], lists: DEFAULT_LISTS, items: {}, outbox: [], problems: [], lastPull: "", lastSync: "", seq: 0, newKeys: [] }; }
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
+  s = Object.assign(blank(), s || {});
+  if (!s.cfg.device) s.cfg.device = (/Mobi|Android/i.test(navigator.userAgent) ? "PHONE-" : "PC-") + Math.random().toString(36).slice(2, 7).toUpperCase();
+  if (window.UD_HOSTED && window.UD_HOSTED.url) s.cfg.url = window.UD_HOSTED.url;
+  return s;
+}
+let state = load();
+let storeOk = true;
+function save() {
+  try { localStorage.setItem(LS, JSON.stringify(state)); storeOk = true; }
+  catch (e) { storeOk = false; }
+}
+const keyOf = it => it.id || it.tmp;
+const items = () => Object.values(state.items);
+const isOpen = it => OPEN.includes(it.status);
+const pending = k => state.outbox.some(o => o.type === "save" && (o.id || o.tmp) === k);
+
+/* ---------- Talking to the Sheet ---------- */
+let syncing = false, online = navigator.onLine, lastError = "";
+async function call(method, payload) {
+  const u = state.cfg.url;
+  let r;
+  if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key }, payload)), { redirect: "follow" });
+  else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device }, payload)) });
+  const j = await r.json();
+  if (!j.ok) throw Object.assign(new Error(j.error || "The Sheet refused the request"), { server: true });
+  return j;
+}
+
+// An entry made offline gets its control number on sync: point every link at the new number.
+function remapTmp(tmp, id) {
+  if (!tmp || tmp === id) return;
+  items().forEach(it => { if (it.linked_id === tmp) it.linked_id = id; });
+  state.outbox.forEach(o => { if (o.data && o.data.linked_id === tmp) o.data.linked_id = id; });
+}
+
+async function sync(quiet) {
+  if (!state.cfg.url || !state.cfg.key || syncing) return;
+  syncing = true; renderSync();
+  try {
+    if (state.outbox.length) {
+      const sent = state.outbox.slice(), revs = sent.map(o => o.rev);
+      const res = await call("POST", { changes: sent.map(o => ({ type: o.type, id: o.id, tmp: o.tmp, baseVersion: o.baseVersion, data: o.data, name: o.name, role: o.role, active: o.active, client_time: o.at })) });
+      res.results.forEach((r, i) => {
+        const o = sent[i], k = o.id || o.tmp;
+        const changedSince = state.outbox.includes(o) && o.rev !== revs[i];   // edited again while this send was out: keep the newer edit queued
+        if (!changedSince) state.outbox = state.outbox.filter(x => x !== o);
+        if (o.type !== "save") {
+          if (r.result === "saved" && r.key) state.newKeys.unshift({ name: r.name, role: r.role, key: r.key });
+          if (r.result !== "saved") state.problems.push({ kind: "rejected", what: o.type === "addMember" ? "Adding " + o.name : "Switching off " + o.name, error: r.error });
+          return;
+        }
+        if (r.result === "saved" || r.result === "same") {
+          if (o.tmp && state.items[o.tmp]) delete state.items[o.tmp];
+          state.items[r.id] = Object.assign({}, r.record);
+          remapTmp(o.tmp, r.id);
+          if (changedSince) { o.id = r.id; o.tmp = ""; o.baseVersion = r.record.version; Object.assign(state.items[r.id], o.data); }
+        } else if (r.result === "conflict") {
+          state.items[r.id || k] = Object.assign({}, r.server);
+          const mine = {};   // only the fields this user changed, so "Use my version" keeps the other person's edits
+          FIELDS.forEach(f => { if (!o.base || String(o.data[f]) !== String(o.base[f])) mine[f] = o.data[f]; });
+          state.problems.push({ kind: "conflict", key: r.id || k, mine, what: (r.id || k) + " · " + (o.data.subject || ""),
+            detail: "Someone else changed it first; the Sheet's copy is showing now. Your change: " + Object.keys(mine).map(f => f.replace("_", " ") + " → " + (mine[f] || "blank")).join(", ") + "." });
+        } else {
+          if (r.server) state.items[r.server.id] = Object.assign({}, r.server);
+          else if (state.items[k]) state.items[k]._error = r.error;
+          state.problems.push({ kind: "rejected", key: r.server ? r.server.id : k, mine: o.data, error: r.error, what: (r.id || "New entry") + " · " + (o.data.subject || "") });
+        }
+      });
+      if (res.people) state.people = res.people;
+      state.me = res.me;
+      save();
+    }
+    // Ask with 2 minutes of overlap: a save that started just before the last pull can land just after it.
+    const since = state.lastPull ? new Date(new Date(state.lastPull).getTime() - 120000).toISOString() : "";
+    const p = await call("GET", { action: "pull", since });
+    state.me = p.me; state.people = p.people || state.people; if (p.lists) state.lists = p.lists;
+    (p.items || []).forEach(s => {
+      const loc = state.items[s.id];
+      if (pending(s.id)) return;                      // a local edit is queued: the next send settles it, or flags a conflict
+      if (!loc || (Number(s.version) || 0) >= (Number(loc.version) || 0)) state.items[s.id] = s;
+    });
+    state.lastPull = p.server_time; state.lastSync = new Date().toISOString(); lastError = ""; online = true;
+    save();
+  } catch (e) {
+    lastError = e.server ? e.message : "";
+    if (!e.server) online = false;
+    if (!quiet && e.server) toast(e.message);
+  } finally {
+    syncing = false; render();
+  }
+}
+
+/* ---------- Local changes ---------- */
+function queueSave(it) {
+  const k = keyOf(it);
+  const data = {}; FIELDS.forEach(f => data[f] = it[f] || "");
+  const o = state.outbox.find(x => x.type === "save" && (x.id || x.tmp) === k);
+  if (o) { o.data = data; o.rev = (o.rev || 0) + 1; o.at = new Date().toISOString(); }
+  else {
+    const was = state.items[k] || {}, base = {};   // the copy this edit started from, to tell which fields the user changed
+    FIELDS.forEach(f => base[f] = was[f] || "");
+    state.outbox.push({ type: "save", id: it.id || "", tmp: it.id ? "" : it.tmp, baseVersion: Number(it.version) || 0, base, data, rev: 1, at: new Date().toISOString() });
+  }
+  delete it._error;
+  state.items[k] = it;
+  save(); render(); sync(true);
+}
+function newTmp() { state.seq = (state.seq || 0) + 1; return "tmp-" + state.cfg.device + "-" + Date.now().toString(36) + "-" + state.seq; }
+
+/* ---------- Sorting and labels ---------- */
+function dueInfo(it) {
+  if (!it.due || !isOpen(it)) return { cls: "ok", text: it.due ? "Due " + fmtDate(it.due) : "No due date", days: 9999 };
+  const d = dayDiff(it.due, today());
+  if (d < 0) return { cls: "late", text: (-d) + (d === -1 ? " day" : " days") + " overdue", days: d };
+  if (d === 0) return { cls: "soon", text: "Due today", days: d };
+  if (d === 1) return { cls: "soon", text: "Due tomorrow", days: d };
+  return { cls: d <= 3 ? "soon" : "ok", text: "Due in " + d + " days", days: d };
+}
+const urgency = (a, b) => (dueInfo(a).days < 0 ? 0 : 1) - (dueInfo(b).days < 0 ? 0 : 1) || PRANK[a.priority] - PRANK[b.priority] || dueInfo(a).days - dueInfo(b).days || String(a.date).localeCompare(String(b.date));
+const label = it => it.id || "No. on sync";
+const boss = () => !!state.me && (state.me.role === "head" || state.me.role === "admin");
+const canEdit = it => !state.me || boss() || !it.id || it.created_by === state.me.name || it.assigned_to === state.me.name;
+const statusCls = s => "s-" + String(s).replace(" ", ".");
+
+/* ---------- Rendering ---------- */
+let view = "mine";
+const filt = { dir: "All", status: "Open", channel: "", who: "", q: "", when: "", from: "", to: "" };
+// Date filter on the entry date (received or sent). Returns [from, to] as YYYY-MM-DD; "" means open-ended.
+function dateRange() {
+  const t = new Date(), d = n => { const x = new Date(t); x.setDate(x.getDate() + n); return ymd(x); };
+  switch (filt.when) {
+    case "today": return [today(), today()];
+    case "week": return [d(-((t.getDay() + 6) % 7)), today()];
+    case "month": return [today().slice(0, 8) + "01", today()];
+    case "last30": return [d(-29), today()];
+    case "lastmonth": { const a = new Date(t.getFullYear(), t.getMonth() - 1, 1), b = new Date(t.getFullYear(), t.getMonth(), 0); return [ymd(a), ymd(b)]; }
+    case "year": return [today().slice(0, 4) + "-01-01", today()];
+    case "custom": return filt.from && filt.to && filt.from > filt.to ? [filt.to, filt.from] : [filt.from, filt.to];
+    default: return ["", ""];
+  }
+}
+try { Object.assign(filt, JSON.parse(sessionStorage.getItem("ud.filt") || "{}")); view = sessionStorage.getItem("ud.view") || view; } catch (e) {}
+
+function render() {
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === view));
+  const myOverdue = state.me ? items().filter(it => it.assigned_to === state.me.name && isOpen(it) && it.status !== "Waiting" && dueInfo(it).days < 0).length : 0;
+  document.querySelector('.tab[data-v="mine"]').innerHTML = "My work" + (myOverdue ? `<span class="n" title="Overdue">${myOverdue}</span>` : "");
+  renderSync();
+  $("main").innerHTML = problemsHtml() + ({ mine: mineHtml, log: logHtml, team: teamHtml, settings: settingsHtml }[view])();
+  $("idList").innerHTML = items().filter(i => i.id).map(i => `<option value="${esc(i.id)}">${esc(i.subject)}</option>`).join("");
+  try { sessionStorage.setItem("ud.view", view); sessionStorage.setItem("ud.filt", JSON.stringify(filt)); } catch (e) {}
+}
+
+function renderSync() {
+  const n = state.outbox.length;
+  let cls = "", text;
+  if (!state.cfg.url || !state.cfg.key) text = state.cfg.url ? "Not connected. Add your key in Settings." : "Not connected. Add the address and your key in Settings.";
+  else if (syncing) { cls = "on"; text = "Syncing…"; }
+  else if (lastError) { cls = "err"; text = lastError; }
+  else if (!online) { cls = "off"; text = "Offline · " + (n ? n + (n === 1 ? " change" : " changes") + " kept on this device, will send when online" : "showing the copy on this device"); }
+  else { cls = "on"; text = (state.me ? state.me.name + " · " : "") + (n ? n + " waiting to send" : "Synced " + fmtTime(state.lastSync)); }
+  if (!storeOk) { cls = "err"; text = "This browser is not keeping changes on the device. Keep the page open until it syncs."; }
+  $("sDot").className = "dot " + cls; $("sText").textContent = text;
+  $("syncBtn").disabled = syncing || !state.cfg.url || !state.cfg.key;
+}
+
+function problemsHtml() {
+  if (!state.problems.length) return "";
+  return `<div class="banner bad" role="alert"><div style="flex:1"><b>${state.problems.length} ${state.problems.length === 1 ? "change was" : "changes were"} not saved to the Sheet</b>
+    ${state.problems.map((p, i) => `<div class="prob"><div style="flex:1;min-width:220px"><span class="mono">${esc(p.what)}</span><br><span class="muted">${esc(p.kind === "conflict" ? (p.detail || "Someone else changed it first; the Sheet's copy is showing now.") : p.error)}</span></div>
+      ${p.kind === "conflict" ? `<button class="btn sm" data-act="mine" data-i="${i}">Use my version</button>` : ""}
+      ${p.mine && p.kind !== "conflict" ? `<button class="btn sm" data-act="fix" data-i="${i}">Fix and save</button>` : ""}
+      <button class="btn sm ghost" data-act="dismiss" data-i="${i}">Dismiss</button></div>`).join("")}</div></div>`;
+}
+
+function cardHtml(it) {
+  const d = dueInfo(it), k = keyOf(it);
+  return `<article class="card p-${esc(it.priority)}" data-open="${esc(k)}">
+    <span class="bar"></span>
+    <div class="body"><div class="subj">${esc(it.subject)}</div>
+      <div class="meta"><span class="mono">${esc(label(it))}</span> · ${it.direction === "Incoming" ? "from " : "to "}${esc(it.party || "—")} · ${esc(it.channel)}${pending(k) ? ' · <span class="pill pending">Not sent yet</span>' : ""}</div></div>
+    <div class="side"><span class="pill ${esc(it.priority)}">${esc(it.priority)}</span><div class="due ${d.cls}">${esc(d.text)}</div></div>
+    <div class="acts">${it.status === "New" ? `<button class="btn sm" data-set="In progress" data-k="${esc(k)}">Start</button>` : `<span class="pill ${statusCls(it.status)}">${esc(it.status)}</span>`}
+      ${isOpen(it) ? `<button class="btn sm" data-set="Done" data-k="${esc(k)}">Mark done</button>` : ""}
+      ${it.status !== "Waiting" && isOpen(it) ? `<button class="btn sm ghost" data-set="Waiting" data-k="${esc(k)}">Waiting on others</button>` : ""}</div>
+  </article>`;
+}
+
+function mineHtml() {
+  if (!state.me) return `<div class="empty"><b>Connect first</b>Open Settings, paste the web app address and your key; your assigned work then shows here.<br><br><button class="btn primary" data-go="settings">Open Settings</button></div>`;
+  const mine = items().filter(it => it.assigned_to === state.me.name && isOpen(it)).sort(urgency);
+  const act = mine.filter(it => it.status !== "Waiting");
+  const buckets = [
+    ["overdue", "Overdue", act.filter(it => dueInfo(it).days < 0)],
+    ["now", "Urgent or due within 3 days", act.filter(it => dueInfo(it).days >= 0 && (it.priority === "Urgent" || dueInfo(it).days <= 3))],
+    ["later", "Other open work", act.filter(it => dueInfo(it).days > 3 && it.priority !== "Urgent")],
+    ["wait", "Waiting on others", mine.filter(it => it.status === "Waiting")]
+  ];
+  if (boss()) buckets.push(["unassigned", "Not assigned to anyone", items().filter(it => !it.assigned_to && isOpen(it)).sort(urgency)]);
+  const head = `<div class="toolbar"><div class="muted grow">${mine.length ? mine.length + " open " + (mine.length === 1 ? "item" : "items") + " assigned to you, most urgent first" : ""}</div><button class="btn primary" data-new="1">New entry</button></div>`;
+  if (!buckets.some(b => b[2].length)) return head + `<div class="empty"><b>Nothing assigned to you is open</b>New work assigned to you shows here, most urgent first.</div>`;
+  return head + buckets.filter(b => b[2].length).map(([id, t, list]) => `<section class="bucket ${id}"><h2>${esc(t)} <span class="c">${list.length}</span></h2><div class="cards">${list.map(cardHtml).join("")}</div></section>`).join("");
+}
+
+function logRows() {
+  const q = filt.q.trim().toLowerCase(), [dFrom, dTo] = dateRange();
+  return items().filter(it =>
+    (filt.dir === "All" || it.direction === filt.dir) &&
+    (filt.status === "All" || (filt.status === "Open" ? isOpen(it) : it.status === filt.status)) &&
+    (!filt.channel || it.channel === filt.channel) &&
+    (!filt.who || (filt.who === "-" ? !it.assigned_to : it.assigned_to === filt.who)) &&
+    (!dFrom || String(it.date) >= dFrom) && (!dTo || (it.date && String(it.date) <= dTo)) &&
+    (!q || [it.id, it.subject, it.party, it.ref_no, it.details, it.filed_at].join(" ").toLowerCase().includes(q))
+  ).sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(keyOf(b)).localeCompare(String(keyOf(a))));
+}
+function logHtml() {
+  const L = state.lists, rows = logRows();
+  const opt = (v, t, sel) => `<option value="${esc(v)}"${v === sel ? " selected" : ""}>${esc(t)}</option>`;
+  return `<div class="toolbar">
+      <div class="seg" role="group" aria-label="Direction">${["All", "Incoming", "Outgoing"].map(d => `<button data-dir="${d}" aria-pressed="${filt.dir === d}">${d}</button>`).join("")}</div>
+      <select id="fStatus" aria-label="Status">${opt("Open", "Open", filt.status)}${opt("All", "All statuses", filt.status)}${L.statuses.map(s => opt(s, s, filt.status)).join("")}</select>
+      <select id="fChannel" aria-label="Received through">${opt("", "Any channel", filt.channel)}${L.channels.map(s => opt(s, s, filt.channel)).join("")}</select>
+      <select id="fWho" aria-label="Assigned to">${opt("", "Anyone", filt.who)}${opt("-", "Not assigned", filt.who)}${state.people.map(p => opt(p.name, p.name, filt.who)).join("")}</select>
+      <select id="fWhen" aria-label="Date">${[["", "Any date"], ["today", "Today"], ["week", "This week"], ["month", "This month"], ["last30", "Last 30 days"], ["lastmonth", "Last month"], ["year", "This year"], ["custom", "Date range…"]].map(([v, t]) => opt(v, t, filt.when)).join("")}</select>
+      ${filt.when === "custom" ? `<span class="drange"><input type="date" id="fFrom" aria-label="From date" value="${esc(filt.from)}"><span class="muted">to</span><input type="date" id="fTo" aria-label="To date" value="${esc(filt.to)}"></span>` : ""}
+      <input type="search" id="fQ" placeholder="Search no., subject, office, ref no." value="${esc(filt.q)}">
+      <button class="btn" id="csv">Export CSV</button>
+      <button class="btn primary" data-new="1">New entry</button>
+    </div>
+    <p class="count">${rows.length} ${rows.length === 1 ? "entry" : "entries"}${(() => { const [a, b] = dateRange(); return a || b ? " · dated " + (a && b ? (a === b ? fmtDate(a) : fmtDate(a) + " – " + fmtDate(b)) : a ? "from " + fmtDate(a) : "up to " + fmtDate(b)) + ' · <a href="#" id="fWhenClear">Clear date</a>' : ""; })()}</p>
+    ${rows.length ? `<table class="tbl"><thead><tr><th>No.</th><th>Date</th><th>Subject</th><th>From / to</th><th>Through</th><th>Assigned</th><th>Priority</th><th>Due</th><th>Status</th></tr></thead><tbody>
+    ${rows.map(it => { const d = dueInfo(it), k = keyOf(it); return `<tr data-open="${esc(k)}">
+      <td class="mono" data-l="No.">${esc(label(it))}<div class="dir ${esc(it.direction)}">${esc(it.direction)}</div></td>
+      <td data-l="Date">${esc(fmtDate(it.date))}</td>
+      <td><div class="subj">${esc(it.subject)}</div><div class="sub">${esc(it.kind)}${it.ref_no ? " · Ref " + esc(it.ref_no) : ""}${it.filed_at ? " · Filed " + esc(it.filed_at) : ""}${pending(k) ? ' · <span class="pill pending">Not sent yet</span>' : ""}</div></td>
+      <td data-l="${it.direction === "Incoming" ? "From" : "To"}">${esc(it.party) || '<span class="muted">—</span>'}</td>
+      <td data-l="Through">${esc(it.channel)}</td>
+      <td data-l="Assigned">${esc(it.assigned_to) || '<span class="muted">—</span>'}</td>
+      <td data-l="Priority"><span class="pill ${esc(it.priority)}">${esc(it.priority)}</span></td>
+      <td data-l="Due"><span class="due ${d.cls}">${esc(isOpen(it) ? d.text : fmtDate(it.due))}</span></td>
+      <td data-l="Status"><span class="pill ${statusCls(it.status)}">${esc(it.status)}</span></td></tr>`; }).join("")}
+    </tbody></table>` : `<div class="empty"><b>No entries match</b>${items().length ? "Change the filters above." : "Log the first letter, memo or verbal instruction with New entry."}</div>`}`;
+}
+
+function teamHtml() {
+  if (!state.people.length) return `<div class="empty"><b>No members yet</b>Connect in Settings. The Admin adds members there.</div>`;
+  const month = today().slice(0, 7);
+  const rows = state.people.filter(p => p.role !== "admin" || items().some(i => i.assigned_to === p.name)).map(p => {
+    const mine = items().filter(i => i.assigned_to === p.name), open = mine.filter(isOpen);
+    return { p, open: open.length, urgent: open.filter(i => i.priority === "Urgent").length, overdue: open.filter(i => i.status !== "Waiting" && dueInfo(i).days < 0).length,
+      waiting: open.filter(i => i.status === "Waiting").length, done: mine.filter(i => i.status === "Done" && String(i.done_date).slice(0, 7) === month).length };
+  }).sort((a, b) => b.overdue - a.overdue || b.urgent - a.urgent || b.open - a.open);
+  const un = items().filter(i => !i.assigned_to && isOpen(i)).length;
+  return `<p class="count">Open work per member; Done counts ${esc(new Date().toLocaleDateString("en-PH", { month: "long" }))}.${un ? ` ${un} open ${un === 1 ? "entry is" : "entries are"} not assigned.` : ""} Click a member to see their list.</p>
+    <table class="tbl team"><thead><tr><th>Member</th><th class="num">Open</th><th class="num">Urgent</th><th class="num">Overdue</th><th class="num">Waiting</th><th class="num">Done</th></tr></thead><tbody>
+    ${rows.map(r => `<tr data-who="${esc(r.p.name)}"><td><b>${esc(r.p.name)}</b> <span class="muted">${r.p.role === "member" ? "" : esc(r.p.role)}</span></td>
+      <td class="num" data-l="Open">${r.open}</td><td class="num" data-l="Urgent">${r.urgent}</td><td class="num ${r.overdue ? "late" : ""}" data-l="Overdue">${r.overdue}</td>
+      <td class="num" data-l="Waiting">${r.waiting}</td><td class="num" data-l="Done">${r.done}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function settingsHtml() {
+  const admin = state.me && state.me.role === "admin";
+  return `<section class="panel"><h2>Connection</h2><p>The web app address and your own key come from the Admin. Everything you enter is kept on this device and sent when online.</p>
+      <div class="row"><label class="f"><span>Web app address</span><input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec" ${window.UD_HOSTED ? "readonly" : ""}></label>
+      <label class="f" style="max-width:220px"><span>Your key</span><input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
+      <button class="btn primary" id="cSave">Save and connect</button></div>
+      <p style="margin:12px 0 0">This device: <span class="mono">${esc(state.cfg.device)}</span>${state.me ? ` · Signed in as <b>${esc(state.me.name)}</b> (${esc(state.me.role)})` : ""}</p></section>
+    ${admin ? `<section class="panel"><h2>Members</h2><p>Each member gets their own key. Hand it over in person; it shows here until you hide it.</p>
+      <div class="row"><label class="f"><span>Full name</span><input id="mName" maxlength="80" placeholder="e.g. JUAN DELA CRUZ"></label>
+      <label class="f" style="max-width:190px"><span>Role</span><select id="mRole"><option value="member">Member</option><option value="head">Head (assigns work)</option><option value="admin">Admin</option></select></label>
+      <button class="btn primary" id="mAdd">Add member</button></div>
+      ${state.newKeys.map((k, i) => `<div><span class="keybox">${esc(k.name)}: ${esc(k.key)}</span> <button class="btn sm ghost" data-hidekey="${i}">Hide</button></div>`).join("")}
+      <table class="tbl team" style="margin-top:16px"><thead><tr><th>Member</th><th>Role</th><th></th></tr></thead><tbody>
+      ${state.people.filter(p => p.name !== state.me.name).map(p => `<tr><td>${esc(p.name)}</td><td data-l="Role">${esc(p.role)}</td><td style="text-align:right"><button class="btn sm" data-off="${esc(p.name)}">Switch off</button></td></tr>`).join("")}
+      </tbody></table></section>` : ""}
+    <section class="panel"><h2>On this device</h2><p>${items().length} entries kept here · ${state.outbox.length} waiting to send${state.lastSync ? " · last synced " + esc(fmtTime(state.lastSync)) : ""}.</p>
+      <button class="btn" id="cForget">Remove this device's copy</button></section>`;
+}
+
+/* ---------- Drawer ---------- */
+let editing = null;
+function fillSelect(name, list, blankText) {
+  const sel = $("form").elements[name];
+  sel.innerHTML = (blankText !== undefined ? `<option value="">${esc(blankText)}</option>` : "") + list.map(v => `<option>${esc(v)}</option>`).join("");
+}
+function openDrawer(it, preset) {
+  const L = state.lists, f = $("form");
+  editing = it ? Object.assign({}, it) : Object.assign({ tmp: newTmp(), version: 0, direction: "Incoming", kind: "Task", channel: "Formal letter", date: today(), priority: "Normal", status: "New", assigned_to: boss() ? "" : (state.me ? state.me.name : "") }, preset || {});
+  fillSelect("direction", L.directions); fillSelect("kind", L.kinds); fillSelect("channel", L.channels);
+  fillSelect("priority", L.priorities); fillSelect("status", L.statuses);
+  const people = state.people.map(p => p.name);
+  if (editing.assigned_to && !people.includes(editing.assigned_to)) people.push(editing.assigned_to);
+  fillSelect("assigned_to", boss() || !state.me ? people : people.filter(n => n === state.me.name || n === editing.assigned_to), "Not assigned");
+  FIELDS.forEach(k => { if (f.elements[k]) f.elements[k].value = editing[k] || ""; });
+  const ro = !canEdit(editing);
+  FIELDS.forEach(k => { const el = f.elements[k]; if (el) { el.disabled = ro && el.tagName === "SELECT"; el.readOnly = ro; } });
+  $("dTitle").textContent = it ? label(it) : "New entry";
+  $("dBadge").innerHTML = it ? `<span class="pill ${esc(it.priority)}">${esc(it.priority)}</span>` + (pending(keyOf(it)) ? ' <span class="pill pending">Not sent yet</span>' : "") : "";
+  $("fErr").textContent = ro ? "Read only: only the person who logged this, the assignee or the head can change it." : (editing._error || "");
+  $("fSave").hidden = ro;
+  $("fReply").hidden = !(it && it.direction === "Incoming");
+  $("fHist").hidden = !(it && it.id);
+  $("dHist").innerHTML = it && it.id ? `<p class="muted" style="font-size:12.5px;margin:0">Logged by ${esc(it.created_by)} ${esc(fmtTime(it.created_at))}${it.updated_by ? " · last change by " + esc(it.updated_by) + " " + esc(fmtTime(it.updated_at)) : ""} · version ${esc(it.version)}</p>` : "";
+  dirLabels();
+  $("scrim").hidden = $("drawer").hidden = false;
+  setTimeout(() => (ro ? $("dClose") : f.elements.subject).focus(), 0);
+}
+function closeDrawer() { $("scrim").hidden = $("drawer").hidden = true; editing = null; }
+function dirLabels() {
+  const out = $("form").elements.direction.value === "Outgoing";
+  $("lDate").textContent = out ? "Date sent" : "Date received";
+  $("lParty").textContent = out ? "To (office or person)" : "From (office or person)";
+}
+function saveDrawer() {
+  if (!editing) return;
+  const f = $("form"), it = Object.assign({}, editing);
+  FIELDS.forEach(k => { if (f.elements[k]) it[k] = f.elements[k].value.trim(); });
+  const err = !it.subject ? "Subject is empty." : !it.date ? "Date is empty."
+    : (it.status === "Done" && it.kind === "Task" && !it.action_taken) ? "Write what was done under Action taken before marking it Done." : "";
+  if (err) { $("fErr").textContent = err; return; }
+  if (it.status === "Done" && !it.done_date) it.done_date = today();
+  closeDrawer(); queueSave(it);
+  toast(state.cfg.url && state.cfg.key ? "Saved on this device. Sending…" : "Saved on this device. Connect in Settings to send it to the Sheet.");
+}
+async function showHistory() {
+  if (!editing || !editing.id) return;
+  $("dHist").innerHTML = `<p class="muted">Loading history…</p>`;
+  try {
+    const h = await call("GET", { action: "history", id: editing.id });
+    $("dHist").innerHTML = `<div class="hist">${h.history.map(x => { let c = {}; try { c = JSON.parse(x.changed); } catch (e) {}
+      return `<div><b>v${esc(x.version)}</b> ${esc(fmtTime(x.time))} · ${esc(x.by)}<br><span class="muted">${Object.keys(c).map(k => esc(k.replace("_", " ")) + ": " + esc(String(c[k]).slice(0, 80))).join(" · ") || "no field changes"}</span></div>`; }).join("")}</div>`;
+  } catch (e) { $("dHist").innerHTML = `<p class="muted">History needs a connection to the Sheet.</p>`; }
+}
+
+/* ---------- Events ---------- */
+let toastT;
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3200); }
+
+$("tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) { view = t.dataset.v; render(); } });
+$("syncBtn").onclick = () => sync(false);
+$("scrim").onclick = closeDrawer; $("dClose").onclick = closeDrawer; $("fCancel").onclick = closeDrawer;
+$("fSave").onclick = e => { e.preventDefault(); saveDrawer(); };
+$("form").addEventListener("submit", e => { e.preventDefault(); saveDrawer(); });
+$("form").elements.direction.addEventListener("change", dirLabels);
+$("fHist").onclick = showHistory;
+$("fReply").onclick = () => { const src = editing; closeDrawer(); openDrawer(null, { direction: "Outgoing", kind: "Document", subject: "Reply: " + (src.subject || ""), party: src.party, linked_id: src.id || src.tmp, assigned_to: src.assigned_to }); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+
+$("main").addEventListener("click", e => {
+  const t = e.target;
+  const set = t.closest("[data-set]");
+  if (set) {
+    const it = Object.assign({}, state.items[set.dataset.k]);
+    if (!canEdit(it)) return toast("Only the person who logged it, the assignee or the head can change it.");
+    if (set.dataset.set === "Done" && it.kind === "Task" && !it.action_taken) {
+      openDrawer(state.items[set.dataset.k]); $("form").elements.status.value = "Done";
+      $("fErr").textContent = "Write what was done under Action taken, then Save."; $("form").elements.action_taken.focus(); return;
+    }
+    it.status = set.dataset.set; if (it.status === "Done") it.done_date = today();
+    return queueSave(it);
+  }
+  const open = t.closest("[data-open]"); if (open) return openDrawer(state.items[open.dataset.open]);
+  if (t.closest("[data-new]")) return openDrawer(null);
+  const go = t.closest("[data-go]"); if (go) { view = go.dataset.go; return render(); }
+  const dir = t.closest("[data-dir]"); if (dir) { filt.dir = dir.dataset.dir; return render(); }
+  const who = t.closest("[data-who]"); if (who) { Object.assign(filt, { who: who.dataset.who, status: "Open", dir: "All", channel: "", q: "", when: "", from: "", to: "" }); view = "log"; return render(); }
+  const act = t.closest("[data-act]");
+  if (act) {
+    const i = +act.dataset.i, p = state.problems[i];
+    state.problems.splice(i, 1); save();
+    if (act.dataset.act === "mine") return queueSave(Object.assign({}, state.items[p.key], p.mine));
+    if (act.dataset.act === "fix") return openDrawer(Object.assign({}, state.items[p.key] || { tmp: p.key, version: 0 }, p.mine));
+    return render();
+  }
+  if (t.id === "fWhenClear") { e.preventDefault(); Object.assign(filt, { when: "", from: "", to: "" }); return render(); }
+  if (t.id === "csv") return exportCsv();
+  if (t.id === "cSave") {
+    state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.lastPull = ""; lastError = ""; save();
+    return sync(false).then(() => { if (state.me) toast("Connected as " + state.me.name); });
+  }
+  if (t.id === "mAdd") {
+    const name = $("mName").value.trim(); if (!name) return toast("Type the member's name.");
+    state.outbox.push({ type: "addMember", name, role: $("mRole").value, rev: 1, at: new Date().toISOString() }); save(); return sync(false);
+  }
+  const off = t.closest("[data-off]");
+  if (off) { state.outbox.push({ type: "setActive", name: off.dataset.off, active: false, rev: 1, at: new Date().toISOString() }); save(); return sync(false); }
+  const hk = t.closest("[data-hidekey]"); if (hk) { state.newKeys.splice(+hk.dataset.hidekey, 1); save(); return render(); }
+  if (t.id === "cForget") {
+    if (state.outbox.length) return toast(state.outbox.length + " changes are not sent yet. Sync first.");
+    const cfg = state.cfg; state = blank(); state.cfg = cfg; save(); return render();
+  }
+});
+$("main").addEventListener("change", e => {
+  const id = e.target.id;
+  if (id === "fStatus") filt.status = e.target.value; else if (id === "fChannel") filt.channel = e.target.value; else if (id === "fWho") filt.who = e.target.value;
+  else if (id === "fWhen") filt.when = e.target.value; else if (id === "fFrom") filt.from = e.target.value; else if (id === "fTo") filt.to = e.target.value; else return;
+  render();
+});
+$("main").addEventListener("input", e => {
+  if (e.target.id !== "fQ") return;
+  filt.q = e.target.value; const pos = e.target.selectionStart; render();
+  const q = $("fQ"); q.focus(); q.setSelectionRange(pos, pos);
+});
+
+function exportCsv() {
+  const cols = ["id"].concat(FIELDS, ["created_by", "updated_at"]);
+  const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+  const csv = "﻿" + [cols.join(",")].concat(logRows().map(it => cols.map(c => q(c === "id" ? label(it) : it[c])).join(","))).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = "unit-desk-" + today() + ".csv"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+// Theme from the ACE Workbench shell when shown inside it.
+window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
+window.addEventListener("online", () => { online = true; sync(true); });
+window.addEventListener("offline", () => { online = false; renderSync(); });
+window.addEventListener("storage", e => { if (e.key === LS) { state = load(); render(); } }); // another tab on this device saved
+setInterval(() => { if (!document.hidden) sync(true); }, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(true); });
+save(); render(); sync(true);
+</script>
+</body>
+</html>
