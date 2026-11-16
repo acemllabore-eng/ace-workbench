@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Survey Unit – Masbate</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="apps/fx/fx.css">
+<script src="apps/fx/fx.js" defer></script>
 <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
 <link rel="alternate icon" href="icons/favicon-64.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -221,7 +223,7 @@ iframe[hidden]{display:none}
   .brand,.railfoot,.navlabel,.appsbtn{display:none}
   .navscroll{display:flex;overflow-x:auto;overflow-y:hidden;padding:0;flex:1}
   nav{display:contents}
-  .item{flex:1 0 56px;flex-direction:column;gap:3px;padding:7px 2px 6px;border-radius:0;justify-content:center}
+  .item{flex:1 0 50px;flex-direction:column;gap:3px;padding:7px 2px 6px;border-radius:0;justify-content:center}
   .item .tab{display:block;font-size:10.5px;font-weight:600;line-height:1.1;color:var(--muted);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
   .item[aria-current="page"]{background:none}
   .item[aria-current="page"] .tab{color:var(--accent)}
@@ -237,6 +239,21 @@ iframe[hidden]{display:none}
   .card .actions .btn:not(.primary){display:none}
 }
 *{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+/* One sign-in for every app */
+.who{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 11px;border-radius:8px;border:1px solid rgba(var(--accent-rgb),.45);background:rgba(var(--accent-rgb),.08);color:var(--ink);cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;max-width:220px}
+.who svg{width:16px;height:16px;color:var(--accent);flex:none}
+.who span{overflow:hidden;text-overflow:ellipsis}
+.who.out{border-color:var(--line);background:none;color:var(--muted)}
+.sign .box{padding:20px}
+.sign h3{margin:0 0 4px;font-size:16px}
+.sign p{margin:0 0 14px;color:var(--muted);font-size:13px}
+.sign label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:12px}
+.sign input{height:40px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:0 11px;font:inherit}
+.sign input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18)}
+.sign .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sign .msg{font-size:12.5px;color:var(--muted);flex:1;min-width:140px}
+.sign .msg.bad{color:var(--bad)}
+@media (max-width:720px){ .who span{display:none} .who{padding:0 9px} }
 /* All motion lives here, so "reduce motion" in the system settings switches it off */
 @media (prefers-reduced-motion:no-preference){
   .item,.btn,.ibtn,.appsbtn{transition:background .12s,box-shadow .2s,border-color .2s}
@@ -266,6 +283,7 @@ iframe[hidden]{display:none}
   <div class="navscroll" id="nav"></div>
   <div class="railfoot">
     <button class="item" id="themeBtn" title="Light or dark"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="txt"><b>Theme</b></span></button>
+    <button class="item" id="fxBtn" title="Special effects on or off (this device)"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></span><span class="txt"><b id="fxLbl">Effects on</b></span></button>
     <button class="item" id="collapse" title="Collapse sidebar"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></span><span class="txt"><b>Collapse</b></span></button>
   </div>
 </aside>
@@ -275,6 +293,7 @@ iframe[hidden]{display:none}
     <a class="mbrand" href="#" aria-label="Home"><span class="mark"><svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13V5M4.6 7.6 7 5l2.4 2.6" stroke-width="1.8"/><polygon points="13,9 24,6.5 27.5,15 22.5,23.5 12.5,20" fill="currentColor" fill-opacity=".14" stroke-width="2.2"/><path d="M8 24.6 12.5 20" stroke-width="1.6" stroke-dasharray="1.6 1.8"/></g><g fill="currentColor"><circle cx="13" cy="9" r="1.6"/><circle cx="24" cy="6.5" r="1.6"/><circle cx="27.5" cy="15" r="1.6"/><circle cx="22.5" cy="23.5" r="1.6"/><circle cx="12.5" cy="20" r="1.6"/><polygon points="4,28.5 8,22.5 12,28.5"/></g></svg></span><b>Survey Unit <span>Masbate</span></b></a>
     <div class="crumbs" id="crumbs"></div>
     <span class="spacer"></span>
+    <button class="who out" id="whoBtn" title="Sign in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>Sign in</span></button>
     <span class="net" id="net"><span class="dot"></span><span class="lbl"></span></span>
     <button class="search" id="searchBtn" title="Search apps (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Search apps…</span><kbd>Ctrl K</kbd></button>
     <div class="menuwrap">
@@ -307,6 +326,16 @@ iframe[hidden]{display:none}
   </div>
 </main>
 
+<div class="pal sign" id="sign" hidden>
+  <div class="box" role="dialog" aria-label="Sign in">
+    <h3>Sign in once, for every app</h3>
+    <p>Unit Desk, Time Log and Databases use one web app address and one key per person. The admin gives you your key.</p>
+    <label>Web app address<input id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label>Your key<input id="sKey" placeholder="ABCDE-12345" autocomplete="off" style="font-family:var(--mono);letter-spacing:.06em"></label>
+    <div class="row"><span class="msg" id="sMsg">Kept on this device only.</span><button class="btn" id="sOut">Sign out</button><button class="btn primary" id="sGo">Sign in</button></div>
+  </div>
+</div>
+
 <div class="pal" id="pal" hidden>
   <div class="box" role="dialog" aria-label="Search apps">
     <div class="in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -330,6 +359,7 @@ const ICON = {
   srdash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>',
   td:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18l5-12 6 4 5-4-3 14z"/><circle cx="9" cy="6" r="1.5"/></svg>',
   time:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="12" cy="15" r="3"/><path d="M12 13.5V15l1 1"/></svg>',
+  db:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-6"/><path d="M4.5 11.5v6c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-6"/></svg>',
   desk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 7l2-3h12l2 3"/><path d="M9 12l3 3 3-3"/><path d="M12 15V9"/></svg>',
 };
 // Add an app here to put it on the panel (and an icon in ICON under its id). url: where its server serves the page; start: how to run that server.
@@ -341,6 +371,10 @@ const APPS = [
   { id:"time", group:"unit", local:true, name:"Time Log", tab:"Time", short:"Daily time in and time out",
     blurb:"Each employee logs their own time in, time out, break and notes on a month calendar, from their own phone or PC. Hours per day, week and month; the head sees everyone. Works offline; syncs to a Google Sheet.",
     url:"apps/time-log.html" },
+  // apps/databases.html reads the workbooks listed in the DAR DATABASE DIRECTORY sheet through backend/databases.gs.
+  { id:"db", group:"unit", local:true, name:"Databases", tab:"Data", short:"View and edit the unit's workbooks",
+    blurb:"Every workbook in the DAR Database Directory (SPLIT, Regular / New Lands) in one place: search any tab on a phone or PC, filter and sort; the head and admin correct cells, with every edit logged. Tabs you open are kept for reading offline.",
+    url:"apps/databases.html" },
   // apps/sr-desk.html is a verbatim copy of outputs/sr-verification-desk/app/sr-desk.html; copy it again after changing that file.
   { id:"sr", group:"verify", local:true, name:"SR Verification Desk", tab:"SR Desk", short:"Verify SRs against DENR / LRA checklists",
     blurb:"Register of SRs, DENR and LRA checklists, notice of findings and dashboard. Saves on this PC first, syncs to the Google Sheet.",
@@ -565,7 +599,7 @@ async function openView(id){
   if(!frames[id]){
     const f = document.createElement("iframe");
     f.title = app.name; f.src = app.url; f.setAttribute("allow", "clipboard-read; clipboard-write; fullscreen; geolocation");
-    f.addEventListener("load", () => { sendTheme(f); $("load").hidden = true; });
+    f.addEventListener("load", () => { sendTheme(f); addFx(f); $("load").hidden = true; });
     $("load").hidden = false;
     document.querySelector(".stage").appendChild(f); frames[id] = f;
   }
@@ -631,6 +665,36 @@ function themeIcon(){
   $("themeTop").innerHTML = $("themeBtn").querySelector(".ico").innerHTML;
 }
 $("themeTop").onclick = () => $("themeBtn").click();
+// One sign-in for every app (localStorage "aw.signin" = {url, key, name, role}); each app reads it when it loads.
+function signin(v){ try{ if(v !== undefined) localStorage.setItem("aw.signin", JSON.stringify(v)); return JSON.parse(localStorage.getItem("aw.signin") || "null"); }catch(e){ return null; } }
+function renderWho(){
+  const s = signin(), b = $("whoBtn"), on = !!(s && s.key);
+  b.classList.toggle("out", !on);
+  b.querySelector("span").textContent = on ? (s.name || "Signed in") : "Sign in";
+  b.title = on ? "Signed in as " + (s.name || "?") + (s.role ? " (" + s.role + ")" : "") + " for every app" : "Sign in once for Unit Desk, Time Log and Databases";
+}
+function reloadFrames(){ Object.keys(frames).forEach(id => { const a = APPS.find(x => x.id === id); if(a) frames[id].src = a.url; }); }
+function signOpen(){ const s = signin() || {}; $("sUrl").value = s.url || ""; $("sKey").value = s.key || ""; $("sMsg").className = "msg"; $("sMsg").textContent = s.name ? "Signed in as " + s.name + (s.role ? " (" + s.role + ")" : "") + "." : "Kept on this device only."; $("sOut").hidden = !(s && s.key); $("sign").hidden = false; $("sUrl").focus(); }
+$("whoBtn").onclick = signOpen;
+$("sign").addEventListener("click", e => { if(e.target === $("sign")) $("sign").hidden = true; });
+$("sGo").onclick = async () => {
+  const url = $("sUrl").value.trim(), key = $("sKey").value.trim().toUpperCase(), m = $("sMsg");
+  if(!/^https?:\/\//.test(url) || !key){ m.className = "msg bad"; m.textContent = "Enter the web app address and your key."; return; }
+  m.className = "msg"; m.textContent = "Checking…"; $("sGo").disabled = true;
+  try{
+    const j = await fetch(url + (url.includes("?") ? "&" : "?") + new URLSearchParams({ app:"desk", action:"me", key }), { redirect:"follow" }).then(r => r.json());
+    if(!j.ok) throw new Error(j.error || "Refused");
+    signin({ url, key, name: j.me.name, role: j.me.role }); renderWho(); reloadFrames(); $("sign").hidden = true;
+  }catch(e){ m.className = "msg bad"; m.textContent = /fetch|network/i.test(String(e)) ? "No connection to that address." : String(e.message || e); }
+  finally{ $("sGo").disabled = false; }
+};
+$("sOut").onclick = () => { const s = signin() || {}; signin({ url: s.url || "", key: "" }); renderWho(); reloadFrames(); $("sign").hidden = true; };
+document.addEventListener("keydown", e => { if(e.key === "Escape") $("sign").hidden = true; });
+// A sign-in made inside an app (its Settings) shows here too; the other apps pick it up when they next load.
+window.addEventListener("storage", e => { if(e.key === "aw.signin") renderWho(); });
+renderWho();
+$("fxLbl").textContent = store("aw.fx") === "off" ? "Effects off" : "Effects on";
+$("fxBtn").onclick = () => { store("aw.fx", store("aw.fx") === "off" ? "on" : "off"); location.reload(); };
 // Installable app (phones and PCs) when served over https: the service worker keeps every page for offline use.
 // Opened from the folder (file://) none of this runs and the panel works as before.
 let installEvt = null;
@@ -645,6 +709,16 @@ $("home").addEventListener("pointermove", e => {
   const r = el.getBoundingClientRect(); el.style.setProperty("--mx", (e.clientX - r.left) + "px"); el.style.setProperty("--my", (e.clientY - r.top) + "px");
 });
 window.addEventListener("online", renderNet); window.addEventListener("offline", renderNet);
+// Shared effects layer (apps/fx) added to each app as it loads, so the app files themselves stay unchanged.
+// Works when the app page is same-origin (the local server or the published site); skipped silently otherwise.
+function addFx(f){
+  try{
+    const d = f.contentDocument; if(!d || !d.head || d.getElementById("aw-fx-css") || d.documentElement.dataset.fx === "own" || store("aw.fx") === "off") return;
+    const base = new URL("apps/fx/", location.href).href;
+    const l = d.createElement("link"); l.id = "aw-fx-css"; l.rel = "stylesheet"; l.href = base + "fx.css"; d.head.appendChild(l);
+    const s = d.createElement("script"); s.src = base + "fx.js"; d.head.appendChild(s);
+  }catch(e){}
+}
 // Apps that listen (Unit Desk) follow the panel's light/dark choice; others ignore the message.
 function sendTheme(f){ try{ f.contentWindow.postMessage({ type:"aw-theme", theme: document.documentElement.dataset.theme || "" }, "*"); }catch(e){} }
 window.addEventListener("hashchange", () => show(location.hash.slice(1)));

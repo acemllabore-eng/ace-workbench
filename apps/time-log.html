@@ -272,6 +272,14 @@ function worked(r) {
 const fmtDur = m => m == null ? "—" : Math.floor(m / 60) + "h " + pad(m % 60) + "m";
 
 /* ---------- State, kept on this device ---------- */
+// One sign-in for every app of the Survey Unit panel: the web app address and key in localStorage "aw.signin",
+// shared by every app opened from the same site. Signing in here, in the panel or in any app signs in all of them.
+function awSignin(url, key) {
+  try {
+    if (url !== undefined) localStorage.setItem("aw.signin", JSON.stringify({ url: url, key: key }));
+    return JSON.parse(localStorage.getItem("aw.signin") || "null");
+  } catch (e) { return null; }
+}
 function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, people: [], items: {}, outbox: [], problems: [], lastPull: "", lastSync: "", newKeys: [] }; }
 function load() {
   let s = null;
@@ -279,6 +287,8 @@ function load() {
   s = Object.assign(blank(), s || {});
   if (!s.cfg.device) s.cfg.device = (/Mobi|Android/i.test(navigator.userAgent) ? "PHONE-" : "PC-") + Math.random().toString(36).slice(2, 7).toUpperCase();
   if (window.TL_HOSTED && window.TL_HOSTED.url) s.cfg.url = window.TL_HOSTED.url;
+  const si = awSignin();
+  if (si) { if (si.url && !window.TL_HOSTED) s.cfg.url = si.url; s.cfg.key = si.key || ""; }
   return s;
 }
 let state = load();
@@ -294,8 +304,8 @@ let syncing = false, syncAgain = false, online = navigator.onLine, lastError = "
 async function call(method, payload) {
   const u = state.cfg.url;
   let r;
-  if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key }, payload)), { redirect: "follow" });
-  else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device }, payload)) });
+  if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key, app: "time" }, payload)), { redirect: "follow" });
+  else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device, app: "time" }, payload)) });
   const j = await r.json();
   if (!j.ok) throw Object.assign(new Error(j.error || "The Sheet refused the request"), { server: true });
   return j;
@@ -616,7 +626,7 @@ $("main").addEventListener("click", e => {
     return render();
   }
   if (t.id === "cSave") {
-    state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.lastPull = ""; lastError = ""; save();
+    state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.lastPull = ""; lastError = ""; save(); awSignin(state.cfg.url, state.cfg.key);
     return sync(false).then(() => { if (state.me) toast("Connected as " + state.me.name); });
   }
   if (t.id === "mAdd") {

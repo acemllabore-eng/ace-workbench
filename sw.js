@@ -1,12 +1,12 @@
 /* ACE Workbench service worker: keeps the panel and every app page on the device so the Workbench opens with no signal.
    Only files from this site are kept. Google Sheet sync (script.google.com) and satellite tiles always go to the network.
    VERSION is stamped by build-pages.py from the files' content; a new VERSION makes phones fetch the new files. */
-const VERSION = "7d7df4ea693a";
+const VERSION = "98862d51b20b";
 const CACHE = "aw-" + VERSION;
 const FILES = [
   "./", "index.html", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png", "icons/logo.svg", "icons/favicon-64.png",
-  "apps/unit-desk.html", "apps/time-log.html", "apps/sr-desk.html", "apps/sr-dashboard.html", "apps/title-to-shapefile.html",
+  "apps/unit-desk.html", "apps/time-log.html", "apps/databases.html", "apps/fx/fx.css", "apps/fx/fx.js", "apps/sr-desk.html", "apps/sr-dashboard.html", "apps/title-to-shapefile.html",
   "apps/vendor/leaflet.css", "apps/vendor/leaflet.js", "apps/vendor/proj4.js", "apps/vendor/fflate.js",
   "apps/vendor/control-points.js", "apps/vendor/e2c-template.js",
   "apps/vendor/images/layers.png", "apps/vendor/images/layers-2x.png",

@@ -1,0 +1,38 @@
+/* Survey Unit – Masbate: shared effects layer.
+   The panel (index.html) adds this file and fx.js to every app it opens, so the apps' own files stay unchanged
+   (they are hash-matched to their Apps Script copies). Everything here is decoration: low-specificity :where()
+   rules an app's own styles win over, overlays that never take clicks, and no motion under "reduce motion". */
+:root{ --fx-rgb:184,134,11; --fx2-rgb:14,116,144; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --fx-rgb:224,176,60; --fx2-rgb:79,214,234; } }
+:root[data-theme="dark"]{ --fx-rgb:224,176,60; --fx2-rgb:79,214,234; }
+
+/* Holo line across the top of the app */
+#fx-top{position:fixed;left:0;right:0;top:0;height:2px;z-index:2147483000;pointer-events:none;overflow:hidden;
+  background:linear-gradient(90deg,transparent,rgba(var(--fx2-rgb),.55),rgba(var(--fx-rgb),.7),transparent);opacity:.75}
+#fx-top i{position:absolute;top:0;height:100%;width:22%;background:linear-gradient(90deg,transparent,#fff,transparent);opacity:.7;left:-25%}
+/* Soft light that follows the mouse (PCs only) */
+#fx-glow{position:fixed;left:0;top:0;width:520px;height:520px;margin:-260px 0 0 -260px;border-radius:50%;z-index:2147482999;pointer-events:none;
+  background:radial-gradient(circle,rgba(var(--fx2-rgb),.07),rgba(var(--fx-rgb),.035) 40%,transparent 68%);opacity:0;transition:opacity .4s}
+#fx-glow.on{opacity:1}
+/* Ripple where a button is pressed: drawn over the page, so the button itself is not changed */
+.fx-rip{position:fixed;z-index:2147483001;pointer-events:none;border-radius:50%;transform:translate(-50%,-50%) scale(0);
+  width:120px;height:120px;background:radial-gradient(circle,rgba(var(--fx2-rgb),.35),rgba(var(--fx-rgb),.12) 45%,transparent 70%)}
+
+/* Glow on fields and buttons, only where the app has not set its own shadow */
+:where(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea):focus{box-shadow:0 0 0 3px rgba(var(--fx2-rgb),.16),0 0 16px rgba(var(--fx2-rgb),.16)}
+:where(button,.btn,[role=button]):not(:disabled):hover{box-shadow:0 0 0 1px rgba(var(--fx2-rgb),.12),0 6px 18px rgba(var(--fx2-rgb),.14)}
+:where(.btn.primary,button.primary):not(:disabled):hover{box-shadow:0 8px 22px rgba(var(--fx-rgb),.38)}
+:where(.card,.panel,.stat,.fig,.kpi):hover{box-shadow:0 10px 28px rgba(0,0,0,.14),0 0 0 1px rgba(var(--fx-rgb),.14),0 0 24px rgba(var(--fx2-rgb),.08)}
+::selection{background:rgba(var(--fx2-rgb),.28)}
+
+@media (prefers-reduced-motion:no-preference){
+  html.fx-in body{animation:fx-fade .45s ease-out}
+  #fx-top i{animation:fx-sweep 6s ease-in-out infinite}
+  .fx-rip{animation:fx-rip .55s ease-out forwards}
+  :where(button,.btn,[role=button],.card,.panel,.stat,.fig,.kpi){transition:box-shadow .2s,border-color .2s,background-color .15s}
+  @keyframes fx-fade{from{opacity:0}}
+  @keyframes fx-sweep{0%{left:-25%}55%,100%{left:105%}}
+  @keyframes fx-rip{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+}
+@media (prefers-reduced-motion:reduce){ #fx-top i,#fx-glow,.fx-rip{display:none} }
+@media print{ #fx-top,#fx-glow,.fx-rip{display:none!important} }
