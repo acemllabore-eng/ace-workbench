@@ -210,7 +210,7 @@ function readDesk() {
   let s = null; try { s = JSON.parse(localStorage.getItem(STORE)); } catch (e) { s = null; }
   if (!s || !Array.isArray(s.register) || !s.register.length) return null;
   const recs = s.records || {}, queue = s.queue || {};
-  const list = s.register.map(reg => {
+  const list = s.register.filter(reg => reg.kind !== "No batch tracker").map(reg => { // same rule as sr-desk.html: no kind of survey, not listed
     const q = queue[reg.seq], rec = recs[reg.seq];
     let d;
     if (q && q.data) d = Object.assign({}, q.data, { overrides: q.data.overrides || {} });

@@ -1172,12 +1172,14 @@ const VALS_STORE = STORE + "-vals";
 let valsStore = {}; try { valsStore = JSON.parse(localStorage.getItem(VALS_STORE)) || {}; } catch (e) { valsStore = {}; }
 const saveVals = () => { try { localStorage.setItem(VALS_STORE, JSON.stringify(valsStore)); } catch (e) {} };
 const PAGE = 200; // register rows drawn at a time
-const KINDS = ["2025-A", "2025-B", "SBA 3", "SBA 4", "No batch tracker"];
+const KINDS = ["2025-A", "2025-B", "SBA 3", "SBA 4"];
+const NO_BATCH = "No batch tracker"; // SRs in no batch tracker have no kind of survey: they are left out of the Desk (the server still sends them)
+const inBatch = r => r && r.kind !== NO_BATCH;
 let storageOk = true;
 function blank() { return { cfg: { url: "", key: "", device: (HOSTED ? "PHONE-" : "PC-") + Math.random().toString(36).slice(2, 7).toUpperCase() },
   me: null, register: [], sources: [], records: {}, verifiers: [], queue: {}, conflicts: {}, pulledAt: "", lastSync: "", lastError: "", lastBackup: "" }; }
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.cfg) return Object.assign(blank(), s); }
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.cfg) { const st = Object.assign(blank(), s); st.register = (st.register || []).filter(inBatch); return st; } }
   catch (e) { storageOk = false; }
   return blank();
 }
@@ -1330,7 +1332,7 @@ async function syncNow(opts = {}) {
       if (bad) toast(`${bad} change${bad > 1 ? "s were" : " was"} refused. Open the SR marked "Needs attention".`);
     }
     const p = await api("GET", "pull");
-    state.me = p.me; state.register = p.register; state.sources = p.sources || []; state.registerBuilt = p.register_built || ""; state.verifiers = p.verifiers; state.pulledAt = p.server_time;
+    state.me = p.me; state.register = p.register.filter(inBatch); state.sources = p.sources || []; state.registerBuilt = p.register_built || ""; state.verifiers = p.verifiers; state.pulledAt = p.server_time;
     state.records = {}; p.records.forEach(r => state.records[r.seq] = r);
     indexRegister();
     state.lastSync = new Date().toISOString(); state.lastError = ""; netDown = false;
@@ -1368,7 +1370,7 @@ function renderSyncbar() {
     ${c ? `<span style="color:var(--warn)"><b>${c}</b> need${c > 1 ? "" : "s"} attention</span>` : ""}
     <span class="sub">Last sync ${fmtTime(state.lastSync)}</span>
     ${storageOk ? "" : `<span style="color:var(--fail)"><b>This browser is not saving data. Do not use it for verification.</b></span>`}
-    ${unread.length ? `<span style="color:var(--warn)" title="${esc(unread.map(s => s.name + ": " + s.error).join("\n"))}"><b>Not read:</b> ${esc(unread.map(s => s.kind + " tracker").join(", "))}. Its SRs show as "No batch tracker" until it can be read.</span>` : ""}
+    ${unread.length ? `<span style="color:var(--warn)" title="${esc(unread.map(s => s.name + ": " + s.error).join("\n"))}"><b>Not read:</b> ${esc(unread.map(s => s.kind + " tracker").join(", "))}. Its SRs are not listed until it can be read.</span>` : ""}
     <span class="grow"></span>
     <span>${state.me ? esc(state.me.name) + (state.me.role === "admin" ? " (Admin)" : "") : ""}</span>
     <button class="btn small no-print" id="sync-now" ${syncing || !state.cfg.url ? "disabled" : ""}>Sync now</button>
@@ -1562,7 +1564,7 @@ function renderGuide() {
       </section>
       <section class="panel" id="g-register"><h2>The register</h2>
         <ul class="tips"><li>The list of SRs is every SeqNo in MASBATE CCLOA ACCOUNTING, tab MASBATE.</li>
-          <li><b>Kind</b> is the batch tracker that lists the SeqNo. For an SR in no tracker, the accounting SURVEY tag is shown in grey.</li>
+          <li><b>Kind</b> is the batch tracker that lists the SeqNo. SRs in no batch tracker are not listed.</li>
           <li>The app re-reads the sheets every 15 minutes, so an edit made in a tracker appears here a little later.</li>
           <li><b>Days</b> are counted from the date received at DARPO. For a decided SR, they stop at the decision. Red means an SR at DARPO is past 14 days.</li>
           <li>A "Check" badge means the trackers disagree about that SeqNo. Open the SR to read why.</li></ul>

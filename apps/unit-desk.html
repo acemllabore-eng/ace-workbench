@@ -273,9 +273,12 @@ const isOpen = it => OPEN.includes(it.status);
 const pending = k => state.outbox.some(o => o.type === "save" && (o.id || o.tmp) === k);
 
 /* ---------- Talking to the Sheet ---------- */
+// The key is only ever sent to a Google Apps Script web app (or a test server on this PC).
+const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
 let syncing = false, online = navigator.onLine, lastError = "";
 async function call(method, payload) {
   const u = state.cfg.url;
+  if (!okAddr(u)) throw new Error("The web app address in Settings is not a Google Apps Script address");
   let r;
   if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key, app: "desk" }, payload)), { redirect: "follow" });
   else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device, app: "desk" }, payload)) });
@@ -304,7 +307,7 @@ async function sync(quiet) {
         if (!changedSince) state.outbox = state.outbox.filter(x => x !== o);
         if (o.type !== "save") {
           if (r.result === "saved" && r.key) state.newKeys.unshift({ name: r.name, role: r.role, key: r.key });
-          if (r.result !== "saved") state.problems.push({ kind: "rejected", what: o.type === "addMember" ? "Adding " + o.name : "Switching off " + o.name, error: r.error });
+          if (r.result !== "saved") state.problems.push({ kind: "rejected", what: o.type === "addMember" ? "Adding " + o.name : o.type === "resetKey" ? "New key for " + o.name : "Switching off " + o.name, error: r.error });
           return;
         }
         if (r.result === "saved" || r.result === "same") {
@@ -529,7 +532,7 @@ function settingsHtml() {
       <button class="btn primary" id="mAdd">Add member</button></div>
       ${state.newKeys.map((k, i) => `<div><span class="keybox">${esc(k.name)}: ${esc(k.key)}</span> <button class="btn sm ghost" data-hidekey="${i}">Hide</button></div>`).join("")}
       <table class="tbl team" style="margin-top:16px"><thead><tr><th>Member</th><th>Role</th><th></th></tr></thead><tbody>
-      ${state.people.filter(p => p.name !== state.me.name).map(p => `<tr><td>${esc(p.name)}</td><td data-l="Role">${esc(p.role)}</td><td style="text-align:right"><button class="btn sm" data-off="${esc(p.name)}">Switch off</button></td></tr>`).join("")}
+      ${state.people.filter(p => p.name !== state.me.name).map(p => `<tr><td>${esc(p.name)}</td><td data-l="Role">${esc(p.role)}</td><td style="text-align:right"><button class="btn sm" data-newkey="${esc(p.name)}">New key</button> <button class="btn sm" data-off="${esc(p.name)}">Switch off</button></td></tr>`).join("")}
       </tbody></table></section>` : ""}
     <section class="panel"><h2>On this device</h2><p>${items().length} entries kept here · ${state.outbox.length} waiting to send${state.lastSync ? " · last synced " + esc(fmtTime(state.lastSync)) : ""}.</p>
       <button class="btn" id="cForget">Remove this device's copy</button></section>`;
@@ -633,6 +636,7 @@ $("main").addEventListener("click", e => {
   if (t.id === "fWhenClear") { e.preventDefault(); Object.assign(filt, { when: "", from: "", to: "" }); return render(); }
   if (t.id === "csv") return exportCsv();
   if (t.id === "cSave") {
+    if (!okAddr($("cUrl").value.trim())) return toast("That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec");
     state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.lastPull = ""; lastError = ""; save(); awSignin(state.cfg.url, state.cfg.key);
     return sync(false).then(() => { if (state.me) toast("Connected as " + state.me.name); });
   }
@@ -640,6 +644,8 @@ $("main").addEventListener("click", e => {
     const name = $("mName").value.trim(); if (!name) return toast("Type the member's name.");
     state.outbox.push({ type: "addMember", name, role: $("mRole").value, rev: 1, at: new Date().toISOString() }); save(); return sync(false);
   }
+  const nk = t.closest("[data-newkey]");
+  if (nk) { if (!confirm("Give " + nk.dataset.newkey + " a new key? The old key stops working at once.")) return; state.outbox.push({ type: "resetKey", name: nk.dataset.newkey, rev: 1, at: new Date().toISOString() }); save(); return sync(false); }
   const off = t.closest("[data-off]");
   if (off) { state.outbox.push({ type: "setActive", name: off.dataset.off, active: false, rev: 1, at: new Date().toISOString() }); save(); return sync(false); }
   const hk = t.closest("[data-hidekey]"); if (hk) { state.newKeys.splice(+hk.dataset.hidekey, 1); save(); return render(); }

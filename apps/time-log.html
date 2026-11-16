@@ -203,10 +203,11 @@ form.typed .timed{display:none}
         <option value="Travel Order">Travel Order (no time in / out)</option>
         <option value="R.S.O.">R.S.O. (no time in / out)</option>
         <option value="P.S.O.">P.S.O. (no time in / out)</option></select></label>
-      <div class="f timed"><span>Time in</span><div class="tp" data-tp="time_in"></div><input type="hidden" name="time_in"><button type="button" class="now" data-now="time_in">Use the time now</button></div>
-      <div class="f timed"><span>Time out</span><div class="tp" data-tp="time_out"></div><input type="hidden" name="time_out"><button type="button" class="now" data-now="time_out">Use the time now</button></div>
-      <label class="f timed"><span>Break (minutes)</span><input type="number" name="break_min" min="0" max="600" step="5" inputmode="numeric" placeholder="e.g. 60"></label>
-      <div class="timed"></div>
+      <div class="f timed"><span>Morning: time in</span><div class="tp" data-tp="time_in"></div><input type="hidden" name="time_in"><button type="button" class="now" data-now="time_in">Use the time now</button></div>
+      <div class="f timed"><span>Morning: time out</span><div class="tp" data-tp="time_out"></div><input type="hidden" name="time_out"><button type="button" class="now" data-now="time_out">Use the time now</button></div>
+      <div class="f timed"><span>Afternoon: time in</span><div class="tp" data-tp="time_in2"></div><input type="hidden" name="time_in2"><button type="button" class="now" data-now="time_in2">Use the time now</button></div>
+      <div class="f timed"><span>Afternoon: time out</span><div class="tp" data-tp="time_out2"></div><input type="hidden" name="time_out2"><button type="button" class="now" data-now="time_out2">Use the time now</button></div>
+      <label class="f timed full" id="fBreak"><span>Break taken off the hours (minutes)</span><input type="number" name="break_min" min="0" max="600" step="5" inputmode="numeric" placeholder="e.g. 60"></label>
       <label class="f full"><span>Notes</span><textarea name="notes" maxlength="1000" placeholder="e.g. Field survey at Mobo, on leave, half day"></textarea></label>
     </div>
     <div class="calc"><span class="muted">Hours worked</span><b id="fHours">—</b></div>
@@ -225,7 +226,9 @@ form.typed .timed{display:none}
 <script>
 "use strict";
 const LS = "tl.v1";
-const FIELDS = ["time_in", "time_out", "break_min", "notes", "day_type"];
+const FIELDS = ["time_in", "time_out", "break_min", "notes", "day_type", "time_in2", "time_out2"];
+const TIMES = ["time_in", "time_out", "time_in2", "time_out2"];   // morning pair, afternoon pair
+const TIME_LBL = { time_in: "Morning time in", time_out: "Morning time out", time_in2: "Afternoon time in", time_out2: "Afternoon time out" };
 const DAY_TYPES = ["Travel Order", "R.S.O.", "P.S.O."];
 const DT_SHORT = { "Travel Order": "TO", "R.S.O.": "RSO", "P.S.O.": "PSO" };
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -241,7 +244,7 @@ const fmtHM = t => { if (!t) return ""; const [h, m] = t.split(":").map(Number);
 // AM/PM picker <-> the stored 24-hour "HH:MM" (what the Sheet keeps and the hours maths uses).
 function tpBuild() {
   document.querySelectorAll(".tp").forEach(tp => {
-    const n = tp.dataset.tp, lbl = n === "time_in" ? "Time in" : "Time out";
+    const n = tp.dataset.tp, lbl = TIME_LBL[n];
     tp.innerHTML = `<select class="h" aria-label="${lbl} hour"><option value="">--</option>${[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => `<option>${h}</option>`).join("")}</select><b>:</b>`
       + `<select class="m" aria-label="${lbl} minutes">${Array.from({ length: 60 }, (_, i) => `<option>${pad(i)}</option>`).join("")}</select>`
       + `<select class="ap" aria-label="${lbl} AM or PM"><option>AM</option><option>PM</option></select>`;
@@ -251,7 +254,7 @@ function tpSet(n, t) {
   const tp = document.querySelector(`.tp[data-tp="${n}"]`), m = /^(\d{2}):(\d{2})$/.exec(t || "");
   tp.querySelector(".h").value = m ? String((+m[1] + 11) % 12 + 1) : "";
   tp.querySelector(".m").value = m ? m[2] : "00";
-  tp.querySelector(".ap").value = m && +m[1] >= 12 ? "PM" : (m ? "AM" : (n === "time_out" ? "PM" : "AM"));
+  tp.querySelector(".ap").value = m && +m[1] >= 12 ? "PM" : (m ? "AM" : (n === "time_in" ? "AM" : "PM"));
   $("form").elements[n].value = m ? t : "";
 }
 function tpRead(n) {
@@ -262,13 +265,19 @@ function tpRead(n) {
 }
 const fmtLong = s => new Date(s + "T00:00:00").toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 const mins = t => { const m = /^(\d{2}):(\d{2})$/.exec(t || ""); return m ? +m[1] * 60 + +m[2] : null; };
-// Worked minutes for a day, the same rule as the Sheet: time out − time in − break. null when not complete.
+// Worked minutes for a day, the same rule as the Sheet: (morning out − in) + (afternoon out − in) − break.
+// null when there is no finished pair, or a time in is still waiting for its time out.
 function worked(r) {
-  const a = mins(r.time_in), b = mins(r.time_out);
-  if (a === null || b === null || b <= a) return null;
-  const w = b - a - (Number(r.break_min) || 0);
+  const a = mins(r.time_in), b = mins(r.time_out), c = mins(r.time_in2), e = mins(r.time_out2);
+  if ((a === null) !== (b === null) || (c === null) !== (e === null) || (a === null && c === null)) return null;
+  if ((a !== null && b <= a) || (c !== null && e <= c)) return null;
+  const w = (a === null ? 0 : b - a) + (c === null ? 0 : e - c) - (Number(r.break_min) || 0);
   return w < 0 ? null : w;
 }
+// A time in with no time out yet, in either pair.
+const isOpen = r => !!r && !!((r.time_in && !r.time_out) || (r.time_in2 && !r.time_out2));
+// The day as it is shown: "6:48 AM - 12:08 PM", "12:45 PM - 6:42 PM" (one text per pair that has a time in).
+const spans = r => [[r.time_in, r.time_out], [r.time_in2, r.time_out2]].filter(p => p[0]).map(p => fmtHM(p[0]) + " - " + (p[1] ? fmtHM(p[1]) : "—"));
 const fmtDur = m => m == null ? "—" : Math.floor(m / 60) + "h " + pad(m % 60) + "m";
 
 /* ---------- State, kept on this device ---------- */
@@ -300,9 +309,12 @@ const boss = () => !!state.me && (state.me.role === "head" || state.me.role === 
 const canEdit = name => !!state.me && (boss() || name === state.me.name);
 
 /* ---------- Talking to the Sheet ---------- */
+// The key is only ever sent to a Google Apps Script web app (or a test server on this PC).
+const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
 let syncing = false, syncAgain = false, online = navigator.onLine, lastError = "";
 async function call(method, payload) {
   const u = state.cfg.url;
+  if (!okAddr(u)) throw new Error("The web app address in Settings is not a Google Apps Script address");
   let r;
   if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key, app: "time" }, payload)), { redirect: "follow" });
   else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device, app: "time" }, payload)) });
@@ -325,7 +337,7 @@ async function sync(quiet) {
         if (!changedSince) state.outbox = state.outbox.filter(x => x !== o);
         if (o.type !== "save") {
           if (r.result === "saved" && r.key) state.newKeys.unshift({ name: r.name, role: r.role, key: r.key });
-          if (r.result !== "saved") state.problems.push({ kind: "rejected", what: o.type === "addMember" ? "Adding " + o.name : "Switching off " + o.name, error: r.error });
+          if (r.result !== "saved") state.problems.push({ kind: "rejected", what: o.type === "addMember" ? "Adding " + o.name : o.type === "resetKey" ? "New key for " + o.name : "Switching off " + o.name, error: r.error });
           return;
         }
         const what = o.name + " · " + fmtLong(o.date);
@@ -369,7 +381,7 @@ async function sync(quiet) {
 }
 function summary(d) {
   const w = worked(d);
-  return [d.day_type || "", d.time_in ? "in " + fmtHM(d.time_in) : "", d.time_out ? "out " + fmtHM(d.time_out) : "", d.break_min ? d.break_min + " min break" : "", w != null ? fmtDur(w) : "", d.notes ? "“" + d.notes.slice(0, 40) + "”" : ""].filter(Boolean).join(", ") || "blank";
+  return [d.day_type || "", ...spans(d), d.break_min ? d.break_min + " min break" : "", w != null ? fmtDur(w) : "", d.notes ? "“" + d.notes.slice(0, 40) + "”" : ""].filter(Boolean).join(", ") || "blank";
 }
 
 /* ---------- Local changes ---------- */
@@ -389,7 +401,7 @@ const logsOf = (name, prefix) => Object.values(state.items).filter(r => r.name =
 function monthStats(name, ym) {
   const rows = logsOf(name, ym);
   const done = rows.map(worked).filter(m => m != null);
-  const open = rows.filter(r => r.time_in && !r.time_out && r.date < today()).length;
+  const open = rows.filter(r => isOpen(r) && r.date < today()).length;
   const total = done.reduce((a, b) => a + b, 0);
   const typed = {}; DAY_TYPES.forEach(t => { typed[t] = rows.filter(r => r.day_type === t).length; });
   return { total, days: done.length, avg: done.length ? Math.round(total / done.length) : null, open, rows, typed,
@@ -434,9 +446,14 @@ function todayHtml() {
   const r = state.items[idOf(state.me.name, today())] || {};
   let line, btn;
   if (r.day_type) { line = r.day_type + " · no time in / out"; btn = ""; }
-  else if (!r.time_in) { line = "Not timed in yet"; btn = `<button class="btn primary" data-punch="time_in">Time in now</button>`; }
-  else if (!r.time_out) { line = "In since " + fmtHM(r.time_in); btn = `<button class="btn primary" data-punch="time_out">Time out now</button>`; }
-  else { line = fmtHM(r.time_in) + " – " + fmtHM(r.time_out) + " · " + fmtDur(worked(r)); btn = ""; }
+  else {
+    // The next time to punch: morning in, morning out, afternoon in, afternoon out.
+    const next = r.time_in && !r.time_out ? "time_out" : r.time_in2 && !r.time_out2 ? "time_out2" : !r.time_in && !r.time_in2 ? "time_in" : !r.time_in2 ? "time_in2" : "";
+    const w = worked(r);
+    line = spans(r).join(" · ") || "Not timed in yet";
+    if (w != null) line += " · " + fmtDur(w);
+    btn = next ? `<button class="btn primary" data-punch="${next}">${/out/.test(next) ? "Time out now" : "Time in now"}</button>` : "";
+  }
   return `<section class="today"><div class="grow"><div class="lbl">Today · ${esc(new Date().toLocaleDateString("en-PH", { weekday: "long", month: "short", day: "numeric" }))}</div><div class="big">${esc(line)}</div></div>
     ${btn}<button class="btn" data-day="${today()}">Edit today</button></section>`;
 }
@@ -456,11 +473,11 @@ function calHtml() {
     for (let i = 0; i < 7; i++, d.setDate(d.getDate() + 1)) {
       const ds = ymd(d), r = state.items[idOf(who, ds)], inMonth = ds.slice(0, 7) === month, m = r ? worked(r) : null;
       if (m != null) { wk += m; wkDays++; }
-      const open = r && r.time_in && !r.time_out;
+      const open = isOpen(r);
       cells += `<button type="button" class="day${inMonth ? "" : " out"}${i > 4 ? " wkend" : ""}${ds === today() ? " is-today" : ""}" data-day="${ds}" aria-label="${esc(fmtLong(ds))}${r ? ", " + esc(summary(r)) : ", no log"}">
         <span class="n">${d.getDate()}${r && pending(r.id) ? '<span class="flag" title="Not sent yet"></span>' : ""}</span>
         ${r && r.day_type ? `<span class="dt" title="${esc(r.day_type)}"><span class="dl">${esc(r.day_type)}</span><span class="ds">${esc(DT_SHORT[r.day_type] || r.day_type)}</span></span>` : ""}
-        ${r && r.time_in ? `<span class="t">In ${esc(fmtHM(r.time_in))}</span><span class="t">Out ${esc(r.time_out ? fmtHM(r.time_out) : "—")}</span>` : ""}
+        ${r ? spans(r).map(s => `<span class="t">${esc(s)}</span>`).join("") : ""}
         ${r && r.notes ? `<span class="note">${esc(r.notes)}</span>` : ""}
         ${m != null ? `<span class="h">${esc(fmtDur(m))}</span>` : open ? `<span class="h open">${ds < today() ? "No out" : "In"}</span>` : ""}
       </button>`;
@@ -483,7 +500,7 @@ function calHtml() {
     <div class="cal" role="grid" aria-label="${esc(title)} for ${esc(who)}">${cells}</div>
     <div class="weeks"><table class="tbl"><thead><tr><th>Week of</th><th class="num">Days</th><th class="num">Hours</th></tr></thead><tbody>
       ${weeks.map(w => `<tr><td>${esc(new Date(w.from + "T00:00:00").toLocaleDateString("en-PH", { month: "short", day: "numeric" }))}</td><td class="num">${w.days}</td><td class="num">${w.days ? esc(fmtDur(w.total)) : "—"}</td></tr>`).join("")}</tbody></table></div>
-    <p class="legend">Hours = time out − time in − break. Click a day to log or edit it.${canEdit(who) ? "" : " Read only."}</p>`;
+    <p class="legend">Each day shows morning in - out, then afternoon in - out. Hours = morning + afternoon. Click a day to log or edit it.${canEdit(who) ? "" : " Read only."}</p>`;
 }
 
 function teamHtml() {
@@ -513,7 +530,7 @@ function settingsHtml() {
       <button class="btn primary" id="mAdd">Add employee</button></div>
       ${state.newKeys.map((k, i) => `<div><span class="keybox">${esc(k.name)}: ${esc(k.key)}</span> <button class="btn sm ghost" data-hidekey="${i}">Hide</button></div>`).join("")}
       <table class="tbl" style="margin-top:16px"><thead><tr><th>Employee</th><th>Role</th><th></th></tr></thead><tbody>
-      ${state.people.filter(p => p.name !== state.me.name).map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.role)}</td><td style="text-align:right"><button class="btn sm" data-off="${esc(p.name)}">Switch off</button></td></tr>`).join("")}
+      ${state.people.filter(p => p.name !== state.me.name).map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.role)}</td><td style="text-align:right"><button class="btn sm" data-newkey="${esc(p.name)}">New key</button> <button class="btn sm" data-off="${esc(p.name)}">Switch off</button></td></tr>`).join("")}
       </tbody></table></section>` : ""}
     <section class="panel"><h2>On this device</h2><p>${Object.keys(state.items).length} days kept here · ${state.outbox.length} waiting to send${state.lastSync ? " · last synced " + esc(fmtTime(state.lastSync)) : ""}.</p>
       <button class="btn" id="cForget">Remove this device's copy</button></section>`;
@@ -526,7 +543,8 @@ function openDrawer(date, preset) {
   editing = { name, date, id };
   const src = Object.assign({}, r, preset || {});
   FIELDS.forEach(k => { f.elements[k].value = src[k] || ""; });
-  tpSet("time_in", src.time_in); tpSet("time_out", src.time_out);
+  TIMES.forEach(k => tpSet(k, src[k]));
+  $("fBreak").style.display = src.break_min ? "" : "none";   // older days may hold a break; new days have none
   const ro = !canEdit(name);
   FIELDS.forEach(k => { f.elements[k].readOnly = ro; });
   f.elements.day_type.disabled = ro;
@@ -543,30 +561,34 @@ function openDrawer(date, preset) {
   $("dHist").innerHTML = r.version ? `<p class="muted" style="font-size:12.5px;margin:14px 0 0">Logged by ${esc(r.created_by)} ${esc(fmtTime(r.created_at))}${r.updated_by ? " · last change by " + esc(r.updated_by) + " " + esc(fmtTime(r.updated_at)) : ""} · version ${esc(r.version)}</p>` : "";
   calcHours();
   $("scrim").hidden = $("drawer").hidden = false;
-  setTimeout(() => (ro ? $("dClose") : src.day_type ? f.elements.day_type : document.querySelector(`.tp[data-tp="${!src.time_in ? "time_in" : !src.time_out ? "time_out" : "time_in"}"] .h`)).focus(), 0);
+  setTimeout(() => (ro ? $("dClose") : src.day_type ? f.elements.day_type : document.querySelector(`.tp[data-tp="${TIMES.find(k => !src[k]) || "time_in"}"] .h`)).focus(), 0);
 }
 function typedView() { const t = !!$("form").elements.day_type.value; $("form").classList.toggle("typed", t); document.querySelector(".calc").classList.toggle("typed", t); }
 function closeDrawer() { $("scrim").hidden = $("drawer").hidden = true; editing = null; }
 function formData() {
   const f = $("form"), d = {};
-  f.elements.time_in.value = tpRead("time_in"); f.elements.time_out.value = tpRead("time_out");
+  TIMES.forEach(k => { f.elements[k].value = tpRead(k); });
   FIELDS.forEach(k => d[k] = f.elements[k].value.trim());
   if (d.break_min === "0") d.break_min = "";
-  if (d.day_type) { d.time_in = ""; d.time_out = ""; d.break_min = ""; }   // Travel Order / R.S.O. / P.S.O.: no time in or out
+  if (d.day_type) { TIMES.forEach(k => { d[k] = ""; }); d.break_min = ""; }   // Travel Order / R.S.O. / P.S.O.: no time in or out
   return d;
 }
 function check(d) {
   if (d.day_type) return DAY_TYPES.includes(d.day_type) ? "" : "Unknown day type.";
-  if (d.time_out && !d.time_in) return "Enter the time in first.";
-  if (d.time_in && d.time_out && mins(d.time_out) <= mins(d.time_in)) return "Time out must be later than time in.";
+  if (d.time_out && !d.time_in) return "Enter the morning time in first.";
+  if (d.time_in && d.time_out && mins(d.time_out) <= mins(d.time_in)) return "Morning time out must be later than its time in.";
+  if (d.time_out2 && !d.time_in2) return "Enter the afternoon time in first.";
+  if (d.time_in2 && d.time_in && !d.time_out) return "Enter the morning time out before the afternoon time in.";
+  if (d.time_in2 && d.time_out2 && mins(d.time_out2) <= mins(d.time_in2)) return "Afternoon time out must be later than its time in.";
+  if (d.time_in2 && d.time_out && mins(d.time_in2) < mins(d.time_out)) return "Afternoon time in must not be earlier than the morning time out.";
   if (d.break_min && (!/^\d{1,3}$/.test(d.break_min) || +d.break_min > 600)) return "Break must be whole minutes, 0 to 600.";
-  if (d.time_in && d.time_out && worked(d) == null) return "The break is longer than the time worked.";
-  if (!d.time_in && !d.notes) return "Enter a time in, choose a day type (Travel Order, R.S.O., P.S.O.), or write a note.";
+  if (!isOpen(d) && (d.time_in || d.time_in2) && worked(d) == null) return "The break is longer than the time worked.";
+  if (!d.time_in && !d.time_in2 && !d.notes) return "Enter a time in, choose a day type (Travel Order, R.S.O., P.S.O.), or write a note.";
   return "";
 }
 function calcHours() {
   const d = formData(), w = worked(d);
-  $("fHours").textContent = d.day_type ? d.day_type + " · no hours counted" : w != null ? fmtDur(w) : d.time_in && !d.time_out ? "No time out yet" : "—";
+  $("fHours").textContent = d.day_type ? d.day_type + " · no hours counted" : w != null ? fmtDur(w) : isOpen(d) ? "No time out yet" : "—";
 }
 function saveDrawer() {
   if (!editing) return;
@@ -613,7 +635,7 @@ $("main").addEventListener("click", e => {
     d[punch.dataset.punch] = nowHM();
     const err = check(d); if (err) { toast(err); return openDrawer(today(), d); }
     queueSave(state.me.name, today(), d);
-    return toast((punch.dataset.punch === "time_in" ? "Timed in " : "Timed out ") + fmtHM(d[punch.dataset.punch]) + ". Saved on this device.");
+    return toast((/in/.test(punch.dataset.punch) ? "Timed in " : "Timed out ") + fmtHM(d[punch.dataset.punch]) + ". Saved on this device.");
   }
   const go = t.closest("[data-go]"); if (go) { view = go.dataset.go; return render(); }
   const w = t.closest("[data-who]"); if (w) { who = w.dataset.who; view = "cal"; return render(); }
@@ -626,6 +648,7 @@ $("main").addEventListener("click", e => {
     return render();
   }
   if (t.id === "cSave") {
+    if (!okAddr($("cUrl").value.trim())) return toast("That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec");
     state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.lastPull = ""; lastError = ""; save(); awSignin(state.cfg.url, state.cfg.key);
     return sync(false).then(() => { if (state.me) toast("Connected as " + state.me.name); });
   }
@@ -633,6 +656,8 @@ $("main").addEventListener("click", e => {
     const name = $("mName").value.trim(); if (!name) return toast("Type the employee's name.");
     state.outbox.push({ type: "addMember", name, role: $("mRole").value, rev: 1 }); save(); return sync(false);
   }
+  const nk = t.closest("[data-newkey]");
+  if (nk) { if (!confirm("Give " + nk.dataset.newkey + " a new key? The old key stops working at once.")) return; state.outbox.push({ type: "resetKey", name: nk.dataset.newkey, rev: 1 }); save(); return sync(false); }
   const off = t.closest("[data-off]");
   if (off) { state.outbox.push({ type: "setActive", name: off.dataset.off, active: false, rev: 1 }); save(); return sync(false); }
   const hk = t.closest("[data-hidekey]"); if (hk) { state.newKeys.splice(+hk.dataset.hidekey, 1); save(); return render(); }

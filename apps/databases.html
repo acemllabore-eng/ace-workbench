@@ -339,12 +339,15 @@ function keep(d){
 }
 
 /* ---------- Server ---------- */
+// The key is only ever sent to a Google Apps Script web app (or a test server on this PC).
+const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
 async function api(method, payload){
   if(!state.cfg.url || !state.cfg.key) throw Object.assign(new Error("Not connected"), { setup:true });
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 90000);
   scan(1);
   try{
     const u = state.cfg.url.trim();
+    if(!okAddr(u)) throw new Error("The web app address in Settings is not a Google Apps Script address");
     let r;
     if(method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key, app: "db" }, payload)), { redirect:"follow", signal:ctl.signal });
     else r = await fetch(u, { method:"POST", redirect:"follow", signal:ctl.signal, headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device, app: "db" }, payload)) });
@@ -590,7 +593,7 @@ function renderTable(){
       <select class="f" id="fcol" aria-label="Filter column"><option value="">Filter by column…</option>${colOpts}</select>
       ${vals.length ? `<select class="f" id="fval" aria-label="Filter value"><option value="">Any value</option>${vals.map(x => `<option ${d.fval === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>` : ""}
       <button class="btn sm" id="colsBtn">Columns</button>
-      ${b && b.id ? `<a class="btn sm" href="https://docs.google.com/spreadsheets/d/${esc(b.id)}/edit#gid=${esc(d.gid || "")}" target="_blank" rel="noopener">${ICO.ext} Sheets</a>` : ""}
+      ${b && b.id && b.url ? `<a class="btn sm" href="https://docs.google.com/spreadsheets/d/${esc(b.id)}/edit#gid=${esc(d.gid || "")}" target="_blank" rel="noopener">${ICO.ext} Sheets</a>` : ""}
     </div>
     <div class="tbar"><span class="count" id="count"></span><span class="grow"></span>
       <span class="count">Header row <b>${d.headerRow}</b><button class="btn sm" id="hdrBtn" title="Pick which row holds the column names">Change</button></span>
@@ -790,8 +793,9 @@ function renderSettings(){
       <div class="grid2"><label class="l">Name<input class="f" id="pName" placeholder="Full name"></label>
         <label class="l">Role<select class="f" id="pRole"><option value="member">Member (view)</option><option value="head">Head (view and edit)</option><option value="admin">Admin (edit, add people)</option></select></label></div>
       <div style="margin-top:12px"><button class="btn primary" id="pAdd">Add and make a key</button></div><div id="pKey"></div>
-      <div class="people">${state.people.map(p => `<div class="person"><b>${esc(p.name)}</b><span class="tag ${p.role === "member" ? "dim" : "cy"}">${esc(p.role)}</span>${p.active ? "" : '<span class="tag dim">off</span>'}${p.name === state.me.name ? "" : `<button class="btn sm" data-act="${esc(p.name)}" data-on="${p.active ? "0" : "1"}">${p.active ? "Switch off" : "Switch on"}</button>`}</div>`).join("") || '<span class="muted">Loading…</span>'}</div></div>` : ""}`;
+      <div class="people">${state.people.map(p => `<div class="person"><b>${esc(p.name)}</b><span class="tag ${p.role === "member" ? "dim" : "cy"}">${esc(p.role)}</span>${p.active ? "" : '<span class="tag dim">off</span>'}${p.name === state.me.name ? "" : `<button class="btn sm" data-newkey="${esc(p.name)}">New key</button><button class="btn sm" data-act="${esc(p.name)}" data-on="${p.active ? "0" : "1"}">${p.active ? "Switch off" : "Switch on"}</button>`}</div>`).join("") || '<span class="muted">Loading…</span>'}</div></div>` : ""}`;
   $("cSave").onclick = async () => {
+    if(!okAddr($("cUrl").value.trim())){ $("cMsg").textContent = "That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec"; return; }
     state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.cfg.device = $("cDev").value.trim().slice(0, 40) || state.cfg.device; saveCfg(); awSignin(state.cfg.url, state.cfg.key);
     $("cMsg").textContent = "Connecting…";
     try{ const j = await api("GET", { action:"books" }); state.books = j.books; state.people = j.people || []; ls("db.books", state.books); toast("Connected as " + j.me.name); renderSettings(); }
@@ -809,6 +813,15 @@ function renderSettings(){
       $("cpKey").onclick = () => navigator.clipboard && navigator.clipboard.writeText(r.key).then(() => toast("Key copied"));
     }catch(e){ toast(errText(e)); }
   };
+  $("view").querySelectorAll("[data-newkey]").forEach(b => b.onclick = async () => {
+    if(!confirm("Give " + b.dataset.newkey + " a new key? The old key stops working at once.")) return;
+    try{
+      const j = await api("POST", { changes:[{ type:"resetKey", name:b.dataset.newkey }] }), r = j.results[0];
+      if(r.result !== "saved") return toast(r.error);
+      $("pKey").innerHTML = `<div class="banner ok" style="margin-top:12px"><div class="grow"><b>New key for ${esc(r.name)} (${esc(r.role)})</b>Shown once. The old key no longer works. Give this one to them privately.<div class="keybox">${esc(r.key)}</div><button class="btn sm" id="cpKey">Copy key</button></div></div>`;
+      $("cpKey").onclick = () => navigator.clipboard && navigator.clipboard.writeText(r.key).then(() => toast("Key copied"));
+    }catch(e){ toast(errText(e)); }
+  });
   $("view").querySelectorAll("[data-act]").forEach(b => b.onclick = async () => {
     try{ const j = await api("POST", { changes:[{ type:"setActive", name:b.dataset.act, active:b.dataset.on === "1" }] }); state.people = j.people; renderSettings(); }
     catch(e){ toast(errText(e)); }

@@ -667,6 +667,8 @@ function themeIcon(){
 $("themeTop").onclick = () => $("themeBtn").click();
 // One sign-in for every app (localStorage "aw.signin" = {url, key, name, role}); each app reads it when it loads.
 function signin(v){ try{ if(v !== undefined) localStorage.setItem("aw.signin", JSON.stringify(v)); return JSON.parse(localStorage.getItem("aw.signin") || "null"); }catch(e){ return null; } }
+// The key is only ever sent to a Google Apps Script web app (or a test server on this PC).
+const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
 function renderWho(){
   const s = signin(), b = $("whoBtn"), on = !!(s && s.key);
   b.classList.toggle("out", !on);
@@ -679,7 +681,8 @@ $("whoBtn").onclick = signOpen;
 $("sign").addEventListener("click", e => { if(e.target === $("sign")) $("sign").hidden = true; });
 $("sGo").onclick = async () => {
   const url = $("sUrl").value.trim(), key = $("sKey").value.trim().toUpperCase(), m = $("sMsg");
-  if(!/^https?:\/\//.test(url) || !key){ m.className = "msg bad"; m.textContent = "Enter the web app address and your key."; return; }
+  if(!url || !key){ m.className = "msg bad"; m.textContent = "Enter the web app address and your key."; return; }
+  if(!okAddr(url)){ m.className = "msg bad"; m.textContent = "That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec"; return; }
   m.className = "msg"; m.textContent = "Checking…"; $("sGo").disabled = true;
   try{
     const j = await fetch(url + (url.includes("?") ? "&" : "?") + new URLSearchParams({ app:"desk", action:"me", key }), { redirect:"follow" }).then(r => r.json());
