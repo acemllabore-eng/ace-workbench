@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chatroom</title>
+<style>
+/* Chatroom: rooms for the survey unit's employees. Part of the Survey Unit panel (same look).
+   Messages typed offline wait on this device and go out when online (backend/unit_hub.gs, ?app=chat). */
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#17181a; --muted:#6b6e73; --line:#e3e1dc; --hover:#f0eee9; --field:#ffffff;
+  --accent:#b8860b; --accent-ink:#ffffff; --accent-soft:#f7efd9; --mine:#f3e6c2;
+  --ok:#1d7a43; --bad:#b3261e; --bad-bg:#fbe7e4; --warn:#8f5b00; --warn-bg:#fbf0d9;
+  --shadow:0 1px 2px rgba(0,0,0,.05); --shadow-lg:0 16px 40px rgba(0,0,0,.2);
+  --font:"Inter","IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,monospace; --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f; --mine:#2c2412;
+  --ok:#5fcf8c; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f; --mine:#2c2412;
+  --ok:#5fcf8c; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+.muted{color:var(--muted)}
+header.top{flex:none;display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header.top h1{font-size:18px;margin:0}
+.sync{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-left:auto;min-width:0}
+.sync span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.dot.on{background:var(--ok)} .dot.off{background:var(--warn)} .dot.err{background:var(--bad)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{height:28px;padding:0 9px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none}
+.btn:disabled{opacity:.5;cursor:default}
+.wrap{flex:1;display:flex;min-height:0}
+nav.rooms{width:220px;flex:none;border-right:1px solid var(--line);padding:12px 10px;overflow:auto;display:flex;flex-direction:column;gap:2px}
+.rlbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px}
+.room{display:flex;align-items:center;gap:8px;border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:500;color:var(--muted);width:100%}
+.room:hover{background:var(--hover);color:var(--ink)}
+.room[aria-current="true"]{background:var(--accent-soft);color:var(--ink)}
+.room .h{font-family:var(--mono);opacity:.7}
+.room .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.lock{font-size:11px;color:var(--muted)}
+.people{margin-top:14px}
+.person{font-size:13px;padding:3px 10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person b{color:var(--ink);font-weight:500}
+section.chat{flex:1;display:flex;flex-direction:column;min-width:0}
+.rhead{flex:none;padding:10px 20px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:baseline}
+.rhead h2{margin:0;font-size:15px}
+.log{flex:1;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:2px}
+.older{align-self:center;margin-bottom:10px}
+.daysep{align-self:center;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--hover);border-radius:999px;padding:2px 10px;margin:12px 0 8px}
+.msg{max-width:min(620px,85%);align-self:flex-start;display:flex;flex-direction:column}
+.msg.me{align-self:flex-end;align-items:flex-end}
+.msg .who{font-size:12px;font-weight:600;color:var(--muted);margin:8px 4px 2px}
+.bub{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 11px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;position:relative;box-shadow:var(--shadow)}
+.msg.me .bub{background:var(--mine);border-color:transparent}
+.bub.rm{font-style:italic;color:var(--muted);background:none;box-shadow:none}
+.bub a{color:var(--accent)}
+.meta{font-size:11px;color:var(--muted);margin:1px 4px 0;display:flex;gap:8px;align-items:center}
+.meta button{border:0;background:none;color:var(--muted);cursor:pointer;padding:0;font-size:11px;text-decoration:underline;opacity:0}
+.msg:hover .meta button,.msg:focus-within .meta button{opacity:1}
+.meta .bad{color:var(--bad)}
+.empty{margin:auto;text-align:center;color:var(--muted);max-width:360px;padding:30px}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+form.compose{flex:none;display:flex;gap:8px;padding:12px 20px;border-top:1px solid var(--line);align-items:flex-end;background:var(--bg)}
+form.compose textarea{flex:1;resize:none;border:1px solid var(--line);border-radius:10px;background:var(--field);padding:9px 12px;min-height:40px;max-height:160px;line-height:1.4}
+form.compose .btn{height:40px}
+.note{flex:none;font-size:12.5px;color:var(--muted);padding:10px 20px;border-top:1px solid var(--line);text-align:center}
+.setup{max-width:520px;margin:30px auto;padding:0 20px}
+.setup label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;margin-bottom:10px}
+.setup input,.setup select{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:8px 10px;font-size:14px}
+.rooms .admin{margin-top:auto;padding:10px}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;font-weight:500;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+@media (max-width:720px){
+  header.top{padding:10px 16px}
+  .sync{margin-left:0;width:100%}
+  .wrap{flex-direction:column}
+  nav.rooms{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px 12px;overflow-x:auto;gap:6px;scrollbar-width:none}
+  .rlbl,.people,.rooms .admin{display:none}
+  .room{width:auto;flex:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+  .rhead{display:none}
+  .log{padding:12px 12px}
+  .msg{max-width:88%}
+  .meta button{opacity:1}
+  form.compose{padding:10px 12px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Chatroom</h1>
+  <div class="sync"><span class="dot" id="sDot"></span><span id="sText">Not connected</span></div>
+</header>
+<div class="wrap" id="wrap">
+  <nav class="rooms" id="rooms" aria-label="Rooms"></nav>
+  <section class="chat">
+    <div class="rhead" id="rhead"></div>
+    <div class="log" id="log" aria-live="polite"></div>
+    <form class="compose" id="compose" autocomplete="off">
+      <textarea id="txt" rows="1" maxlength="2000" placeholder="Message" aria-label="Message"></textarea>
+      <button class="btn primary" id="sendBtn" type="submit">Send</button>
+    </form>
+    <div class="note" id="note" hidden></div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+"use strict";
+const APP = "chat", LS = "chat.v1", KEEP = 400;  // messages kept per room on this device
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const hm = iso => new Date(iso).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+const dayLbl = iso => { const s = ymd(new Date(iso)), t = ymd(new Date()), y = ymd(new Date(Date.now() - 864e5)); return s === t ? "Today" : s === y ? "Yesterday" : new Date(iso).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric", year: "numeric" }); };
+// Links in a message become clickable (only http and https).
+const linkify = s => esc(s).replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)\]'"]/g, u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+
+function awSignin(url, key) {
+  try {
+    if (url !== undefined) localStorage.setItem("aw.signin", JSON.stringify({ url: url, key: key }));
+    return JSON.parse(localStorage.getItem("aw.signin") || "null");
+  } catch (e) { return null; }
+}
+function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, rooms: [], people: [], msgs: {}, last: 0, read: {}, outbox: [], room: "general", lastPull: "", seq: 0, more: {} }; }
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
+  s = Object.assign(blank(), s || {});
+  if (!s.cfg.device) s.cfg.device = (/Mobi|Android/i.test(navigator.userAgent) ? "PHONE-" : "PC-") + Math.random().toString(36).slice(2, 7).toUpperCase();
+  const si = awSignin();
+  if (si) { if (si.url) s.cfg.url = si.url; s.cfg.key = si.key || ""; }
+  return s;
+}
+let state = load(), storeOk = true;
+function save() { try { localStorage.setItem(LS, JSON.stringify(state)); storeOk = true; } catch (e) { storeOk = false; } }
+// Shown on screen: the tab is visible and, inside the panel, this app's frame is the one showing (a hidden frame has no width).
+const seen = () => !document.hidden && window.innerWidth > 0;
+const boss = () => !!state.me && (state.me.role === "head" || state.me.role === "admin");
+const room = () => state.rooms.find(r => r.id === state.room) || state.rooms[0] || { id: "general", name: "General", post: "all" };
+const canPost = r => !!state.me && (r.post !== "head" || boss());
+const roomMsgs = id => state.msgs[id] || [];
+const unread = id => state.me ? roomMsgs(id).filter(m => m.seq > (state.read[id] || 0) && m.from !== state.me.name && !m.removed_by).length : 0;
+
+const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
+let syncing = false, again = false, online = navigator.onLine, lastError = "";
+async function call(method, payload) {
+  const u = state.cfg.url;
+  if (!okAddr(u)) throw new Error("The web app address is not a Google Apps Script address");
+  let r;
+  if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key, app: APP }, payload)), { redirect: "follow" });
+  else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device, app: APP }, payload)) });
+  const j = await r.json();
+  if (!j.ok) throw Object.assign(new Error(j.error || "The Sheet refused the request"), { server: true });
+  return j;
+}
+function addMsgs(list) {
+  let fresh = 0;
+  list.forEach(m => {
+    const a = state.msgs[m.room] = state.msgs[m.room] || [];
+    const i = a.findIndex(x => x.seq === m.seq);
+    if (i >= 0) a[i] = m; else { a.push(m); fresh++; }
+  });
+  Object.keys(state.msgs).forEach(k => { state.msgs[k].sort((x, y) => x.seq - y.seq); if (state.msgs[k].length > KEEP) state.msgs[k] = state.msgs[k].slice(-KEEP); });
+  return fresh;
+}
+async function sync(quiet) {
+  if (!state.cfg.url || !state.cfg.key) { render(); return; }
+  if (syncing) { again = true; return; }
+  syncing = true; again = false;
+  try {
+    if (state.outbox.length) {
+      const sent = state.outbox.slice();
+      const res = await call("POST", { changes: sent.map(o => ({ type: o.type, room: o.room, text: o.text, client_ref: o.ref, seq: o.seq, name: o.name, post: o.post })) });
+      res.results.forEach((r, i) => {
+        const o = sent[i];
+        if (r.result === "saved" || o.type !== "send") state.outbox = state.outbox.filter(x => x !== o);
+        if (r.result !== "saved") {
+          if (o.type === "send") { o.error = r.error; } else toast(r.error);
+        } else if (o.type === "remove") {
+          roomMsgs(o.room).forEach(m => { if (m.seq === o.seq) { m.text = ""; m.removed_by = state.me.name; } });
+        }
+      });
+      if (res.rooms) state.rooms = res.rooms;
+    }
+    const before = state.last;
+    const p = await call("GET", { action: "pull", after: state.last, rsince: state.lastPull ? new Date(new Date(state.lastPull).getTime() - 120000).toISOString() : "" });
+    if (!state.me || state.me.name !== p.me.name) { const keep = state.cfg, ob = state.outbox; state = blank(); state.cfg = keep; state.outbox = ob; }
+    if (p.total < state.last) { state.msgs = {}; state.last = 0; }  // the tab was reset
+    state.me = p.me; state.rooms = p.rooms || state.rooms; state.people = p.people || state.people;
+    const fresh = addMsgs(p.messages || []);
+    (p.removed || []).forEach(seq => Object.values(state.msgs).forEach(a => a.forEach(m => { if (m.seq === seq) { m.text = ""; m.removed_by = m.removed_by || "?"; } })));
+    if (p.gap) Object.keys(state.msgs).forEach(k => { state.more[k] = true; });
+    if (!before && p.messages && p.messages.length) state.rooms.forEach(r => { if (!(r.id in state.read)) state.read[r.id] = Math.max(0, ...roomMsgs(r.id).map(m => m.seq)); });
+    if (!before && p.total > (p.messages || []).length) Object.keys(state.msgs).forEach(k => { state.more[k] = true; });
+    state.last = Math.max(state.last, p.total || 0); state.lastPull = p.server_time;
+    lastError = ""; online = true;
+    if (!state.rooms.some(r => r.id === state.room) && state.rooms[0]) state.room = state.rooms[0].id;
+    if (fresh && !seen()) beep();
+    save();
+  } catch (e) {
+    lastError = e.server ? e.message : "";
+    if (!e.server) online = false;
+    if (!quiet && e.server) toast(e.message);
+  } finally {
+    syncing = false; render();
+    if (again) setTimeout(() => sync(true), 0);
+  }
+}
+function beep() { try { document.title = "(" + state.rooms.reduce((a, r) => a + unread(r.id), 0) + ") Chatroom"; } catch (e) {} }
+
+/* ---------- Rendering ---------- */
+let stick = true;   // keep the view at the newest message unless the reader scrolled up
+function render() {
+  const signed = state.cfg.url && state.cfg.key;
+  renderSync();
+  const r = room();
+  if (!signed) {
+    $("rooms").innerHTML = ""; $("rhead").innerHTML = ""; $("compose").hidden = true; $("note").hidden = true;
+    $("log").innerHTML = `<div class="setup"><h2 style="font-size:16px">Sign in to chat</h2><p class="muted">Sign in once from the panel (top right), or here. Same web app address and key as every Survey Unit app.</p>
+      <label>Web app address<input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label>Your key<input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
+      <button class="btn primary" id="cSave" type="button">Sign in</button></div>`;
+    return;
+  }
+  if (state.me && seen()) { state.read[r.id] = Math.max(state.read[r.id] || 0, ...roomMsgs(r.id).map(m => m.seq), 0); save(); }
+  const total = state.rooms.reduce((a, x) => a + unread(x.id), 0);
+  document.title = total ? "(" + total + ") Chatroom" : "Chatroom";
+  $("rooms").innerHTML = `<div class="rlbl">Rooms</div>` + state.rooms.map(x => `<button class="room" data-room="${esc(x.id)}" aria-current="${x.id === r.id}"><span class="h">#</span><span class="nm">${esc(x.name)}</span>${unread(x.id) ? `<span class="badge">${unread(x.id)}</span>` : x.post === "head" ? '<span class="lock" title="Only the head and admin post here">head</span>' : ""}</button>`).join("")
+    + (state.people.length ? `<div class="people"><div class="rlbl">Members (${state.people.length})</div>${state.people.map(p => `<div class="person"><b>${esc(p.name)}</b>${p.role !== "member" ? " · " + esc(p.role) : ""}</div>`).join("")}</div>` : "")
+    + (state.me && state.me.role === "admin" ? `<div class="admin"><button class="btn sm" id="addRoom" type="button">Add a room</button></div>` : "");
+  $("rhead").innerHTML = `<h2># ${esc(r.name)}</h2><span class="muted" style="font-size:12.5px">${r.post === "head" ? "Only the head and admin post here" : "Everyone in the unit"}</span>`;
+  const can = canPost(r);
+  $("compose").hidden = !can; $("note").hidden = can;
+  if (!can) $("note").textContent = state.me ? "Only the head and admin post in " + r.name + "." : "Connecting…";
+  const log = $("log"), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+  const list = roomMsgs(r.id).map(m => Object.assign({}, m)).concat(state.outbox.filter(o => o.type === "send" && o.room === r.id).map(o => ({ seq: 0, room: o.room, from: state.me ? state.me.name : "", text: o.text, at: o.at, out: o })));
+  let html = state.more[r.id] && roomMsgs(r.id).length ? `<button class="btn sm older" id="older" type="button">Show older messages</button>` : "", lastDay = "", lastFrom = "", lastAt = 0;
+  list.forEach(m => {
+    const d = dayLbl(m.at), mine = state.me && m.from === state.me.name, t = new Date(m.at).getTime();
+    if (d !== lastDay) { html += `<div class="daysep">${esc(d)}</div>`; lastDay = d; lastFrom = ""; }
+    const head = m.from !== lastFrom || t - lastAt > 10 * 60000;
+    lastFrom = m.from; lastAt = t;
+    const canRm = m.seq && !m.removed_by && state.me && (mine || boss());
+    html += `<div class="msg${mine ? " me" : ""}">${head && !mine ? `<div class="who">${esc(m.from)}</div>` : ""}
+      <div class="bub${m.removed_by ? " rm" : ""}">${m.removed_by ? "Message removed" : linkify(m.text)}</div>
+      <div class="meta">${m.out ? (m.out.error ? `<span class="bad">Not sent: ${esc(m.out.error)}</span> <button data-drop="${esc(m.out.ref)}" style="opacity:1">Delete</button>` : online ? "Sending…" : "Waiting for a connection") : esc(hm(m.at))}
+        ${canRm ? `<button data-rm="${m.seq}" type="button">Remove</button>` : ""}</div></div>`;
+  });
+  if (!list.length) html = `<div class="empty"><b>No messages in # ${esc(r.name)} yet</b>${can ? "Say hello to the unit." : ""}</div>`;
+  log.innerHTML = html;
+  if (stick || atEnd) log.scrollTop = log.scrollHeight;
+}
+function renderSync() {
+  const n = state.outbox.filter(o => !o.error).length;
+  let c = "", text;
+  if (!state.cfg.url || !state.cfg.key) text = "Not signed in";
+  else if (lastError) { c = "err"; text = lastError; }
+  else if (!online) { c = "off"; text = "Offline" + (n ? " · " + n + " waiting to send" : " · showing messages kept on this device"); }
+  else { c = "on"; text = (state.me ? state.me.name : "Connecting…") + (n ? " · sending " + n : ""); }
+  if (!storeOk) { c = "err"; text = "This browser is not keeping messages on the device."; }
+  $("sDot").className = "dot " + c; $("sText").textContent = text;
+}
+
+/* ---------- Events ---------- */
+let toastT;
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3200); }
+function grow() { const t = $("txt"); t.style.height = "auto"; t.style.height = Math.min(160, t.scrollHeight) + "px"; }
+function send() {
+  const text = $("txt").value.trim(), r = room();
+  if (!text) return;
+  if (text.length > 2000) return toast("A message can be up to 2,000 characters.");
+  state.seq = (state.seq || 0) + 1;
+  state.outbox.push({ type: "send", room: r.id, text, at: new Date().toISOString(), ref: state.cfg.device + "-" + Date.now().toString(36) + "-" + state.seq });
+  $("txt").value = ""; grow(); stick = true; save(); render(); sync(true);
+}
+$("compose").addEventListener("submit", e => { e.preventDefault(); send(); });
+// Enter sends on a PC; Shift+Enter makes a new line. On a phone Enter is a new line and the button sends.
+$("txt").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); send(); } });
+$("txt").addEventListener("input", grow);
+$("log").addEventListener("scroll", () => { const l = $("log"); stick = l.scrollHeight - l.scrollTop - l.clientHeight < 60; });
+$("rooms").addEventListener("click", e => {
+  const b = e.target.closest("[data-room]");
+  if (b) { state.room = b.dataset.room; stick = true; save(); render(); if (!matchMedia("(pointer:coarse)").matches) $("txt").focus(); return; }
+  if (e.target.id === "addRoom") {
+    const name = (prompt("Name of the new room (for example: Drafting, SPLIT team)") || "").trim(); if (!name) return;
+    const post = confirm("Can everyone post in " + name + "?\n\nOK = everyone. Cancel = only the head and admin.") ? "all" : "head";
+    state.outbox.push({ type: "addRoom", name, post }); save(); sync(false);
+  }
+});
+$("log").addEventListener("click", async e => {
+  const rm = e.target.closest("[data-rm]");
+  if (rm) { if (!confirm("Remove this message for everyone?")) return; state.outbox.push({ type: "remove", seq: +rm.dataset.rm, room: state.room }); save(); return sync(false); }
+  const dr = e.target.closest("[data-drop]");
+  if (dr) { state.outbox = state.outbox.filter(o => o.ref !== dr.dataset.drop); save(); return render(); }
+  if (e.target.id === "older") {
+    const r = room(), first = roomMsgs(r.id)[0]; if (!first) return;
+    try {
+      const p = await call("GET", { action: "pull", room: r.id, before: first.seq });
+      const l = $("log"), h = l.scrollHeight;
+      (p.messages || []).forEach(m => { if (!roomMsgs(r.id).some(x => x.seq === m.seq)) state.msgs[r.id].push(m); });
+      state.msgs[r.id].sort((a, b) => a.seq - b.seq);
+      state.more[r.id] = !!p.more && (p.messages || []).length > 0;
+      stick = false; render(); l.scrollTop = l.scrollHeight - h;   // older ones are not trimmed until the next new message
+    } catch (err) { toast("Older messages need a connection."); }
+  }
+  if (e.target.id === "cSave") {
+    const url = $("cUrl").value.trim();
+    if (!okAddr(url)) return toast("That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec");
+    state.cfg.url = url; state.cfg.key = $("cKey").value.trim().toUpperCase(); state.last = 0; state.msgs = {}; lastError = ""; save(); awSignin(state.cfg.url, state.cfg.key); sync(false);
+  }
+});
+window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
+window.addEventListener("online", () => { online = true; sync(true); });
+window.addEventListener("offline", () => { online = false; renderSync(); render(); });
+window.addEventListener("storage", e => {
+  if (e.key === "aw.signin") { const s = awSignin(); if (s && (s.key !== state.cfg.key || s.url !== state.cfg.url)) { state = load(); state.last = 0; state.msgs = {}; sync(true); } }
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); sync(true); } });
+// New messages: every 5 seconds while the chat is on screen, every minute when it is in the background.
+let ticks = 0;
+setInterval(() => { ticks++; if (seen() || ticks % 12 === 0) sync(true); }, 5000);
+// Coming back to the chat inside the panel (its frame shown again): mark what is on screen as read.
+window.addEventListener("resize", () => { if (seen()) render(); });
+save(); render(); sync(true);
+</script>
+</body>
+</html>

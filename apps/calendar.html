@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Survey Calendar</title>
+<style>
+/* Survey Calendar: the unit's survey activities on a month calendar, shareable read-only with stakeholders.
+   Part of the Survey Unit panel (same look). Saved on this device first, sent to the Sheet when online (backend/unit_hub.gs, ?app=cal). */
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#17181a; --muted:#6b6e73; --line:#e3e1dc; --hover:#f0eee9; --field:#ffffff;
+  --accent:#b8860b; --accent-ink:#ffffff; --accent-soft:#f7efd9;
+  --ok:#1d7a43; --ok-bg:#e3f2e8; --bad:#b3261e; --bad-bg:#fbe7e4; --warn:#8f5b00; --warn-bg:#fbf0d9; --info:#2f5fa8; --info-bg:#e6eefa;
+  --shadow:0 1px 2px rgba(0,0,0,.05); --shadow-lg:0 16px 40px rgba(0,0,0,.2);
+  --font:"Inter","IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,monospace;
+  --r:10px; --gap-l:20px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310; --info:#8db4f0; --info-bg:#16213a;
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310; --info:#8db4f0; --info-bg:#16213a;
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);min-height:100vh}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:12px;padding:14px var(--gap-l) 0;flex-wrap:wrap}
+.hrow h1{font-size:18px;margin:0;letter-spacing:-.01em}
+.sync{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-left:auto}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.dot.on{background:var(--ok)} .dot.off{background:var(--warn)} .dot.err{background:var(--bad)}
+.tabs{display:flex;gap:4px;padding:8px var(--gap-l) 0;overflow-x:auto;scrollbar-width:none}
+.tab{border:0;background:none;padding:8px 12px 10px;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-weight:500;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding:var(--gap-l);max-width:1180px;margin:0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:500;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{height:28px;padding:0 9px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none}
+.btn:disabled{opacity:.5;cursor:default}
+.btn[hidden]{display:none}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:var(--r);margin-bottom:var(--gap-l);border:1px solid}
+.banner.bad{background:var(--bad-bg);border-color:var(--bad)}
+.banner b{display:block;margin-bottom:2px}
+.prob{border-top:1px solid var(--line);padding:10px 0 0;margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.empty{padding:40px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r)}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--hover);color:var(--muted);white-space:nowrap}
+.pill.pending{background:var(--accent-soft);color:var(--accent)}
+.st-Planned{background:var(--info-bg);color:var(--info)} .st-Confirmed{background:var(--ok-bg);color:var(--ok)}
+.st-Postponed{background:var(--warn-bg);color:var(--warn)} .st-Done{background:var(--hover);color:var(--muted)} .st-Cancelled{background:var(--bad-bg);color:var(--bad)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar h2{font-size:17px;margin:0 6px;min-width:150px}
+.toolbar select,.toolbar input{height:34px;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 8px;max-width:100%}
+.toolbar .grow{flex:1}
+/* Month */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--line);gap:1px}
+.cal .hd{background:var(--bg);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:8px 10px}
+.day{background:var(--panel);min-height:104px;padding:6px 6px 8px;display:flex;flex-direction:column;gap:3px;min-width:0;cursor:pointer}
+.day:hover{background:var(--hover)}
+.day.out{background:var(--bg);color:var(--muted)}
+.day .n{font-size:12.5px;font-weight:600;color:var(--muted)}
+.day.is-today .n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink)}
+.ev{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--info);background:var(--info-bg);color:var(--ink);border-radius:5px;padding:2px 6px;font-size:11.5px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.ev.a-Field-survey,.ev.a-Relocation-survey{border-left-color:var(--accent);background:var(--accent-soft)}
+.ev.a-Meeting,.ev.a-Training{border-left-color:var(--ok);background:var(--ok-bg)}
+.ev.s-Cancelled{text-decoration:line-through;opacity:.6} .ev.s-Done{opacity:.6} .ev.s-Postponed{border-left-color:var(--warn);background:var(--warn-bg)}
+.ev.cont{border-left-color:transparent}
+.more{font-size:11px;color:var(--muted)}
+.dsm{display:none}
+/* List */
+.lgrp{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+.card{display:flex;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow)}
+.card:hover{background:var(--hover)}
+.card .when{width:108px;flex:none}
+.card .when b{display:block}
+.card .when span{font-size:12.5px;color:var(--muted)}
+.card .what{min-width:0;flex:1}
+.card .t{font-weight:600}
+.card .m{font-size:13px;color:var(--muted)}
+.card.past{opacity:.7}
+/* Drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:var(--bg);z-index:21;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)}
+.scrim[hidden],.drawer[hidden]{display:none}
+.dhead{display:flex;align-items:center;gap:10px;padding:14px var(--gap-l);border-bottom:1px solid var(--line);background:var(--panel)}
+.dhead h2{margin:0;font-size:16px}
+.dbody{flex:1;overflow:auto;padding:var(--gap-l)}
+.dfoot{display:flex;gap:8px;padding:12px var(--gap-l);border-top:1px solid var(--line);background:var(--panel);flex-wrap:wrap;align-items:center}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fgrid .full{grid-column:1/-1}
+label.f,div.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;min-width:0}
+label.f input,label.f select,label.f textarea{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:8px 10px;font-size:14px;font-weight:400;width:100%}
+label.f textarea{min-height:64px;resize:vertical}
+.hint{font-weight:400;color:var(--muted);font-size:12px}
+.people{display:flex;flex-wrap:wrap;gap:6px}
+.people label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--field);font-weight:400;font-size:13px;cursor:pointer}
+.people label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.chk{display:flex;gap:8px;align-items:flex-start;font-weight:400;font-size:13.5px}
+.chk input{margin-top:3px}
+.ferr{color:var(--bad);font-size:13px;width:100%}
+.ferr:empty{display:none}
+.ro{font-size:13.5px;line-height:1.6}
+.ro dt{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-top:10px}
+.ro dd{margin:0}
+.hist{font-size:12.5px;border-left:2px solid var(--line);padding-left:12px;margin-top:14px}
+.hist div{margin-bottom:6px}
+/* Share and settings */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:var(--gap-l);margin-bottom:var(--gap-l);box-shadow:var(--shadow)}
+.panel h2{font-size:15px;margin:0 0 4px}
+.panel p{margin:0 0 14px;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row label.f{flex:1;min-width:200px}
+.linkbox{font-family:var(--mono);font-size:12.5px;padding:10px 12px;background:var(--hover);border-radius:8px;word-break:break-all;margin:0 0 10px;user-select:all}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;font-weight:500;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+@media (max-width:720px){
+  .hrow,.tabs,main{padding-left:16px;padding-right:16px}
+  .sync{margin-left:0;width:100%}
+  .cal .hd{padding:6px 2px;text-align:center}
+  .day{min-height:56px;padding:4px 2px;align-items:center}
+  .day .ev,.day .more{display:none}
+  .dsm{display:flex;gap:3px;flex-wrap:wrap;justify-content:center}
+  .dsm i{width:6px;height:6px;border-radius:50%;background:var(--info)}
+  .dsm i.a{background:var(--accent)}
+  .fgrid{grid-template-columns:1fr}
+  .card{flex-direction:column;gap:2px}
+  .card .when{width:auto}
+  .card .when b,.card .when span{display:inline;margin-right:8px}
+  .toolbar h2{min-width:0;flex:1 0 auto;font-size:16px;text-align:center}
+  .toolbar .grow{display:none}
+}
+@media (prefers-reduced-motion:no-preference){ .btn,.day,.tab,.card{transition:background .12s,border-color .12s} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="hrow">
+    <h1>Survey Calendar</h1>
+    <div class="sync"><span class="dot" id="sDot"></span><span id="sText">Not connected</span>
+      <button class="btn sm" id="syncBtn">Sync now</button></div>
+  </div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-v="month">Month</button>
+    <button class="tab" role="tab" data-v="list">List</button>
+    <button class="tab" role="tab" data-v="share">Share</button>
+    <button class="tab" role="tab" data-v="settings">Settings</button>
+  </nav>
+</header>
+<main id="main"></main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-labelledby="dTitle" role="dialog">
+  <div class="dhead"><div><h2 id="dTitle">Activity</h2><div class="muted" id="dSub" style="font-size:12.5px"></div></div><span style="flex:1"></span><button class="btn ghost sm" id="dClose">Close</button></div>
+  <div class="dbody" id="dBody"></div>
+  <div class="dfoot">
+    <div class="ferr" id="fErr" role="alert"></div>
+    <button class="btn primary" id="fSave">Save</button>
+    <button class="btn" id="fCancel">Cancel</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="fIcs" hidden>Add to my calendar</button>
+    <button class="btn" id="fHist" hidden>History</button>
+  </div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+"use strict";
+const APP = "cal", LS = "cal.v1";
+const FIELDS = ["title", "activity", "start", "end", "time", "place", "personnel", "others", "stakeholders", "status", "public_note", "notes", "shared"];
+const ACTIVITIES = ["Field survey", "Relocation survey", "Ocular inspection", "Verification", "Meeting", "Training", "Other"];
+const STATUSES = ["Planned", "Confirmed", "Postponed", "Done", "Cancelled"];
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const today = () => ymd(new Date());
+const addDays = (s, n) => { const d = new Date(s + "T00:00:00"); d.setDate(d.getDate() + n); return ymd(d); };
+const fmtTime = iso => iso ? new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+const fmtDay = s => new Date(s + "T00:00:00").toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" });
+const fmtLong = s => new Date(s + "T00:00:00").toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+const span = v => fmtDay(v.start) + (v.end && v.end !== v.start ? " – " + fmtDay(v.end) : "");
+const names = s => String(s || "").split(",").map(x => x.trim()).filter(Boolean);
+const cls = s => String(s || "").replace(/[^A-Za-z]+/g, "-");
+
+/* ---------- State, kept on this device ---------- */
+function awSignin(url, key) {
+  try {
+    if (url !== undefined) localStorage.setItem("aw.signin", JSON.stringify({ url: url, key: key }));
+    return JSON.parse(localStorage.getItem("aw.signin") || "null");
+  } catch (e) { return null; }
+}
+function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, people: [], items: {}, outbox: [], problems: [], lastPull: "", lastSync: "", share: "", seq: 0 }; }
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
+  s = Object.assign(blank(), s || {});
+  if (!s.cfg.device) s.cfg.device = (/Mobi|Android/i.test(navigator.userAgent) ? "PHONE-" : "PC-") + Math.random().toString(36).slice(2, 7).toUpperCase();
+  const si = awSignin();
+  if (si) { if (si.url) s.cfg.url = si.url; s.cfg.key = si.key || ""; }
+  return s;
+}
+let state = load(), storeOk = true;
+function save() { try { localStorage.setItem(LS, JSON.stringify(state)); storeOk = true; } catch (e) { storeOk = false; } }
+const keyOf = it => it.id || it.tmp;
+const pending = k => state.outbox.some(o => o.type === "save" && (o.id || o.tmp) === k);
+const boss = () => !!state.me && (state.me.role === "head" || state.me.role === "admin");
+const canEdit = v => !!state.me && (!v || !v.created_by || boss() || v.created_by === state.me.name || names(v.personnel).includes(state.me.name));
+function newTmp() { state.seq = (state.seq || 0) + 1; return "tmp-" + state.cfg.device + "-" + Date.now().toString(36) + "-" + state.seq; }
+
+/* ---------- Talking to the Sheet ---------- */
+const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
+let syncing = false, syncAgain = false, online = navigator.onLine, lastError = "";
+async function call(method, payload) {
+  const u = state.cfg.url;
+  if (!okAddr(u)) throw new Error("The web app address in Settings is not a Google Apps Script address");
+  let r;
+  if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key, app: APP }, payload)), { redirect: "follow" });
+  else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device, app: APP }, payload)) });
+  const j = await r.json();
+  if (!j.ok) throw Object.assign(new Error(j.error || "The Sheet refused the request"), { server: true });
+  return j;
+}
+async function sync(quiet) {
+  if (!state.cfg.url || !state.cfg.key) return;
+  if (syncing) { syncAgain = true; return; }
+  syncing = true; syncAgain = false; renderSync();
+  try {
+    if (state.outbox.length) {
+      const sent = state.outbox.slice(), revs = sent.map(o => o.rev);
+      const res = await call("POST", { changes: sent.map(o => ({ type: o.type, id: o.id, tmp: o.tmp, baseVersion: o.baseVersion, data: o.data })) });
+      res.results.forEach((r, i) => {
+        const o = sent[i], k = o.id || o.tmp;
+        const changedSince = state.outbox.includes(o) && o.rev !== revs[i];
+        if (!changedSince) state.outbox = state.outbox.filter(x => x !== o);
+        if (o.type === "resetShare") { if (r.result === "saved") { state.share = r.share; toast("New link made. The old link no longer opens."); } else state.problems.push({ kind: "rejected", what: "New share link", error: r.error }); return; }
+        const what = (o.data && o.data.title) || k;
+        if (r.result === "saved" || r.result === "same") {
+          if (o.tmp && state.items[o.tmp]) delete state.items[o.tmp];
+          state.items[r.id] = Object.assign({}, r.record);
+          if (changedSince) { o.id = r.id; o.tmp = ""; o.baseVersion = r.record.version; Object.assign(state.items[r.id], o.data); }
+        } else if (r.result === "conflict") {
+          if (r.server) state.items[r.server.id] = Object.assign({}, r.server);
+          state.problems.push({ kind: "conflict", key: r.server ? r.server.id : k, mine: o.data, what, detail: "Someone changed this activity first; the Sheet's copy is showing now." });
+        } else {
+          if (r.server) state.items[r.server.id] = Object.assign({}, r.server); else if (o.tmp) delete state.items[o.tmp];
+          state.problems.push({ kind: "rejected", key: r.server ? r.server.id : "", mine: o.data, what, error: r.error });
+        }
+      });
+      if (res.share) state.share = res.share;
+      state.me = res.me; save();
+    }
+    const since = state.lastPull ? new Date(new Date(state.lastPull).getTime() - 120000).toISOString() : "";
+    const p = await call("GET", { action: "pull", since });
+    if (!state.me || state.me.name !== p.me.name) state.items = {};
+    state.me = p.me; state.people = p.people || state.people; state.share = p.share || state.share;
+    (p.items || []).forEach(s => {
+      const loc = state.items[s.id];
+      if (pending(s.id)) return;
+      if (!loc || (Number(s.version) || 0) >= (Number(loc.version) || 0)) state.items[s.id] = s;
+    });
+    state.lastPull = p.server_time; state.lastSync = new Date().toISOString(); lastError = ""; online = true;
+    save();
+  } catch (e) {
+    lastError = e.server ? e.message : "";
+    if (!e.server) online = false;
+    if (!quiet && e.server) toast(e.message);
+  } finally {
+    syncing = false; render();
+    if (syncAgain && online && state.outbox.length) setTimeout(() => sync(true), 0);
+  }
+}
+function queueSave(it, data) {
+  const k = keyOf(it), o = state.outbox.find(x => x.type === "save" && (x.id || x.tmp) === k);
+  if (o) { o.data = data; o.rev++; }
+  else state.outbox.push({ type: "save", id: it.id || "", tmp: it.id ? "" : it.tmp, baseVersion: Number(it.version) || 0, data, rev: 1 });
+  state.items[k] = Object.assign({}, it, data, it.id ? {} : { tmp: it.tmp, created_by: state.me ? state.me.name : "" });
+  save(); render(); sync(true);
+}
+
+/* ---------- Views ---------- */
+let view = "month", month = today().slice(0, 7), filt = { act: "", who: "", q: "", past: false };
+try { view = sessionStorage.getItem("cal.view") || view; month = sessionStorage.getItem("cal.month") || month; } catch (e) {}
+const all = () => Object.values(state.items).sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : String(a.title).localeCompare(String(b.title)));
+const on = (v, d) => v.start <= d && (v.end || v.start) >= d;
+function shiftMonth(ym, n) { const d = new Date(ym + "-01T00:00:00"); d.setMonth(d.getMonth() + n); return ymd(d).slice(0, 7); }
+
+function render() {
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === view));
+  renderSync();
+  $("main").innerHTML = problemsHtml() + ({ month: monthHtml, list: listHtml, share: shareHtml, settings: settingsHtml }[view])();
+  try { sessionStorage.setItem("cal.view", view); sessionStorage.setItem("cal.month", month); } catch (e) {}
+}
+function renderSync() {
+  const n = state.outbox.length;
+  let c = "", text;
+  if (!state.cfg.url || !state.cfg.key) text = "Not connected. Sign in from the panel or in Settings.";
+  else if (syncing) { c = "on"; text = "Syncing…"; }
+  else if (lastError) { c = "err"; text = lastError; }
+  else if (!online) { c = "off"; text = "Offline · " + (n ? n + (n === 1 ? " change" : " changes") + " kept on this device, will send when online" : "showing the copy on this device"); }
+  else { c = "on"; text = (state.me ? state.me.name + " · " : "") + (n ? n + " waiting to send" : "Synced " + fmtTime(state.lastSync)); }
+  if (!storeOk) { c = "err"; text = "This browser is not keeping changes on the device. Keep the page open until it syncs."; }
+  $("sDot").className = "dot " + c; $("sText").textContent = text;
+  $("syncBtn").disabled = syncing || !state.cfg.url || !state.cfg.key;
+}
+function problemsHtml() {
+  if (!state.problems.length) return "";
+  return `<div class="banner bad" role="alert"><div style="flex:1"><b>${state.problems.length} ${state.problems.length === 1 ? "change was" : "changes were"} not saved to the Sheet</b>
+    ${state.problems.map((p, i) => `<div class="prob"><div style="flex:1;min-width:220px"><span>${esc(p.what)}</span><br><span class="muted">${esc(p.kind === "conflict" ? p.detail : p.error)}</span></div>
+      ${p.mine ? `<button class="btn sm" data-act="fix" data-i="${i}">${p.kind === "conflict" ? "Use my version" : "Fix and save"}</button>` : ""}
+      <button class="btn sm ghost" data-act="dismiss" data-i="${i}">Dismiss</button></div>`).join("")}</div></div>`;
+}
+function connectHint() {
+  return state.cfg.key ? "" : `<div class="empty" style="margin-bottom:16px"><b>Not signed in</b>Sign in once from the panel (top right), or in Settings here. Activities you add are kept on this device until then.</div>`;
+}
+function monthHtml() {
+  const first = new Date(month + "-01T00:00:00"), title = first.toLocaleDateString("en-PH", { month: "long", year: "numeric" });
+  const startGrid = new Date(first); startGrid.setDate(1 - ((first.getDay() + 6) % 7));
+  const evs = all(), t = today();
+  let cells = "";
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(startGrid); d.setDate(startGrid.getDate() + i);
+    const s = ymd(d), inMonth = s.slice(0, 7) === month;
+    if (i >= 35 && !inMonth) break;
+    const here = evs.filter(v => on(v, s)), show = here.slice(0, 3);
+    cells += `<div class="day${inMonth ? "" : " out"}${s === t ? " is-today" : ""}" data-day="${s}"><span class="n">${d.getDate()}</span>
+      ${show.map(v => `<button class="ev a-${cls(v.activity)} s-${cls(v.status)}${v.start < s && (d.getDay() !== 1) ? " cont" : ""}" data-ev="${esc(keyOf(v))}" title="${esc(v.title + " · " + v.activity + (v.place ? " · " + v.place : ""))}">${v.start === s || d.getDay() === 1 ? esc(v.title) : "&nbsp;"}</button>`).join("")}
+      ${here.length > 3 ? `<span class="more">+${here.length - 3} more</span>` : ""}
+      <span class="dsm">${here.slice(0, 4).map(v => `<i class="${/survey/i.test(v.activity) ? "a" : ""}"></i>`).join("")}</span></div>`;
+  }
+  const inM = evs.filter(v => v.start.slice(0, 7) <= month && (v.end || v.start).slice(0, 7) >= month);
+  return connectHint() + `<div class="toolbar"><button class="btn" data-mon="-1" aria-label="Previous month">‹</button><h2>${esc(title)}</h2><button class="btn" data-mon="1" aria-label="Next month">›</button>
+      <button class="btn ghost" data-mon="0">This month</button><span class="grow"></span><button class="btn primary" data-new="${t.slice(0, 7) === month ? t : month + "-01"}">Add activity</button></div>
+    <div class="cal">${WEEKDAYS.map(w => `<div class="hd">${w}</div>`).join("")}${cells}</div>
+    <div class="lgrp">${inM.length} ${inM.length === 1 ? "activity" : "activities"} this month</div>
+    ${inM.map(cardHtml).join("") || `<div class="empty"><b>Nothing scheduled</b>Click a day or "Add activity".</div>`}`;
+}
+function cardHtml(v) {
+  const k = keyOf(v), past = (v.end || v.start) < today();
+  return `<div class="card${past ? " past" : ""}" data-ev="${esc(k)}"><div class="when"><b>${esc(span(v))}</b>${v.time ? `<span>${esc(v.time)}</span>` : ""}</div>
+    <div class="what"><div class="t">${esc(v.title)} <span class="pill st-${cls(v.status)}">${esc(v.status)}</span>${pending(k) ? ' <span class="pill pending">Not sent yet</span>' : ""}${v.shared === "no" ? ' <span class="pill">Not shared</span>' : ""}</div>
+      <div class="m">${esc(v.activity)}${v.place ? " · " + esc(v.place) : ""}</div>
+      ${v.personnel || v.others ? `<div class="m">Personnel: ${esc([v.personnel, v.others].filter(Boolean).join(", "))}</div>` : ""}
+      ${v.stakeholders ? `<div class="m">With: ${esc(v.stakeholders)}</div>` : ""}</div></div>`;
+}
+function listHtml() {
+  const t = today(), q = filt.q.toLowerCase();
+  const rows = all().filter(v => (filt.past || (v.end || v.start) >= t) && (!filt.act || v.activity === filt.act) && (!filt.who || names(v.personnel).includes(filt.who))
+    && (!q || [v.title, v.place, v.personnel, v.others, v.stakeholders, v.id].join(" ").toLowerCase().includes(q)));
+  const groups = {};
+  rows.forEach(v => { const g = v.start.slice(0, 7); (groups[g] = groups[g] || []).push(v); });
+  return connectHint() + `<div class="toolbar">
+      <input id="lq" type="search" placeholder="Search title, place, people" value="${esc(filt.q)}" style="min-width:200px;flex:1">
+      <select id="lact"><option value="">All activities</option>${ACTIVITIES.map(a => `<option${a === filt.act ? " selected" : ""}>${esc(a)}</option>`).join("")}</select>
+      <select id="lwho"><option value="">All personnel</option>${state.people.map(p => `<option${p.name === filt.who ? " selected" : ""}>${esc(p.name)}</option>`).join("")}</select>
+      <label class="chk" style="align-items:center"><input type="checkbox" id="lpast"${filt.past ? " checked" : ""}> Show past</label>
+      <button class="btn primary" data-new="${t}">Add activity</button></div>
+    ${Object.keys(groups).sort().map(g => `<div class="lgrp">${esc(new Date(g + "-01T00:00:00").toLocaleDateString("en-PH", { month: "long", year: "numeric" }))}</div>${groups[g].map(cardHtml).join("")}`).join("")
+      || `<div class="empty"><b>No activities${filt.past ? "" : " coming up"}</b>${filt.q || filt.act || filt.who ? "Nothing matches the filter." : "Add the first one."}</div>`}`;
+}
+function shareHtml() {
+  const shared = all().filter(v => v.shared !== "no" && (v.end || v.start) >= today() && v.status !== "Cancelled").length;
+  const link = state.share, ics = link ? link + "&format=ics" : "";
+  return `<section class="panel"><h2>Link for stakeholders</h2>
+      <p>Anyone with this link sees the shared activities read-only: dates, place, personnel, stakeholders, status and the note for stakeholders. Internal notes and activities marked "Not shared" are never shown. No key is needed, so send it only to the people involved.</p>
+      ${link ? `<div class="linkbox" id="shareLink">${esc(link)}</div>
+        <div class="row"><button class="btn primary" data-copy="link">Copy link</button><a class="btn" href="${esc(link)}" target="_blank" rel="noopener">Open it</a>
+        ${state.me && state.me.role === "admin" ? `<button class="btn" id="resetShare">Make a new link</button>` : ""}</div>
+        <p style="margin:14px 0 0">${shared} shared ${shared === 1 ? "activity" : "activities"} coming up. The page always shows the latest.</p>`
+      : `<div class="empty"><b>${state.cfg.key ? "Link not available yet" : "Sign in to see the link"}</b>${state.cfg.key ? "Sync once while online. If it stays empty, the admin runs setupSurveyUnit in the Apps Script project." : ""}</div>`}</section>
+    ${link ? `<section class="panel"><h2>Calendar file</h2><p>For Google Calendar, Outlook or a phone calendar: the shared activities as an .ics file. Open the link and import the file. It is a copy: import it again for later changes.</p>
+      <div class="linkbox">${esc(ics)}</div><div class="row"><button class="btn" data-copy="ics">Copy file link</button></div></section>` : ""}
+    <section class="panel"><h2>One activity</h2><p>Open an activity and use "Add to my calendar" to save just that one to this phone or PC.</p></section>`;
+}
+function settingsHtml() {
+  return `<section class="panel"><h2>Connection</h2><p>Same web app address and key as every Survey Unit app. Signing in here signs in the others too.</p>
+      <div class="row"><label class="f"><span>Web app address</span><input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https:&#47;&#47;script.google.com/macros/s/…/exec"></label>
+      <label class="f" style="max-width:220px"><span>Your key</span><input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
+      <button class="btn primary" id="cSave">Save and connect</button></div>
+      <p style="margin:12px 0 0">This device: <span class="mono">${esc(state.cfg.device)}</span>${state.me ? ` · Signed in as <b>${esc(state.me.name)}</b> (${esc(state.me.role)})` : ""}</p></section>
+    <section class="panel"><h2>On this device</h2><p>${Object.keys(state.items).length} activities kept here · ${state.outbox.length} waiting to send${state.lastSync ? " · last synced " + esc(fmtTime(state.lastSync)) : ""}.</p>
+      <button class="btn" id="cForget">Remove this device's copy</button></section>`;
+}
+
+/* ---------- Drawer ---------- */
+let editing = null;
+function openDrawer(v, preset) {
+  const isNew = !v;
+  editing = v ? Object.assign({}, v) : Object.assign({ tmp: newTmp(), version: 0, activity: "Field survey", status: "Planned", shared: "yes", start: today(), end: "" }, preset || {});
+  if (preset && v) Object.assign(editing, preset);
+  const e = editing, mine = canEdit(isNew ? null : v);
+  $("dTitle").textContent = isNew ? "New activity" : e.title || "Activity";
+  $("dSub").textContent = isNew ? "Saved on this device first" : (e.id || "Not sent yet") + (e.created_by ? " · added by " + e.created_by : "");
+  $("fErr").textContent = "";
+  $("fSave").hidden = $("fCancel").hidden = !mine;
+  $("fHist").hidden = !e.id; $("fIcs").hidden = isNew;
+  if (!mine) {
+    $("dBody").innerHTML = `<dl class="ro"><dt>When</dt><dd>${esc(span(e))}${e.time ? " · " + esc(e.time) : ""}</dd><dt>Activity</dt><dd>${esc(e.activity)} · <span class="pill st-${cls(e.status)}">${esc(e.status)}</span></dd>
+      ${e.place ? `<dt>Place</dt><dd>${esc(e.place)}</dd>` : ""}${e.personnel || e.others ? `<dt>Personnel</dt><dd>${esc([e.personnel, e.others].filter(Boolean).join(", "))}</dd>` : ""}
+      ${e.stakeholders ? `<dt>Stakeholders</dt><dd>${esc(e.stakeholders)}</dd>` : ""}${e.public_note ? `<dt>Note for stakeholders</dt><dd>${esc(e.public_note)}</dd>` : ""}
+      ${e.notes ? `<dt>Internal notes</dt><dd>${esc(e.notes)}</dd>` : ""}</dl><p class="muted" style="margin-top:16px">Only the person who added it, its personnel or the head can change it.</p><div id="dHist"></div>`;
+  } else {
+    const on = names(e.personnel);
+    const extra = on.filter(n => !state.people.some(p => p.name === n));
+    $("dBody").innerHTML = `<form id="form" class="fgrid" novalidate>
+      <label class="f full"><span>Title</span><input name="title" maxlength="200" value="${esc(e.title || "")}" placeholder="e.g. Relocation survey, Lot 1234 (LHID 0505…)"></label>
+      <label class="f"><span>Activity</span><select name="activity">${ACTIVITIES.map(a => `<option${a === e.activity ? " selected" : ""}>${esc(a)}</option>`).join("")}</select></label>
+      <label class="f"><span>Status</span><select name="status">${STATUSES.map(a => `<option${a === e.status ? " selected" : ""}>${esc(a)}</option>`).join("")}</select></label>
+      <label class="f"><span>Start</span><input type="date" name="start" value="${esc(e.start || "")}"></label>
+      <label class="f"><span>End <span class="hint">(blank = one day)</span></span><input type="date" name="end" value="${esc(e.end && e.end !== e.start ? e.end : "")}"></label>
+      <label class="f full"><span>Time <span class="hint">(optional)</span></span><input name="time" maxlength="60" value="${esc(e.time || "")}" placeholder="e.g. 7:00 AM, assembly at the provincial office"></label>
+      <label class="f full"><span>Place</span><input name="place" maxlength="200" value="${esc(e.place || "")}" placeholder="Barangay, municipality"></label>
+      <div class="f full"><span>Survey personnel</span><div class="people">${state.people.map(p => `<label><input type="checkbox" name="pp" value="${esc(p.name)}"${on.includes(p.name) ? " checked" : ""}> ${esc(p.name)}</label>`).join("")
+        || `<span class="hint">The member list comes from the Sheet after the first sync.</span>`}${extra.map(n => `<label><input type="checkbox" name="pp" value="${esc(n)}" checked> ${esc(n)}</label>`).join("")}</div></div>
+      <label class="f full"><span>Others involved <span class="hint">(people outside the unit)</span></span><input name="others" maxlength="300" value="${esc(e.others || "")}" placeholder="e.g. LO representative, BARC chair"></label>
+      <label class="f full"><span>Stakeholders</span><input name="stakeholders" maxlength="300" value="${esc(e.stakeholders || "")}" placeholder="e.g. MARO Mobo, Landowner, LBP"></label>
+      <label class="f full"><span>Note for stakeholders <span class="hint">(shown on the shared link)</span></span><textarea name="public_note" maxlength="1000" placeholder="e.g. Please bring the owner's copy of the title">${esc(e.public_note || "")}</textarea></label>
+      <label class="f full"><span>Internal notes <span class="hint">(the unit only)</span></span><textarea name="notes" maxlength="2000">${esc(e.notes || "")}</textarea></label>
+      <label class="chk full"><input type="checkbox" name="shared"${e.shared !== "no" ? " checked" : ""}> <span>Show on the stakeholders' link</span></label>
+    </form><div id="dHist"></div>`;
+    $("form").addEventListener("submit", ev => { ev.preventDefault(); saveDrawer(); });
+  }
+  $("scrim").hidden = $("drawer").hidden = false;
+  const first = $("dBody").querySelector("input[name=title]"); if (first && isNew) first.focus();
+}
+function closeDrawer() { $("scrim").hidden = $("drawer").hidden = true; editing = null; }
+function formData() {
+  const f = $("form"), d = {};
+  ["title", "activity", "start", "end", "time", "place", "others", "stakeholders", "status", "public_note", "notes"].forEach(k => { d[k] = f.elements[k].value.trim(); });
+  d.personnel = [...f.querySelectorAll("input[name=pp]:checked")].map(x => x.value).join(", ");
+  d.shared = f.elements.shared.checked ? "yes" : "no";
+  if (!d.end) d.end = d.start;
+  return d;
+}
+function check(d) {
+  if (!d.title) return "Type a title.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.start)) return "Choose the start date.";
+  if (d.end < d.start) return "The end date is before the start date.";
+  return "";
+}
+function saveDrawer() {
+  if (!$("form")) return;
+  const d = formData(), err = check(d);
+  if (err) { $("fErr").textContent = err; return; }
+  queueSave(editing, d);
+  toast(state.cfg.key ? "Saved on this device. Sending…" : "Saved on this device. Sign in to send it to the Sheet.");
+  month = d.start.slice(0, 7); closeDrawer(); render();
+}
+async function showHistory() {
+  if (!editing || !editing.id) return;
+  try {
+    const h = await call("GET", { action: "history", id: editing.id });
+    $("dHist").innerHTML = `<div class="hist">${h.history.map(x => `<div><b>v${x.version}</b> ${esc(fmtTime(x.time))} · ${esc(x.by)}<br><span class="muted">${esc(Object.keys(JSON.parse(x.changed || "{}")).join(", "))}</span></div>`).join("") || "No history."}</div>`;
+  } catch (e) { toast("History needs a connection."); }
+}
+// One activity as an .ics file, saved to this device (same format as the stakeholders' file).
+function icsOne(v) {
+  const t = s => String(s || "").replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/([,;])/g, "\\$1");
+  const day = (s, n) => addDays(s, n || 0).replace(/-/g, "");
+  const fold = l => { const o = []; while (l.length > 73) { o.push(l.slice(0, 73)); l = " " + l.slice(73); } o.push(l); return o.join("\r\n"); };
+  const desc = [v.activity + " · " + v.status, v.time ? "Time: " + v.time : "", v.personnel ? "Survey personnel: " + v.personnel : "", v.others ? "Others: " + v.others : "", v.stakeholders ? "Stakeholders: " + v.stakeholders : "", v.public_note || ""].filter(Boolean).join("\n");
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Survey Unit Masbate//Survey Calendar//EN", "BEGIN:VEVENT", "UID:" + (v.id || v.tmp) + "@survey-unit-masbate",
+    "DTSTAMP:" + new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z"), "DTSTART;VALUE=DATE:" + day(v.start), "DTEND;VALUE=DATE:" + day(v.end || v.start, 1),
+    "SUMMARY:" + t(v.title), "DESCRIPTION:" + t(desc)].concat(v.place ? ["LOCATION:" + t(v.place)] : [], ["END:VEVENT", "END:VCALENDAR"]);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([L.map(fold).join("\r\n") + "\r\n"], { type: "text/calendar" }));
+  a.download = (v.id || "activity") + ".ics"; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- Events ---------- */
+let toastT;
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3200); }
+$("tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) { view = t.dataset.v; render(); } });
+$("syncBtn").onclick = () => sync(false);
+$("scrim").onclick = closeDrawer; $("dClose").onclick = closeDrawer; $("fCancel").onclick = closeDrawer;
+$("fSave").onclick = saveDrawer; $("fHist").onclick = showHistory; $("fIcs").onclick = () => editing && icsOne(editing);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+$("main").addEventListener("click", e => {
+  const t = e.target;
+  const ev = t.closest("[data-ev]"); if (ev) { e.stopPropagation(); return openDrawer(state.items[ev.dataset.ev]); }
+  const nw = t.closest("[data-new]"); if (nw) return openDrawer(null, { start: nw.dataset.new });
+  const day = t.closest("[data-day]");
+  if (day) {
+    const here = all().filter(v => on(v, day.dataset.day));
+    // On a phone the day shows dots only: one activity opens it, several switch to the list for that day.
+    if (here.length && matchMedia("(max-width:720px)").matches) { if (here.length === 1) return openDrawer(here[0]); filt.q = ""; filt.past = true; view = "list"; render(); return; }
+    return openDrawer(null, { start: day.dataset.day });
+  }
+  const mon = t.closest("[data-mon]"); if (mon) { month = +mon.dataset.mon ? shiftMonth(month, +mon.dataset.mon) : today().slice(0, 7); return render(); }
+  const act = t.closest("[data-act]");
+  if (act) {
+    const i = +act.dataset.i, p = state.problems[i];
+    state.problems.splice(i, 1); save();
+    if (act.dataset.act === "fix") { const cur = p.key && state.items[p.key]; return openDrawer(cur || null, p.mine); }
+    return render();
+  }
+  const cp = t.closest("[data-copy]");
+  if (cp) { const s = cp.dataset.copy === "ics" ? state.share + "&format=ics" : state.share; navigator.clipboard.writeText(s).then(() => toast("Copied."), () => toast("Select the link and copy it.")); return; }
+  if (t.id === "resetShare") {
+    if (!confirm("Make a new link? The current link stops working at once; send the new one to the stakeholders.")) return;
+    state.outbox.push({ type: "resetShare", rev: 1 }); save(); return sync(false);
+  }
+  if (t.id === "cSave") {
+    if (!okAddr($("cUrl").value.trim())) return toast("That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec");
+    state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.lastPull = ""; lastError = ""; save(); awSignin(state.cfg.url, state.cfg.key);
+    return sync(false).then(() => { if (state.me) toast("Connected as " + state.me.name); });
+  }
+  if (t.id === "cForget") {
+    if (state.outbox.length) return toast(state.outbox.length + " changes are not sent yet. Sync first.");
+    const cfg = state.cfg; state = blank(); state.cfg = cfg; save(); return render();
+  }
+});
+$("main").addEventListener("input", e => { if (e.target.id === "lq") { filt.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("lq"); q.focus(); q.setSelectionRange(pos, pos); } });
+$("main").addEventListener("change", e => {
+  if (e.target.id === "lact") { filt.act = e.target.value; render(); }
+  if (e.target.id === "lwho") { filt.who = e.target.value; render(); }
+  if (e.target.id === "lpast") { filt.past = e.target.checked; render(); }
+});
+window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
+window.addEventListener("online", () => { online = true; sync(true); });
+window.addEventListener("offline", () => { online = false; renderSync(); });
+window.addEventListener("storage", e => { if (e.key === LS) { state = load(); render(); } if (e.key === "aw.signin") { const s = awSignin(); if (s && (s.key !== state.cfg.key || s.url !== state.cfg.url)) { state = load(); state.lastPull = ""; render(); sync(true); } } });
+setInterval(() => { if (!document.hidden) sync(true); }, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(true); });
+save(); render(); sync(true);
+</script>
+</body>
+</html>
