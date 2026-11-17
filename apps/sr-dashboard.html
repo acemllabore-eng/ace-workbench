@@ -150,6 +150,13 @@ td { font-family: var(--mono); }
 .pie-list .n { font-family: var(--mono); color: var(--fg); text-align: right; }
 .pie-list .p { font-family: var(--mono); color: var(--muted); text-align: right; }
 .pie-list .pr > span:last-child { text-align: right; }
+.pie-list .pr.sub { padding-top: 2px; padding-bottom: 2px; font-size: 12px; color: var(--muted); }
+.pie-list .pr.sub .nm { padding-left: 14px; position: relative; }
+.pie-list .pr.sub .nm::before { content: ""; position: absolute; left: 2px; top: -6px; width: 7px; height: 12px; border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); border-bottom-left-radius: 3px; }
+.pie-list .pr.sub .sw { width: 8px; height: 8px; justify-self: center; }
+.pie-list .pr.sub .n { color: var(--fg); }
+.pie-list .sub-note { font-family: var(--mono); font-size: 10.5px; color: var(--faint); padding: 4px 8px 0; letter-spacing: .04em; }
+.pie .sub-arc { transition: transform .18s ease-out, opacity .18s; cursor: pointer; }
 .week { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .week[hidden] { display: none; }
 .week input[type=range] { flex: 1; min-width: 0; accent-color: var(--cyan); cursor: pointer; }
@@ -270,7 +277,7 @@ function sampleDesk() {
       day = next; k++;
     }
     s.survey = PATH[k][0]; s.statusDate = isoOf(day);
-    if (s.survey === AT_DARPO) s.status = t - day > 14 && rnd() < .5 ? "Compliance" : "Pending";
+    if (s.survey === AT_DARPO) { const q = rnd(); s.status = t - day > 14 && q < .45 ? "Compliance" : q > .55 ? "Ongoing Verification" : "Pending"; }
     if (s.status === "Compliance") s.decided = isoOf(day + 14);
     if (rnd() < .25 && k < 2) s.statusDate = ""; // some field statuses have no date, as in the trackers
     s.area = rnd() < .04 ? null : Math.round((0.3 + rnd() * rnd() * 12) * 10000) / 10000; // a few with no area, as in the register
@@ -316,43 +323,64 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 const shortDate = iso => { const [, mo, d] = iso.split("-"); return `${MON[+mo - 1]} ${+d}`; };
 const weekName = r => r.now ? "Now · every SR" : `Week of ${shortDate(r.label)}${r.partial ? " (so far)" : ""}`;
 function pieChart(el, r, prev, opt) {
-  const C = 150, R = 138, R0 = 84, id = el.id;
+  const C = 150, R = 124, R0 = 76, RS0 = R + 5, RS1 = R + 19, id = el.id; // RS0-RS1: outer ring of sub-categories
   const sl = opt.series.map(s => ({ s, v: r[s.key] || 0 })).filter(o => o.v > 0);
   const sum = sl.reduce((a, o) => a + o.v, 0);
   if (!sum) { el.innerHTML = `<p class="read" style="padding:40px 0;text-align:center">No SRs at the shown statuses at the end of this week.</p>`; return; }
   let a = 0; sl.forEach(o => { o.a0 = a; a += o.v / sum * 2 * Math.PI; o.a1 = a; o.mid = (o.a0 + o.a1) / 2; });
   const pt = (ang, rr) => (C + rr * Math.sin(ang)).toFixed(2) + "," + (C - rr * Math.cos(ang)).toFixed(2);
-  const arc = (a0, a1) => { a1 = Math.min(a1, a0 + 2 * Math.PI - 1e-4); const big = a1 - a0 > Math.PI ? 1 : 0;
-    return `M${pt(a0, R)}A${R},${R} 0 ${big} 1 ${pt(a1, R)}L${pt(a1, R0)}A${R0},${R0} 0 ${big} 0 ${pt(a0, R0)}Z`; };
+  const arc = (a0, a1, ro = R, ri = R0) => { a1 = Math.min(a1, a0 + 2 * Math.PI - 1e-4); const big = a1 - a0 > Math.PI ? 1 : 0;
+    return `M${pt(a0, ro)}A${ro},${ro} 0 ${big} 1 ${pt(a1, ro)}L${pt(a1, ri)}A${ri},${ri} 0 ${big} 0 ${pt(a0, ri)}Z`; };
+  // Sub-categories (opt.subs: slice key -> [{name, rank, n, ha, v}]) split that slice's arc in the outer ring, in shades of its colour
+  const subs = [];
+  sl.forEach((o, k) => { const parts = ((opt.subs || {})[o.s.key] || []).filter(q => q.v > 0), tot = parts.reduce((t, q) => t + q.v, 0);
+    let b = o.a0; o.parts = parts.map(q => { const sp = Object.assign({}, q, { parent: k, a0: b, a1: b += q.v / tot * (o.a1 - o.a0), of: q.v / tot });
+      sp.mid = (sp.a0 + sp.a1) / 2; sp.idx = subs.push(sp) - 1; return sp; }); });
+  const SHADE = [1, .62, .36, .18], shade = q => SHADE[q.rank] ?? .18;
   const pct = v => { const p = v / sum * 100; return p > 0 && p < 1 ? "<1%" : Math.round(p) + "%"; };
   const sign = d => d > 0 ? "+" + opt.num(d) : d < 0 ? "−" + opt.num(-d) : "±0";
   let g = `<defs><filter id="${id}-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <radialGradient id="${id}-core"><stop offset="0" stop-color="rgba(34,195,230,.12)"/><stop offset="1" stop-color="rgba(34,195,230,0)"/></radialGradient></defs>
-    <circle cx="${C}" cy="${C}" r="${R + 9}" fill="none" stroke="var(--grid)" stroke-dasharray="2 4"/>
+    <circle cx="${C}" cy="${C}" r="${RS1 + 6}" fill="none" stroke="var(--grid)" stroke-dasharray="2 4"/>
     <circle cx="${C}" cy="${C}" r="${R0 - 9}" fill="url(#${id}-core)" stroke="var(--line)"/>
-    <g class="${opt.spin ? "grow" : ""}" filter="url(#${id}-glow)">${sl.map((o, k) => `<path class="slice" data-k="${k}" d="${arc(o.a0, o.a1)}" fill="${o.s.color}" fill-opacity=".9" stroke="var(--surface)" stroke-width="2"/>`).join("")}</g>
+    <g class="${opt.spin ? "grow" : ""}" filter="url(#${id}-glow)">${sl.map((o, k) => `<path class="slice" data-k="${k}" d="${arc(o.a0, o.a1)}" fill="${o.s.color}" fill-opacity=".9" stroke="var(--surface)" stroke-width="2"/>`).join("")}
+      ${subs.map(q => `<path class="sub-arc" data-s="${q.idx}" d="${arc(q.a0, q.a1, RS1, RS0)}" fill="${sl[q.parent].s.color}" fill-opacity="${shade(q)}" stroke="var(--surface)" stroke-width="1.5"/>`).join("")}</g>
     <text class="c-v" x="${C}" y="${C + 2}" text-anchor="middle">${opt.num(sum)}</text>
     <text class="c-l" x="${C}" y="${C + 22}" text-anchor="middle">${esc(opt.unit)}</text>
     <text class="c-w" x="${C}" y="${C + 38}" text-anchor="middle">${r.now ? "now" : esc(shortDate(r.label)) + (r.partial ? " · so far" : "")}</text>`;
   const list = `<div class="pie-list"><div class="pr hd"><span></span><span>Status</span><span>${esc(opt.unit)}</span><span>Share</span><span>${prev ? "vs wk before" : ""}</span></div>` +
     sl.map((o, k) => { const d = prev ? o.v - (prev[o.s.key] || 0) : null;
       return `<div class="pr" data-k="${k}" title="${esc(o.s.status)}"><i class="sw" style="background:${o.s.color};color:${o.s.color}"></i><span class="nm">${esc(o.s.name)}</span>
-        <span class="n">${opt.num(o.v)}</span><span class="p">${pct(o.v)}</span><span>${d == null ? "" : `<span class="delta flat">${sign(d)}</span>`}</span></div>`; }).join("") + `</div>`;
+        <span class="n">${opt.num(o.v)}</span><span class="p">${pct(o.v)}</span><span>${d == null ? "" : `<span class="delta flat">${sign(d)}</span>`}</span></div>` +
+        o.parts.map(q => `<div class="pr sub" data-s="${q.idx}" title="${esc(o.s.status)}: ${esc(q.name)}"><i class="sw" style="background:${o.s.color};color:${o.s.color};opacity:${shade(q)}"></i><span class="nm">${esc(q.name)}</span>
+        <span class="n">${opt.num(q.v)}</span><span class="p">${Math.round(q.of * 100)}%</span><span></span></div>`).join(""); }).join("") +
+    (subs.length ? `<div class="sub-note">Outer ring and indented rows: ${esc(opt.subNote || "")}; their % is of that status</div>` : "") + `</div>`;
   el.innerHTML = `<div class="pie"><svg viewBox="0 0 300 300" role="img" aria-label="${esc(opt.label)}, ${esc(weekName(r))}">${g}</svg>${list}</div><div class="tip"></div>`;
   const tip = el.querySelector(".tip"), paths = [...el.querySelectorAll(".slice")], items = [...el.querySelectorAll(".pr[data-k]")];
-  const focus = k => { paths.forEach((p, j) => { const o = sl[j], on = j === k;
-      p.style.transform = on ? `translate(${(7 * Math.sin(o.mid)).toFixed(2)}px,${(-7 * Math.cos(o.mid)).toFixed(2)}px)` : "";
-      p.style.opacity = k == null || on ? "" : ".35"; });
-    items.forEach((it, j) => it.classList.toggle("on", j === k)); };
-  const tipAt = (k, ev) => { const o = sl[k], st = o.s.status;
-    tip.innerHTML = `<div class="t">${esc(weekName(r))}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${pct(o.v)}</b></div>
-      <div class="r"><span>SRs</span><b>${(r[st] || 0).toLocaleString()}</b></div><div class="r"><span>Area</span><b>${fmtHa(r[st + HA] || 0)} ha</b></div>` + (opt.extra ? opt.extra(r) : "");
+  const arcs = [...el.querySelectorAll(".sub-arc")], subRows = [...el.querySelectorAll(".pr[data-s]")];
+  const push = (node, mid, on) => { node.style.transform = on ? `translate(${(7 * Math.sin(mid)).toFixed(2)}px,${(-7 * Math.cos(mid)).toFixed(2)}px)` : ""; };
+  // focus(k): slice k with its ring; focus(k, j): only sub-category j of slice k
+  const focus = (k, sj) => { paths.forEach((p, j) => { const on = j === k; push(p, sl[j].mid, on); p.style.opacity = k == null || on ? "" : ".35"; });
+    arcs.forEach((a, j) => { const sp = subs[j], on = sp.parent === k && (sj == null || sj === j); push(a, sl[sp.parent].mid, sp.parent === k);
+      a.style.opacity = k == null || on ? "" : ".25"; });
+    items.forEach((it, j) => it.classList.toggle("on", j === k && sj == null)); subRows.forEach((it, j) => it.classList.toggle("on", j === sj)); };
+  const tipAt = (k, ev, sj) => { const o = sl[k], st = o.s.status, sp = sj == null ? null : subs[sj];
+    tip.innerHTML = `<div class="t">${esc(weekName(r))}</div>` + (sp
+      ? `<div class="r"><span><i style="background:${o.s.color};opacity:${shade(sp)}"></i>${esc(o.s.name)} \u203a ${esc(sp.name)}</span><b>${pct(sp.v)}</b></div>
+        <div class="r"><span>SRs</span><b>${sp.n.toLocaleString()}</b></div><div class="r"><span>Area</span><b>${fmtHa(sp.ha)} ha</b></div>
+        <div class="r"><span>Of ${esc(o.s.name)}</span><b>${Math.round(sp.of * 100)}%</b></div>`
+      : `<div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${pct(o.v)}</b></div>
+        <div class="r"><span>SRs</span><b>${(r[st] || 0).toLocaleString()}</b></div><div class="r"><span>Area</span><b>${fmtHa(r[st + HA] || 0)} ha</b></div>` +
+        o.parts.map(q => `<div class="r"><span>\u00a0\u00a0${esc(q.name)}</span><b>${opt.num(q.v)}</b></div>`).join("")) + (opt.extra ? opt.extra(r) : "");
     const b = el.getBoundingClientRect(), tw = tip.offsetWidth || 170; let left = ev.clientX - b.left + 14;
     if (left + tw > el.clientWidth) left = Math.max(0, ev.clientX - b.left - tw - 14);
     tip.style.left = left + "px"; tip.style.top = Math.max(0, ev.clientY - b.top + 14) + "px"; tip.style.opacity = 1; };
   paths.forEach((p, k) => { p.addEventListener("pointermove", ev => { focus(k); tipAt(k, ev); });
     p.addEventListener("pointerleave", () => { focus(null); tip.style.opacity = 0; }); });
   items.forEach((it, k) => { it.addEventListener("pointerenter", () => focus(k)); it.addEventListener("pointerleave", () => focus(null)); });
+  arcs.forEach((a, j) => { const k = subs[j].parent; a.addEventListener("pointermove", ev => { focus(k, j); tipAt(k, ev, j); });
+    a.addEventListener("pointerleave", () => { focus(null); tip.style.opacity = 0; }); });
+  subRows.forEach((it, j) => { const k = subs[j].parent; it.addEventListener("pointerenter", () => focus(k, j)); it.addEventListener("pointerleave", () => focus(null)); });
 }
 
 /* ---------- Page ---------- */
@@ -435,6 +463,12 @@ function render() {
   const nowRow = { label: todayIso(), now: true, total: B.total, totalHa }; keys.forEach(k => { nowRow[k] = 0; nowRow[k + HA] = 0; });
   Object.keys(now).forEach(st => { const k = keyOf(st); nowRow[k] += now[st]; nowRow[k + HA] += nowHa[st]; });
   const stops = rows.filter(r => !r.partial).concat(nowRow);
+  // DARPO status of the SRs now at SR AT DARPO: the sub-categories on the Now pie (the SR Desk keeps no history of it, so not on past weeks)
+  const DARPO_SUBS = ["Pending", "Ongoing Verification", "Compliance"], darpo = {};
+  desk.list.forEach(s => { if (statusOf(s) !== AT_DARPO) return; const k = s.status || NOT_SET, o = darpo[k] || (darpo[k] = { n: 0, ha: 0 }); o.n++; o.ha += s.area || 0; });
+  const subRank = k => DARPO_SUBS.includes(k) ? DARPO_SUBS.indexOf(k) : 3;
+  const darpoParts = Object.keys(darpo).sort((p, q) => subRank(p) - subRank(q))
+    .map(k => ({ name: k, rank: subRank(k), n: darpo[k].n, ha: darpo[k].ha, v: AREA ? darpo[k].ha : darpo[k].n }));
   // Week by week
   const SK = x => AREA ? x.key + HA : x.key; // the value this chart draws for a status
   const show = SER.filter(x => !hidden.has(x.key) && stops.some(r => r[x.key])).map(x => Object.assign({}, x, { key: SK(x), status: x.key }));
@@ -449,14 +483,15 @@ function render() {
   const z = stops[wi], a = z.now ? null : stops[wi - 1], f = v => AREA ? fmtHa(v) + " ha" : v, zSum = show.reduce((t, x) => t + (z[x.key] || 0), 0);
   const top = show.slice().sort((p, q) => z[q.key] - z[p.key]).filter(x => z[x.key])[0];
   $("r-status").innerHTML = !B.total ? "No SRs, so there is nothing to draw." :
-    `Each slice is ${AREA ? "the share of area (ha) of the SRs" : "the share of SRs"} at that status; slices add up to the shown statuses. The pie opens on <b>Now</b>, the same figures as Survey status now. Move the slider back to see the mix at the end of past weeks: a slice that <b>grows</b> week to week means SRs are piling up at that step.` +
+    `Each slice is ${AREA ? "the share of area (ha) of the SRs" : "the share of SRs"} at that status; slices add up to the shown statuses. The pie opens on <b>Now</b>, the same figures as Survey status now; there the outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance). Move the slider back to see the mix at the end of past weeks: a slice that <b>grows</b> week to week means SRs are piling up at that step.` +
     (top ? ` ${z.now ? "Now" : `At the end of the ${esc(weekName(z).replace("Week", "week"))}`} the biggest is <b>${esc(top.name)}</b> with <b>${f(z[top.key])}</b> (${zSum ? Math.round(z[top.key] / zSum * 100) : 0}%)${a ? `, ${sayTrend(a[top.key], z[top.key], "up", "down")} from ${f(a[top.key])} the week before` : ""}.` : "") +
     ` Click a status in the key to hide or show it.`;
   $("wk-row").hidden = !show.length || stops.length < 2;
   $("wk").max = stops.length - 1; $("wk").value = wi; $("wk-name").textContent = weekName(z);
   $("wk-prev").disabled = wi <= 0; $("wk-next").disabled = wi >= stops.length - 1;
   if (show.length) pieChart($("c-status"), z, a, { label: AREA ? "Share of area at each survey status, hectares" : "Share of SRs at each survey status",
-    spin: !weekStep, series: show, num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs",
+    spin: !weekStep, series: show, subNote: "DARPO status of the SRs at DARPO",
+    subs: z.now && keyOf(AT_DARPO) === AT_DARPO ? { [AREA ? AT_DARPO + HA : AT_DARPO]: darpoParts } : null, num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs",
     extra: r => `<div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>${r.now ? "All SRs" : "All dated SRs"}</span><b>${r.total} · ${fmtHa(r.totalHa)} ha</b></div>` });
   else $("c-status").innerHTML = `<p class="read" style="padding:40px 0;text-align:center">${B.total ? "Every status is hidden. Click one in the key to show it." : "Nothing to draw."}</p>`;
 
@@ -474,6 +509,7 @@ function render() {
     <li>The SR Desk keeps each SR's current status and a few dates, not a full history. The week-by-week pie is rebuilt from those dates: the date received at DARPO, the date received by RPMO (or the date endorsed to RPMO), and the date of the current status. Before an SR's first dated step it is not counted.</li>
     <li>${undated.toLocaleString()} SR${undated === 1 ? " has" : "s have"} no dated step at all, so ${undated === 1 ? "it is" : "they are"} in "Survey status now" but not in the pie's past weeks (they are in its Now). A step with no recorded date does not show: the SR stays counted at its last dated step until its next dated one. For example, an SR now at "ASP FROM LMS RECEIVED BY RPMO" counts as "SR RECEIVED BY RPMO" until that ASP date, even though it was transmitted to LMS in between.</li>
     <li>The pie opens on <b>Now</b>: every SR at its current survey status, the same figures as Survey status now. Earlier stops on the slider are finished weeks (Monday to Sunday), rebuilt from dates; the week in progress is covered by Now. The table still lists the week in progress.</li>
+    <li>The outer ring on <b>Now</b> splits SR AT DARPO by its <b>DARPO status</b> (Pending, Ongoing Verification, Compliance; "Not set" if blank). Past weeks have no ring: the SR Desk keeps only each SR's current DARPO status. No other survey status has a sub-status in the SR Desk.</li>
     <li>Filters use each SR's <b>current</b> kind, survey status, DARMO and MARPO. So "Survey status: SR RECEIVED BY RPMO" shows the past weeks of the SRs now at RPMO, including the weeks they were still at DARPO. An Admin's corrections in the SR Desk are used.</li>
     <li>Read-only. Nothing on this page is written to the SR Desk or the Sheet.</li></ul>`;
 }
