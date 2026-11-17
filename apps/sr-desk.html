@@ -1176,7 +1176,9 @@ const VALS_STORE = STORE + "-vals";
 let valsStore = {}; try { valsStore = JSON.parse(localStorage.getItem(VALS_STORE)) || {}; } catch (e) { valsStore = {}; }
 const saveVals = () => { try { localStorage.setItem(VALS_STORE, JSON.stringify(valsStore)); } catch (e) {} };
 const PAGE = 200; // register rows drawn at a time
-const KINDS = ["2025-A", "2025-B", "SBA 3", "SBA 4", "Own list"]; // Own list: SRs whose batch has no tracker, kept in tab SR DESK OWN LIST (2026-11-17)
+const KINDS = ["2025-A", "2025-B", "SBA 3", "SBA 4"];
+// SRs kept in the Own list (tab SR DESK OWN LIST, 2026-11-17) carry their own batch as kind, e.g. "SBA 1"; those kinds are added after the four.
+const kindsOf = list => KINDS.concat([...new Set(list.filter(r => r.own && !KINDS.includes(r.kind)).map(r => r.kind))].sort());
 const NO_BATCH = "No batch tracker"; // SRs in no batch tracker have no kind of survey: they are left out of the Desk (the server still sends them)
 const inBatch = r => r && r.kind !== NO_BATCH;
 let storageOk = true;
@@ -1432,7 +1434,7 @@ function renderRegister() {
     </div>
     <div class="filters">
       <div class="field"><label for="f-q">Search</label><input id="f-q" type="search" placeholder="SeqNo, title no., claimant, lot, DARMO, barangay" value="${esc(ui.q)}"></div>
-      <div class="field"><label for="f-kind">Kind of survey</label><select id="f-kind"><option value="All" ${ui.kind === "All" ? "selected" : ""}>All kinds (${list.length})</option>${KINDS.map(k => `<option value="${esc(k)}" ${ui.kind === k ? "selected" : ""}>${esc(k)} (${kindCount(k)})</option>`).join("")}</select></div>
+      <div class="field"><label for="f-kind">Kind of survey</label><select id="f-kind"><option value="All" ${ui.kind === "All" ? "selected" : ""}>All kinds (${list.length})</option>${kindsOf(list).map(k => `<option value="${esc(k)}" ${ui.kind === k ? "selected" : ""}>${esc(k)} (${kindCount(k)})</option>`).join("")}</select></div>
       <div class="field"><label for="f-survey">Survey status</label><select id="f-survey"><option value="All" ${ui.survey === "All" ? "selected" : ""}>All survey statuses</option>${[...SURVEYS, NOT_SET].map(k => `<option value="${esc(k)}" ${ui.survey === k ? "selected" : ""}>${esc(k)} (${surveyCount(k)})</option>`).join("")}</select></div>
       <div class="field"><label for="f-vstat">Verification</label><select id="f-vstat"><option value="All" ${ui.vstat === "All" ? "selected" : ""}>All verification statuses</option>${[...SUBS, NO_VSTAT].map(k => `<option value="${esc(k)}" ${ui.vstat === k ? "selected" : ""}>${esc(STATUS_LABEL[k] || k)} (${vstatCount(k)})</option>`).join("")}</select></div>
       <div class="field"><label for="f-route">For approval by</label><select id="f-route">${["All", ...ROUTES, "Unassigned"].map(o => `<option ${ui.route === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>
@@ -1632,7 +1634,7 @@ function renderDashboard() {
           <tbody>${[...SURVEYS, NOT_SET].map(k => `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${list.filter(s => (s.survey || NOT_SET) === k).length}</td></tr>`).join("")}</tbody></table></div></section>
         <section class="panel"><div class="panel-head"><h2>By kind of survey</h2><span class="sub">all SRs · at DARPO · past DARPO</span></div>
           <div class="table-scroll"><table><thead><tr><th>Kind</th><th class="r">SRs</th><th class="r">At DARPO</th><th class="r">Past DARPO</th></tr></thead>
-          <tbody>${KINDS.map(k => { const l = list.filter(s => s.kind === k); return `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${l.length}</td><td class="r num">${l.filter(isOpen).length}</td><td class="r num">${l.filter(pastDarpo).length}</td></tr>`; }).join("")}</tbody></table></div></section>
+          <tbody>${kindsOf(list).map(k => { const l = list.filter(s => s.kind === k); return `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${l.length}</td><td class="r num">${l.filter(isOpen).length}</td><td class="r num">${l.filter(pastDarpo).length}</td></tr>`; }).join("")}</tbody></table></div></section>
         <section class="panel"><div class="panel-head"><h2>SRs at DARPO by age</h2></div>
           <div class="panel-body hbars">${buckets.map(([l, n]) => `<div class="hbar"><div class="lbl">${l}</div><div class="track blue"><i style="width:${n / maxB * 100}%"></i></div><div class="n">${n}</div></div>`).join("")}</div></section>
         <section class="panel"><div class="panel-head"><h2>Verifier load</h2><span class="sub">open · closed last 30 days</span></div>
@@ -1791,7 +1793,7 @@ function openSR(seq) {
   const ed = f => ovs[f] !== undefined ? `<span class="edited">Edited by Admin. Sheet: ${esc(s.orig[f] === "" || s.orig[f] === undefined ? "blank" : s.orig[f])}</span>` : "";
   const hdr = [["LO/Claimant", s.claimant, "claimant"], ["Lot No.", s.lot, "lot"], ["Area (has.)", area, "area"], ["Location", [s.brgy, s.mun || s.darmo].filter(Boolean).join(", ") + ", Masbate", "brgy"],
     ["Title No.", s.title, "title"], ["Mode of acquisition", s.mode, "mode"], ["ASP / Plan No.", s.asp, "asp"], ["Sequence No.", s.seq]];
-  const hdr2 = [["Kind of survey", s.kind === "Own list" ? "Own list (SR DESK OWN LIST)" + (s.ownBatch ? " · batch " + s.ownBatch : "") : inTracker ? s.kind + " (batch tracker)" : "In no batch tracker"], ["Accounting tag", s.accTag],
+  const hdr2 = [["Kind of survey", s.own ? s.kind + " (own list in the SR Desk workbook)" : inTracker ? s.kind + " (batch tracker)" : "In no batch tracker"], ["Accounting tag", s.accTag],
     [inTracker ? "Survey status (tracker)" : "Survey whereabouts (accounting)", trackerNow(s)], ["DARMO / MARPO", [s.darmo, s.marpo].filter(Boolean).join(" · ")]]
     .concat([["Status date (tracker)", fmtDate(s.orig.statusDate)], ["Team", s.team, "team"], ["Schedule of survey", fmtDate(s.schedule), "schedule"], ["Fieldwork completed", fmtDate(s.fwc)],
       ["Preliminary check", s.prelim], ["SR received (tracker)", fmtDate(s.srReceived)], ["SR hardcopy at DARPO", fmtDate(s.darpoReceived)],
@@ -1966,7 +1968,7 @@ function histHtml(s) {
   if (h && h.list) h.list.slice().reverse().forEach(x => { const t = histTracker(x.tracker);
     rows.push(`<div class="hist-row">${dateCell(x.survey, x.status_date)}<span><b>${esc(x.survey || NOT_SET)}</b>${x.status ? " · " + esc(x.status) : ""}</span><span class="sub">${x.status_date ? esc(DATE_LABEL[x.survey] || "Date") + " · " : ""}changed ${fmtTime(x.at)} by ${esc(x.by)}${t ? " · " + esc(t) : ""}</span></div>`); });
   const start = s.kind === "No batch tracker" ? `<p class="readonly-note">In no batch tracker. Survey whereabouts in MASBATE CCLOA ACCOUNTING: ${esc(s.surveyStatus || "blank")}.</p>`
-    : `<p class="readonly-note">Now in the ${esc(s.kind)} tracker: <b>${esc(trackerNow(s) || "blank")}</b>. Changes made in the tracker by hand are not listed here.</p>`;
+    : `<p class="readonly-note">Now in the ${s.own ? "SR Desk own list (" + esc(s.kind) + ")" : esc(s.kind) + " tracker"}: <b>${esc(trackerNow(s) || "blank")}</b>. Changes made in the tracker by hand are not listed here.</p>`;
   const note = !state.cfg.url ? "Shown when this PC is connected to the Sheet (Settings)." : !h ? "Loading…" : h.error ? `Could not load the history: ${esc(h.error)}` : "";
   return `${rows.length ? `<div class="hist">${rows.join("")}</div>` : ""}${note ? `<p class="readonly-note">${note}</p>` : ""}${h && h.list ? start : ""}
     ${h && h.list && !h.list.length && !(q && q.data) ? `<p class="readonly-note">No status change saved in the SR Desk yet.</p>` : ""}`;
