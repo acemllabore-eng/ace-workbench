@@ -1176,7 +1176,7 @@ const VALS_STORE = STORE + "-vals";
 let valsStore = {}; try { valsStore = JSON.parse(localStorage.getItem(VALS_STORE)) || {}; } catch (e) { valsStore = {}; }
 const saveVals = () => { try { localStorage.setItem(VALS_STORE, JSON.stringify(valsStore)); } catch (e) {} };
 const PAGE = 200; // register rows drawn at a time
-const KINDS = ["2025-A", "2025-B", "SBA 3", "SBA 4"];
+const KINDS = ["2025-A", "2025-B", "SBA 3", "SBA 4", "Own list"]; // Own list: SRs whose batch has no tracker, kept in tab SR DESK OWN LIST (2026-11-17)
 const NO_BATCH = "No batch tracker"; // SRs in no batch tracker have no kind of survey: they are left out of the Desk (the server still sends them)
 const inBatch = r => r && r.kind !== NO_BATCH;
 let storageOk = true;
@@ -1791,11 +1791,11 @@ function openSR(seq) {
   const ed = f => ovs[f] !== undefined ? `<span class="edited">Edited by Admin. Sheet: ${esc(s.orig[f] === "" || s.orig[f] === undefined ? "blank" : s.orig[f])}</span>` : "";
   const hdr = [["LO/Claimant", s.claimant, "claimant"], ["Lot No.", s.lot, "lot"], ["Area (has.)", area, "area"], ["Location", [s.brgy, s.mun || s.darmo].filter(Boolean).join(", ") + ", Masbate", "brgy"],
     ["Title No.", s.title, "title"], ["Mode of acquisition", s.mode, "mode"], ["ASP / Plan No.", s.asp, "asp"], ["Sequence No.", s.seq]];
-  const hdr2 = [["Kind of survey", inTracker ? s.kind + " (batch tracker)" : "In no batch tracker"], ["Accounting tag", s.accTag],
+  const hdr2 = [["Kind of survey", s.kind === "Own list" ? "Own list (SR DESK OWN LIST)" + (s.ownBatch ? " · batch " + s.ownBatch : "") : inTracker ? s.kind + " (batch tracker)" : "In no batch tracker"], ["Accounting tag", s.accTag],
     [inTracker ? "Survey status (tracker)" : "Survey whereabouts (accounting)", trackerNow(s)], ["DARMO / MARPO", [s.darmo, s.marpo].filter(Boolean).join(" · ")]]
     .concat([["Status date (tracker)", fmtDate(s.orig.statusDate)], ["Team", s.team, "team"], ["Schedule of survey", fmtDate(s.schedule), "schedule"], ["Fieldwork completed", fmtDate(s.fwc)],
       ["Preliminary check", s.prelim], ["SR received (tracker)", fmtDate(s.srReceived)], ["SR hardcopy at DARPO", fmtDate(s.darpoReceived)],
-      ["Date transmitted", fmtDate(s.transmitted)], ["Verifier (tracker)", s.trackerVerifier], ["In-house", s.inHouse]].filter(([, v]) => v !== "" && v !== undefined && v !== null));
+      ["Date transmitted", fmtDate(s.transmitted)], ["Verifier (tracker)", s.trackerVerifier], ["In-house", s.inHouse], ["Source (own list)", s.ownSource], ["Notes (own list)", s.ownNote]].filter(([, v]) => v !== "" && v !== undefined && v !== null));
   const dlRows = list => list.map(([k, v, f]) => `<div><dt>${esc(k)}</dt><dd ${/No\.|Area/.test(k) ? 'class="mono"' : ""}>${esc(v) || '<span class="sub">—</span>'}${f ? ed(f) : ""}</dd></div>`).join("");
   const hid = p => ui.step === p ? "" : "hidden";
   const stepDefs = [["details", "Details"]].concat(isOpen(s) ? [["xc", "Cross-check"]] : [], [["attach", "Attachments"], ["checks", "Document checks"], ["notice", "Notice"]]);
