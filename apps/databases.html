@@ -335,7 +335,7 @@ const idb = (() => {
   };
 })();
 function keep(d){
-  return idb.set(d.key, { key:d.key, book:d.book, tab:d.tab, bookName:d.bookName, gid:d.gid, headerRow:d.headerRow, headers:d.headers, total:d.total, rows:d.rows, formulas:d.formulas, lists:d.lists, at:d.at });
+  return idb.set(d.key, { key:d.key, book:d.book, tab:d.tab, bookName:d.bookName, gid:d.gid, headerRow:d.headerRow, headers:d.headers, total:d.total, rows:d.rows, formulas:d.formulas, lists:d.lists, at:d.at, built:d.built || "" });
 }
 
 /* ---------- Server ---------- */
@@ -511,11 +511,11 @@ async function loadTab(book, tab, fresh){
   const here = () => state.view.name === "table" && state.view.book === book && state.view.tab === tab;
   if(!fresh){ const kept = await idb.get(key); if(kept && here() && (!state.data || state.data.key !== key)) setData(kept, true); }
   try{
-    const first = await api("GET", { action:"tab", book, tab, header: state.headerOverride[key] || "" });
+    const first = await api("GET", { action:"tab", book, tab, header: state.headerOverride[key] || "", fresh: fresh ? "1" : "" });
     if(!here()) return;
     const old = state.data && state.data.key === key ? state.data : null;
     const d = { key, book, tab, bookName:first.bookName, gid:first.gid, headerRow:first.headerRow, headers:first.headers, total:first.total,
-      rows:first.rows, formulas:first.formulas.map(x => x[0] + "," + x[1]), lists:first.lists || {}, at:new Date().toISOString(), complete:first.rows.length >= first.total };
+      rows:first.rows, formulas:first.formulas.map(x => x[0] + "," + x[1]), lists:first.lists || {}, at:new Date().toISOString(), built:first.copy_built || "", complete:first.rows.length >= first.total };
     if(old){ d.q = old.q; d.fcol = old.fcol; d.fval = old.fval; d.sort = old.sort; }
     setData(d, false);
     let off = first.rows.length;
@@ -572,7 +572,7 @@ function renderTable(){
   const v = state.view, d = state.data && state.data.key === v.book + "|" + v.tab ? state.data : null;
   const err = state.tabErr; state.tabErr = null;
   if(!d && !err){
-    $("view").innerHTML = `<div class="empty"><b>Streaming rows…</b>Reading ${esc(v.tab)} from Google Sheets.</div>`;
+    $("view").innerHTML = `<div class="empty"><b>Loading ${esc(v.tab)}…</b>The first time a tab is opened it is read from Google Sheets; after that it comes from the copy the unit's web app keeps, read again every 15 minutes.</div>`;
     if(!v.asked){ v.asked = true; loadTab(v.book, v.tab); }
     return;
   }
@@ -599,7 +599,8 @@ function renderTable(){
       <span class="count">Header row <b>${d.headerRow}</b><button class="btn sm" id="hdrBtn" title="Pick which row holds the column names">Change</button></span>
       ${canEdit() ? '<span class="tag cy">Tap a row to edit</span>' : '<span class="tag dim">View only</span>'}</div>
     <div class="prog" id="prog"><i></i></div>
-    <div id="tableHost"></div>`;
+    <div id="tableHost"></div>
+    ${d.built ? `<div class="muted" id="builtNote" style="margin-top:10px;font-size:12px">Read from Google Sheets ${new Date(d.built).toLocaleString("en-PH")}, read again every 15 minutes. Refresh (top bar) reads it now.</div>` : ""}`;
   const tq = $("tq"); let t;
   tq.oninput = () => { clearTimeout(t); t = setTimeout(() => { d.q = tq.value; tableBody(true); }, 140); };
   $("fcol").onchange = e => { d.fcol = e.target.value; d.fval = ""; renderTable(); };
