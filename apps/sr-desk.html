@@ -244,7 +244,7 @@ h3.eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em
 .form .hint { color: var(--muted); font-size: 12.5px; margin: 0; }
 .keybox { font-family: var(--font-mono); font-size: 16px; padding: 8px 12px; background: var(--pass-bg); color: var(--pass); border-radius: var(--radius); display: inline-block; }
 .readonly-note { color: var(--muted); font-size: 12.5px; }
-.filters { grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)); }
+.filters { grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr)); }
 .st-survey { background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); white-space: normal; max-width: 220px; }
 .st-unset { color: var(--muted); border-style: dashed; }
 .st-cell { display: table-cell; } .st-cell > div { margin-top: 4px; }
@@ -1192,7 +1192,7 @@ let state = load();
 let netDown = false; // phone version: the last request could not reach the web app
 if (HOSTED) { state.cfg.url = HOSTED.url; state.queue = {}; }
 try { localStorage.setItem(STORE + "-probe", "1"); localStorage.removeItem(STORE + "-probe"); } catch (e) { storageOk = false; }
-let ui = { view: "register", status: "Open", route: "All", verifier: "All", kind: "All", survey: "All", q: "", open: null, limit: PAGE, editFields: false,
+let ui = { view: "register", status: "Open", route: "All", verifier: "All", kind: "All", survey: "All", vstat: "All", q: "", open: null, limit: PAGE, editFields: false,
   step: null, guide: true, guideRoute: "DENR" };
 try { const v = localStorage.getItem(STORE + "-view"); if (v) ui.view = v; ui.guide = localStorage.getItem(STORE + "-guide") !== "0"; } catch (e) {}
 /* Practice SR: a made-up SR for learning the panel. Kept on this PC only; never queued, synced, backed up or counted. */
@@ -1412,13 +1412,17 @@ function renderRegister() {
   const pass = r => ui.status === "All" || (ui.status === "Open" ? isOpen(r) : ui.status === "Mine" ? state.me && r.verifier === state.me.name : ui.status === "Attention" ? !!r.conflict : isOpen(r) && r.status === ui.status);
   const kindCount = k => list.filter(r => r.kind === k).length;
   const surveyCount = v => list.filter(r => (r.survey || NOT_SET) === v).length;
+  const NO_VSTAT = "No verification status";
+  const vstatOf = r => r.status || NO_VSTAT;
+  const vstatCount = v => list.filter(r => vstatOf(r) === v).length;
   const rows = list.filter(r => pass(r) && (ui.route === "All" || (r.route || "Unassigned") === ui.route) && (ui.kind === "All" || r.kind === ui.kind) &&
       (ui.survey === "All" || (r.survey || NOT_SET) === ui.survey) &&
+      (ui.vstat === "All" || vstatOf(r) === ui.vstat) &&
       (ui.verifier === "All" || (ui.verifier === "Unassigned" ? !r.verifier : r.verifier === ui.verifier)) &&
       (!q || [r.seq, r.lot, r.claimant, r.lo, r.darmo, r.mun, r.brgy, r.title, r.asp, r.team, r.kind, r.accTag].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => (isOpen(b) - isOpen(a)) || String(a.received || "9").localeCompare(String(b.received || "9")) || (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)));
   const shown = rows.slice(0, ui.limit);
-  const filtered = q || ui.kind !== "All" || ui.survey !== "All" || ui.route !== "All" || ui.verifier !== "All";
+  const filtered = q || ui.kind !== "All" || ui.survey !== "All" || ui.vstat !== "All" || ui.route !== "All" || ui.verifier !== "All";
   view.innerHTML = `
     <div class="list-head">
       <div class="chips" role="group" aria-label="Filter by status">
@@ -1430,6 +1434,7 @@ function renderRegister() {
       <div class="field"><label for="f-q">Search</label><input id="f-q" type="search" placeholder="SeqNo, title no., claimant, lot, DARMO, barangay" value="${esc(ui.q)}"></div>
       <div class="field"><label for="f-kind">Kind of survey</label><select id="f-kind"><option value="All" ${ui.kind === "All" ? "selected" : ""}>All kinds (${list.length})</option>${KINDS.map(k => `<option value="${esc(k)}" ${ui.kind === k ? "selected" : ""}>${esc(k)} (${kindCount(k)})</option>`).join("")}</select></div>
       <div class="field"><label for="f-survey">Survey status</label><select id="f-survey"><option value="All" ${ui.survey === "All" ? "selected" : ""}>All survey statuses</option>${[...SURVEYS, NOT_SET].map(k => `<option value="${esc(k)}" ${ui.survey === k ? "selected" : ""}>${esc(k)} (${surveyCount(k)})</option>`).join("")}</select></div>
+      <div class="field"><label for="f-vstat">Verification</label><select id="f-vstat"><option value="All" ${ui.vstat === "All" ? "selected" : ""}>All verification statuses</option>${[...SUBS, NO_VSTAT].map(k => `<option value="${esc(k)}" ${ui.vstat === k ? "selected" : ""}>${esc(STATUS_LABEL[k] || k)} (${vstatCount(k)})</option>`).join("")}</select></div>
       <div class="field"><label for="f-route">For approval by</label><select id="f-route">${["All", ...ROUTES, "Unassigned"].map(o => `<option ${ui.route === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>
       <div class="field"><label for="f-ver">Verifier</label><select id="f-ver">${["All", ...state.verifiers, "Unassigned"].map(o => `<option ${ui.verifier === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>
     </div>
@@ -1455,12 +1460,13 @@ function renderRegister() {
     ${rows.length > shown.length ? `<div class="no-print" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn" id="more">Show ${Math.min(PAGE, rows.length - shown.length)} more</button><span class="sub num">${shown.length} of ${rows.length} shown. Search or filter to narrow the list.</span></div>` : ""}
     <div class="foot-note"><span>Register read from the sheets ${fmtTime(state.registerBuilt || state.pulledAt)}, re-read every 15 minutes. Days are counted from the date received; red when an SR at DARPO is past 14 days. Where the columns come from: Guide › The register.</span></div>`;
   const fc = view.querySelector("#f-clear");
-  if (fc) fc.onclick = () => { ui.q = ""; ui.kind = ui.survey = ui.route = ui.verifier = "All"; ui.limit = PAGE; renderRegister(); };
+  if (fc) fc.onclick = () => { ui.q = ""; ui.kind = ui.survey = ui.vstat = ui.route = ui.verifier = "All"; ui.limit = PAGE; renderRegister(); };
   const more = view.querySelector("#more");
   if (more) more.onclick = () => { ui.limit += PAGE; renderRegister(); };
   const setF = fn => e => { fn(e.target.value); ui.limit = PAGE; renderRegister(); };
   view.querySelector("#f-kind").onchange = setF(v => ui.kind = v);
   view.querySelector("#f-survey").onchange = setF(v => ui.survey = v);
+  view.querySelector("#f-vstat").onchange = setF(v => ui.vstat = v);
   view.querySelectorAll(".chip").forEach(c => c.onclick = () => { ui.status = c.dataset.status; ui.limit = PAGE; renderRegister(); });
   const qi = view.querySelector("#f-q");
   qi.oninput = () => { ui.q = qi.value; ui.limit = PAGE; const pos = qi.selectionStart; renderRegister(); const n = view.querySelector("#f-q"); n.focus(); n.setSelectionRange(pos, pos); };
