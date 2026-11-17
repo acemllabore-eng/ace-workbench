@@ -314,7 +314,7 @@ function build(desk, keys) {
 /* ---------- Pie chart (hand-drawn SVG donut, works offline): the mix of statuses at the end of one week ---------- */
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const shortDate = iso => { const [, mo, d] = iso.split("-"); return `${MON[+mo - 1]} ${+d}`; };
-const weekName = r => `Week of ${shortDate(r.label)}${r.partial ? " (so far)" : ""}`;
+const weekName = r => r.now ? "Now · every SR" : `Week of ${shortDate(r.label)}${r.partial ? " (so far)" : ""}`;
 function pieChart(el, r, prev, opt) {
   const C = 150, R = 138, R0 = 84, id = el.id;
   const sl = opt.series.map(s => ({ s, v: r[s.key] || 0 })).filter(o => o.v > 0);
@@ -333,7 +333,7 @@ function pieChart(el, r, prev, opt) {
     <g class="${opt.spin ? "grow" : ""}" filter="url(#${id}-glow)">${sl.map((o, k) => `<path class="slice" data-k="${k}" d="${arc(o.a0, o.a1)}" fill="${o.s.color}" fill-opacity=".9" stroke="var(--surface)" stroke-width="2"/>`).join("")}</g>
     <text class="c-v" x="${C}" y="${C + 2}" text-anchor="middle">${opt.num(sum)}</text>
     <text class="c-l" x="${C}" y="${C + 22}" text-anchor="middle">${esc(opt.unit)}</text>
-    <text class="c-w" x="${C}" y="${C + 38}" text-anchor="middle">${esc(shortDate(r.label))}${r.partial ? " · so far" : ""}</text>`;
+    <text class="c-w" x="${C}" y="${C + 38}" text-anchor="middle">${r.now ? "now" : esc(shortDate(r.label)) + (r.partial ? " · so far" : "")}</text>`;
   const list = `<div class="pie-list"><div class="pr hd"><span></span><span>Status</span><span>${esc(opt.unit)}</span><span>Share</span><span>${prev ? "vs wk before" : ""}</span></div>` +
     sl.map((o, k) => { const d = prev ? o.v - (prev[o.s.key] || 0) : null;
       return `<div class="pr" data-k="${k}" title="${esc(o.s.status)}"><i class="sw" style="background:${o.s.color};color:${o.s.color}"></i><span class="nm">${esc(o.s.name)}</span>
@@ -431,30 +431,34 @@ function render() {
       <div class="track"><i style="width:${val(st) / max * 100}%;background:${colorOf(st)};color:${colorOf(st)}"></i></div>
       <div class="n">${AREA ? `${fmtHa(nowHa[st])} ha <span class="alt">· ${now[st].toLocaleString()} SRs</span>` : `${now[st].toLocaleString()} SRs <span class="alt">· ${fmtHa(nowHa[st])} ha</span>`}<small>${sum ? Math.round(val(st) / sum * 100) : 0}%</small></div></div>`).join("") : `<p class="read">No SRs.</p>`;
 
+  // Pie stops: each finished week (rebuilt from dates), then Now = exactly "Survey status now" (every SR, same grouping as the key)
+  const nowRow = { label: todayIso(), now: true, total: B.total, totalHa }; keys.forEach(k => { nowRow[k] = 0; nowRow[k + HA] = 0; });
+  Object.keys(now).forEach(st => { const k = keyOf(st); nowRow[k] += now[st]; nowRow[k + HA] += nowHa[st]; });
+  const stops = rows.filter(r => !r.partial).concat(nowRow);
   // Week by week
   const SK = x => AREA ? x.key + HA : x.key; // the value this chart draws for a status
-  const show = SER.filter(x => !hidden.has(x.key) && rows.some(r => r[x.key])).map(x => Object.assign({}, x, { key: SK(x), status: x.key }));
+  const show = SER.filter(x => !hidden.has(x.key) && stops.some(r => r[x.key])).map(x => Object.assign({}, x, { key: SK(x), status: x.key }));
   $("h-status").textContent = AREA ? "Mix of survey statuses by area, week by week (ha)" : "Mix of survey statuses, week by week";
-  let wi = rows.findIndex(r => r.label === ui.week); if (wi < 0) wi = rows.length - 1; // "" = always the latest week
-  curRows = rows;
-  $("legend").innerHTML = SER.filter(x => all.some(r => r[x.key])).map(x => `<button aria-pressed="${!hidden.has(x.key)}" data-k="${esc(x.key)}" title="${esc(x.members ? x.members.join(", ") : x.key)}">
+  let wi = stops.findIndex(r => !r.now && r.label === ui.week); if (wi < 0) wi = stops.length - 1; // "" = Now
+  curRows = stops;
+  $("legend").innerHTML = SER.filter(x => nowRow[x.key] || all.some(r => r[x.key])).map(x => `<button aria-pressed="${!hidden.has(x.key)}" data-k="${esc(x.key)}" title="${esc(x.members ? x.members.join(", ") : x.key)}">
       <i style="background:${x.color};color:${x.color}"></i>${esc(x.name)}</button>`).join("");
   $("legend").querySelectorAll("button").forEach(b => b.onclick = () => { const k = b.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
     try { localStorage.setItem("srdash-hidden", JSON.stringify([...hidden])); } catch (e) {} render(); });
-  $("cover").innerHTML = `pie covers <b>${B.dated.toLocaleString()}</b> of ${B.total.toLocaleString()} SRs`;
-  const z = rows[wi], a = rows[wi - 1], f = v => AREA ? fmtHa(v) + " ha" : v, zSum = show.reduce((t, x) => t + (z[x.key] || 0), 0);
+  $("cover").innerHTML = stops[wi].now ? `pie shows all <b>${B.total.toLocaleString()}</b> SRs, as in Survey status now` : `past weeks cover <b>${B.dated.toLocaleString()}</b> of ${B.total.toLocaleString()} SRs`;
+  const z = stops[wi], a = z.now ? null : stops[wi - 1], f = v => AREA ? fmtHa(v) + " ha" : v, zSum = show.reduce((t, x) => t + (z[x.key] || 0), 0);
   const top = show.slice().sort((p, q) => z[q.key] - z[p.key]).filter(x => z[x.key])[0];
-  $("r-status").innerHTML = !B.dated ? "No SR here has a dated status yet, so there is nothing to draw." :
-    `Each slice is ${AREA ? "the share of area (ha) of the SRs" : "the share of SRs"} at that status at the end of the chosen week; slices add up to the shown statuses. Move the week slider to go back in time: a slice that <b>grows</b> week to week means SRs are piling up at that step.` +
-    (top ? ` In the ${esc(weekName(z).replace("Week", "week"))} the biggest is <b>${esc(top.name)}</b> with <b>${f(z[top.key])}</b> (${zSum ? Math.round(z[top.key] / zSum * 100) : 0}%)${a ? `, ${sayTrend(a[top.key], z[top.key], "up", "down")} from ${f(a[top.key])} the week before` : ""}.` : "") +
+  $("r-status").innerHTML = !B.total ? "No SRs, so there is nothing to draw." :
+    `Each slice is ${AREA ? "the share of area (ha) of the SRs" : "the share of SRs"} at that status; slices add up to the shown statuses. The pie opens on <b>Now</b>, the same figures as Survey status now. Move the slider back to see the mix at the end of past weeks: a slice that <b>grows</b> week to week means SRs are piling up at that step.` +
+    (top ? ` ${z.now ? "Now" : `At the end of the ${esc(weekName(z).replace("Week", "week"))}`} the biggest is <b>${esc(top.name)}</b> with <b>${f(z[top.key])}</b> (${zSum ? Math.round(z[top.key] / zSum * 100) : 0}%)${a ? `, ${sayTrend(a[top.key], z[top.key], "up", "down")} from ${f(a[top.key])} the week before` : ""}.` : "") +
     ` Click a status in the key to hide or show it.`;
-  $("wk-row").hidden = !B.dated || !show.length;
-  $("wk").max = rows.length - 1; $("wk").value = wi; $("wk-name").textContent = weekName(z);
-  $("wk-prev").disabled = wi <= 0; $("wk-next").disabled = wi >= rows.length - 1;
+  $("wk-row").hidden = !show.length || stops.length < 2;
+  $("wk").max = stops.length - 1; $("wk").value = wi; $("wk-name").textContent = weekName(z);
+  $("wk-prev").disabled = wi <= 0; $("wk-next").disabled = wi >= stops.length - 1;
   if (show.length) pieChart($("c-status"), z, a, { label: AREA ? "Share of area at each survey status, hectares" : "Share of SRs at each survey status",
     spin: !weekStep, series: show, num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs",
-    extra: r => `<div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>All dated SRs</span><b>${r.total} · ${fmtHa(r.totalHa)} ha</b></div>` });
-  else $("c-status").innerHTML = `<p class="read" style="padding:40px 0;text-align:center">${B.dated ? "Every status is hidden. Click one in the key to show it." : "Nothing to draw."}</p>`;
+    extra: r => `<div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>${r.now ? "All SRs" : "All dated SRs"}</span><b>${r.total} · ${fmtHa(r.totalHa)} ha</b></div>` });
+  else $("c-status").innerHTML = `<p class="read" style="padding:40px 0;text-align:center">${B.total ? "Every status is hidden. Click one in the key to show it." : "Nothing to draw."}</p>`;
 
   $("table-wrap").hidden = !ui.table; $("tbl-btn").textContent = ui.table ? "Hide table" : "Show table"; $("tbl-btn").setAttribute("aria-expanded", String(ui.table));
   const cols = SER.filter(x => all.some(r => r[x.key]));
@@ -468,8 +472,8 @@ function render() {
     <li><b>Survey status now</b> counts every SR at its current survey status, from this PC's SR Desk copy.</li>
     <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. Switch between <b>SRs</b> and <b>Area (ha)</b> at the top.</li>
     <li>The SR Desk keeps each SR's current status and a few dates, not a full history. The week-by-week pie is rebuilt from those dates: the date received at DARPO, the date received by RPMO (or the date endorsed to RPMO), and the date of the current status. Before an SR's first dated step it is not counted.</li>
-    <li>${undated.toLocaleString()} SR${undated === 1 ? " has" : "s have"} no dated step at all, so ${undated === 1 ? "it is" : "they are"} in "Survey status now" but not in the pie. A step with no recorded date does not show: the SR stays counted at its last dated step until its next dated one. For example, an SR now at "ASP FROM LMS RECEIVED BY RPMO" counts as "SR RECEIVED BY RPMO" until that ASP date, even though it was transmitted to LMS in between.</li>
-    <li>Weeks run Monday to Sunday; the latest week is the week in progress ("so far"). The pie opens on it and follows it as weeks pass, unless you pick an earlier week.</li>
+    <li>${undated.toLocaleString()} SR${undated === 1 ? " has" : "s have"} no dated step at all, so ${undated === 1 ? "it is" : "they are"} in "Survey status now" but not in the pie's past weeks (they are in its Now). A step with no recorded date does not show: the SR stays counted at its last dated step until its next dated one. For example, an SR now at "ASP FROM LMS RECEIVED BY RPMO" counts as "SR RECEIVED BY RPMO" until that ASP date, even though it was transmitted to LMS in between.</li>
+    <li>The pie opens on <b>Now</b>: every SR at its current survey status, the same figures as Survey status now. Earlier stops on the slider are finished weeks (Monday to Sunday), rebuilt from dates; the week in progress is covered by Now. The table still lists the week in progress.</li>
     <li>Filters use each SR's <b>current</b> kind, survey status, DARMO and MARPO. So "Survey status: SR RECEIVED BY RPMO" shows the past weeks of the SRs now at RPMO, including the weeks they were still at DARPO. An Admin's corrections in the SR Desk are used.</li>
     <li>Read-only. Nothing on this page is written to the SR Desk or the Sheet.</li></ul>`;
 }
