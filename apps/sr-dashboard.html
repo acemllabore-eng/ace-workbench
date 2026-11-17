@@ -132,15 +132,39 @@ td { font-family: var(--mono); }
 .table-scroll { overflow-x: auto; }
 #table-wrap[hidden] { display: none; }
 
+.pie { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); gap: 16px 32px; align-items: center; }
+.pie svg { max-width: 320px; height: auto; margin: 0 auto; }
+.pie .grow { transform-origin: 150px 150px; animation: spin 1s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes spin { from { transform: rotate(-120deg) scale(.6); opacity: 0; } }
+.pie .slice { transition: transform .18s ease-out, opacity .18s; cursor: pointer; }
+.chart .c-v { fill: var(--fg); font-size: 22px; font-weight: 600; }
+.chart .c-l { fill: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+.chart .c-w { fill: var(--cyan); font-size: 11px; }
+.pie-list { display: grid; gap: 4px; min-width: 0; }
+.pie-list .pr { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 44px 78px; gap: 10px; align-items: center; font-size: 12.5px; padding: 5px 8px; border-radius: 6px; border: 1px solid transparent; }
+.pie-list .pr.on { background: rgba(34,195,230,.07); border-color: var(--line); }
+.pie-list .pr.hd { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); padding-top: 0; }
+.pie-list .pr.hd span:nth-child(n+3) { text-align: right; }
+.pie-list .sw { width: 10px; height: 10px; border-radius: 3px; box-shadow: 0 0 8px currentColor; }
+.pie-list .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pie-list .n { font-family: var(--mono); color: var(--fg); text-align: right; }
+.pie-list .p { font-family: var(--mono); color: var(--muted); text-align: right; }
+.pie-list .pr > span:last-child { text-align: right; }
+.week { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.week[hidden] { display: none; }
+.week input[type=range] { flex: 1; min-width: 0; accent-color: var(--cyan); cursor: pointer; }
+.week .btn { padding: 3px 10px; font-family: var(--mono); }
+.week .btn[disabled] { opacity: .4; cursor: default; }
+.week b { color: var(--fg); font-weight: 600; white-space: nowrap; }
 .draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1.1s ease-out forwards; }
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 .ping { animation: ping 2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes ping { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(3.2); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .draw { animation: none; stroke-dashoffset: 0; } .ping, .live { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .draw { animation: none; stroke-dashoffset: 0; } .ping, .live, .pie .grow { animation: none; } }
 
 @media (max-width: 900px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; } }
-@media (max-width: 600px) { .snap .row { grid-template-columns: minmax(0, 1fr) auto; } .snap .track { grid-column: 1 / -1; grid-row: 2; } }
+@media (max-width: 600px) { .pie { grid-template-columns: 1fr; } .pie-list .pr { grid-template-columns: 10px minmax(0, 1fr) auto 40px 64px; gap: 8px; } .snap .row { grid-template-columns: minmax(0, 1fr) auto; } .snap .track { grid-column: 1 / -1; grid-row: 2; } }
 @media (max-width: 480px) { .filters { grid-template-columns: 1fr; } .kpi .v { font-size: 28px; } h1 { font-size: 22px; } .panel { padding: 14px; } }
 @media print { body { background: #fff; color: #000; } .controls { display: none; } }
 </style>
@@ -171,10 +195,11 @@ td { font-family: var(--mono); }
       <div class="snap" id="snap"></div>
     </div>
     <div class="panel wide">
-      <div class="chart-head"><div><h2 id="h-status">SRs at each survey status, week by week</h2><p class="read" id="r-status"></p></div>
+      <div class="chart-head"><div><h2 id="h-status">Mix of survey statuses, week by week</h2><p class="read" id="r-status"></p></div>
         <div class="cover" id="cover"></div></div>
       <div class="legend big" id="legend" aria-label="Show or hide a status"></div>
       <div class="chart" id="c-status"></div>
+      <div class="week" id="wk-row"><button class="btn" id="wk-prev" aria-label="Previous week">&lsaquo;</button><input type="range" id="wk" min="0" max="0" value="0" aria-label="Week shown in the pie"><button class="btn" id="wk-next" aria-label="Next week">&rsaquo;</button><b id="wk-name"></b></div>
     </div>
     <div class="panel wide" id="table-wrap" hidden>
       <div class="chart-head"><h2 id="h-table">Weekly figures</h2></div>
@@ -286,71 +311,48 @@ function build(desk, keys) {
   return { rows, dated: withSteps.length, total: L.length };
 }
 
-/* ---------- Line chart (hand-drawn SVG, works offline) ---------- */
+/* ---------- Pie chart (hand-drawn SVG donut, works offline): the mix of statuses at the end of one week ---------- */
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const shortDate = iso => { const [, mo, d] = iso.split("-"); return `${MON[+mo - 1]} ${+d}`; };
 const weekName = r => `Week of ${shortDate(r.label)}${r.partial ? " (so far)" : ""}`;
-const charts = [];
-function niceMax(v) { // four gridline steps of a round size
-  const raw = Math.max(v, 4) / 4, p = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / p;
-  return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(k => n <= k + 1e-9) * p * 4; }
-function lineChart(el, rows, opt) {
-  const W = Math.max(280, el.clientWidth), H = opt.height || 220, padL = 34, padR = 44, padT = 14, padB = 26;
-  const n = rows.length, iw = W - padL - padR, ih = H - padT - padB;
-  const vals = opt.series.flatMap(s => rows.map(r => r[s.key]).filter(v => v != null));
-  const yMax = niceMax(Math.max(opt.target || 0, ...vals, 1) * 1.1);
-  const X = i => padL + (n === 1 ? iw / 2 : i * iw / (n - 1)), Y = v => padT + ih - v / yMax * ih;
-  const ticks = [0, .25, .5, .75, 1].map(f => f * yMax);
-  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 70))));
-  const id = el.id;
-  let g = `<defs>
-    <filter id="${id}-glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    ${opt.series.map((s, k) => `<linearGradient id="${id}-a${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".32"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient>`).join("")}
-  </defs>`;
-  g += ticks.map(v => `<line x1="${padL}" x2="${W - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" ${v ? 'stroke-dasharray="2 4"' : 'stroke="var(--line)"'}/>
-    <text x="${padL - 8}" y="${Y(v) + 4}" text-anchor="end">${+v.toFixed(1)}</text>`).join("");
-  g += rows.map((r, i) => (i % every === 0 && n - 1 - i >= every) || i === n - 1 ? `<text x="${X(i)}" y="${H - 6}" text-anchor="${i === n - 1 && n > 1 ? "end" : i === 0 && n > 1 ? "start" : "middle"}">${shortDate(r.label)}</text>` : "").join("");
-  if (opt.target) g += `<line x1="${padL}" x2="${W - padR}" y1="${Y(opt.target)}" y2="${Y(opt.target)}" stroke="var(--crit)" stroke-width="1.5" stroke-dasharray="5 4" opacity=".85"/>
-    <text x="${padL + 6}" y="${Y(opt.target) - 6}" style="fill:var(--crit)">${opt.target} days</text>`;
-  opt.series.forEach((s, k) => {
-    const pts = rows.map((r, i) => r[s.key] == null ? null : [X(i), Y(r[s.key])]);
-    // solid through the last full week; the week in progress is dashed
-    const full = pts.slice(0, rows[n - 1].partial ? n - 1 : n);
-    const runs = []; let cur = [];
-    full.forEach(p => { if (p) cur.push(p); else if (cur.length) { runs.push(cur); cur = []; } }); if (cur.length) runs.push(cur);
-    const path = ps => "M" + ps.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L");
-    if (opt.area) runs.forEach(ps => { if (ps.length > 1) g += `<path d="${path(ps)}L${ps[ps.length - 1][0]},${Y(0)}L${ps[0][0]},${Y(0)}Z" fill="url(#${id}-a${k})"/>`; });
-    runs.forEach(ps => { const len = ps.reduce((a, p, i) => i ? a + Math.hypot(p[0] - ps[i - 1][0], p[1] - ps[i - 1][1]) : 0, 0) + 1;
-      g += ps.length > 1 ? `<path class="draw" style="--len:${len}" d="${path(ps)}" fill="none" stroke="${s.color}" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" filter="url(#${id}-glow)"/>`
-        : `<circle cx="${ps[0][0]}" cy="${ps[0][1]}" r="3" fill="${s.color}"/>`; });
-    const lastFull = full.filter(Boolean).pop(), lastPt = pts[n - 1];
-    if (rows[n - 1].partial && lastPt && lastFull) g += `<path d="M${lastFull[0]},${lastFull[1]}L${lastPt[0]},${lastPt[1]}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="3 4" opacity=".8"/>`;
-    const end = lastPt || lastFull;
-    if (end && opt.endLabels !== false) {
-      g += `<circle cx="${end[0]}" cy="${end[1]}" r="4" fill="${s.color}" class="ping"/><circle cx="${end[0]}" cy="${end[1]}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`;
-      const v = rows[pts.lastIndexOf(end)][s.key];
-      g += `<text class="end-label" x="${end[0] + 8}" y="${end[1] + 4 + (opt.series.length > 1 ? (k ? 9 : -5) : 0)}">${opt.fmt ? opt.fmt(v) : v}</text>`;
-    }
-  });
-  g += `<line class="xh" y1="${padT}" y2="${padT + ih}" stroke="rgba(34,195,230,.55)" stroke-width="1" opacity="0"/><g class="dots"></g>
-    <rect x="${padL - 10}" y="0" width="${iw + 20}" height="${H}" fill="transparent" class="hit"/>`;
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(opt.label)}">${g}</svg><div class="tip"></div>`;
-  const svg = el.querySelector("svg"), tip = el.querySelector(".tip"), xh = svg.querySelector(".xh"), dots = svg.querySelector(".dots");
-  const c = { show(i) {
-      if (i == null || !rows[i]) { xh.setAttribute("opacity", 0); dots.innerHTML = ""; tip.style.opacity = 0; return; }
-      const r = rows[i], x = X(i);
-      xh.setAttribute("x1", x); xh.setAttribute("x2", x); xh.setAttribute("opacity", 1);
-      dots.innerHTML = opt.series.map(s => r[s.key] == null ? "" : `<circle cx="${x}" cy="${Y(r[s.key])}" r="5" fill="${s.color}" stroke="var(--bg)" stroke-width="2"/>`).join("");
-      tip.innerHTML = `<div class="t">${esc(weekName(r))}</div>` + opt.series.map(s => `<div class="r"><span><i style="background:${s.color}"></i>${esc(s.name)}</span><b>${r[s.key] == null ? "—" : opt.fmt ? opt.fmt(r[s.key]) : r[s.key]}</b></div>`).join("") + (opt.extra ? opt.extra(r) : "");
-      const sx = el.clientWidth / W, left = x * sx, tw = tip.offsetWidth || 160;
-      tip.style.left = Math.min(Math.max(0, left + 12), el.clientWidth - tw) + (left + 12 + tw > el.clientWidth ? -24 : 0) + "px";
-      if (left + 12 + tw > el.clientWidth) tip.style.left = Math.max(0, left - tw - 12) + "px";
-      tip.style.top = "4px"; tip.style.opacity = 1; } };
-  const idx = ev => { const b = svg.getBoundingClientRect(), x = (ev.clientX - b.left) * W / b.width; return Math.max(0, Math.min(n - 1, Math.round(n === 1 ? 0 : (x - padL) / iw * (n - 1)))); };
-  const hit = svg.querySelector(".hit");
-  hit.addEventListener("pointermove", ev => charts.forEach(ch => ch.show(idx(ev))));
-  hit.addEventListener("pointerleave", () => charts.forEach(ch => ch.show(null)));
-  charts.push(c);
+function pieChart(el, r, prev, opt) {
+  const C = 150, R = 138, R0 = 84, id = el.id;
+  const sl = opt.series.map(s => ({ s, v: r[s.key] || 0 })).filter(o => o.v > 0);
+  const sum = sl.reduce((a, o) => a + o.v, 0);
+  if (!sum) { el.innerHTML = `<p class="read" style="padding:40px 0;text-align:center">No SRs at the shown statuses at the end of this week.</p>`; return; }
+  let a = 0; sl.forEach(o => { o.a0 = a; a += o.v / sum * 2 * Math.PI; o.a1 = a; o.mid = (o.a0 + o.a1) / 2; });
+  const pt = (ang, rr) => (C + rr * Math.sin(ang)).toFixed(2) + "," + (C - rr * Math.cos(ang)).toFixed(2);
+  const arc = (a0, a1) => { a1 = Math.min(a1, a0 + 2 * Math.PI - 1e-4); const big = a1 - a0 > Math.PI ? 1 : 0;
+    return `M${pt(a0, R)}A${R},${R} 0 ${big} 1 ${pt(a1, R)}L${pt(a1, R0)}A${R0},${R0} 0 ${big} 0 ${pt(a0, R0)}Z`; };
+  const pct = v => { const p = v / sum * 100; return p > 0 && p < 1 ? "<1%" : Math.round(p) + "%"; };
+  const sign = d => d > 0 ? "+" + opt.num(d) : d < 0 ? "−" + opt.num(-d) : "±0";
+  let g = `<defs><filter id="${id}-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <radialGradient id="${id}-core"><stop offset="0" stop-color="rgba(34,195,230,.12)"/><stop offset="1" stop-color="rgba(34,195,230,0)"/></radialGradient></defs>
+    <circle cx="${C}" cy="${C}" r="${R + 9}" fill="none" stroke="var(--grid)" stroke-dasharray="2 4"/>
+    <circle cx="${C}" cy="${C}" r="${R0 - 9}" fill="url(#${id}-core)" stroke="var(--line)"/>
+    <g class="${opt.spin ? "grow" : ""}" filter="url(#${id}-glow)">${sl.map((o, k) => `<path class="slice" data-k="${k}" d="${arc(o.a0, o.a1)}" fill="${o.s.color}" fill-opacity=".9" stroke="var(--surface)" stroke-width="2"/>`).join("")}</g>
+    <text class="c-v" x="${C}" y="${C + 2}" text-anchor="middle">${opt.num(sum)}</text>
+    <text class="c-l" x="${C}" y="${C + 22}" text-anchor="middle">${esc(opt.unit)}</text>
+    <text class="c-w" x="${C}" y="${C + 38}" text-anchor="middle">${esc(shortDate(r.label))}${r.partial ? " · so far" : ""}</text>`;
+  const list = `<div class="pie-list"><div class="pr hd"><span></span><span>Status</span><span>${esc(opt.unit)}</span><span>Share</span><span>${prev ? "vs wk before" : ""}</span></div>` +
+    sl.map((o, k) => { const d = prev ? o.v - (prev[o.s.key] || 0) : null;
+      return `<div class="pr" data-k="${k}" title="${esc(o.s.status)}"><i class="sw" style="background:${o.s.color};color:${o.s.color}"></i><span class="nm">${esc(o.s.name)}</span>
+        <span class="n">${opt.num(o.v)}</span><span class="p">${pct(o.v)}</span><span>${d == null ? "" : `<span class="delta flat">${sign(d)}</span>`}</span></div>`; }).join("") + `</div>`;
+  el.innerHTML = `<div class="pie"><svg viewBox="0 0 300 300" role="img" aria-label="${esc(opt.label)}, ${esc(weekName(r))}">${g}</svg>${list}</div><div class="tip"></div>`;
+  const tip = el.querySelector(".tip"), paths = [...el.querySelectorAll(".slice")], items = [...el.querySelectorAll(".pr[data-k]")];
+  const focus = k => { paths.forEach((p, j) => { const o = sl[j], on = j === k;
+      p.style.transform = on ? `translate(${(7 * Math.sin(o.mid)).toFixed(2)}px,${(-7 * Math.cos(o.mid)).toFixed(2)}px)` : "";
+      p.style.opacity = k == null || on ? "" : ".35"; });
+    items.forEach((it, j) => it.classList.toggle("on", j === k)); };
+  const tipAt = (k, ev) => { const o = sl[k], st = o.s.status;
+    tip.innerHTML = `<div class="t">${esc(weekName(r))}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${pct(o.v)}</b></div>
+      <div class="r"><span>SRs</span><b>${(r[st] || 0).toLocaleString()}</b></div><div class="r"><span>Area</span><b>${fmtHa(r[st + HA] || 0)} ha</b></div>` + (opt.extra ? opt.extra(r) : "");
+    const b = el.getBoundingClientRect(), tw = tip.offsetWidth || 170; let left = ev.clientX - b.left + 14;
+    if (left + tw > el.clientWidth) left = Math.max(0, ev.clientX - b.left - tw - 14);
+    tip.style.left = left + "px"; tip.style.top = Math.max(0, ev.clientY - b.top + 14) + "px"; tip.style.opacity = 1; };
+  paths.forEach((p, k) => { p.addEventListener("pointermove", ev => { focus(k); tipAt(k, ev); });
+    p.addEventListener("pointerleave", () => { focus(null); tip.style.opacity = 0; }); });
+  items.forEach((it, k) => { it.addEventListener("pointerenter", () => focus(k)); it.addEventListener("pointerleave", () => focus(null)); });
 }
 
 /* ---------- Page ---------- */
@@ -358,7 +360,7 @@ function lineChart(el, rows, opt) {
 const FILTERS = [["kind", "Kind of survey"], ["survey", "Survey status"], ["darmo", "DARMO"], ["marpo", "MARPO"]];
 const BLANK = "(blank)", NOT_SET = "Not set";
 const fval = (s, k) => k === "survey" ? (s.survey || NOT_SET) : (String(s[k] || "").trim() || BLANK);
-let ui = { weeks: 12, table: false, metric: "count", f: { kind: "", survey: "", darmo: "", marpo: "" } };
+let ui = { weeks: 12, table: false, metric: "count", week: "", f: { kind: "", survey: "", darmo: "", marpo: "" } };
 try { if (localStorage.getItem("srdash-metric") === "area") ui.metric = "area"; } catch (e) {}
 const fmtHa = v => (Math.round(v * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 try { const f = JSON.parse(localStorage.getItem("srdash-filters")); if (f) FILTERS.forEach(([k]) => { if (typeof f[k] === "string") ui.f[k] = f[k]; }); } catch (e) {}
@@ -432,21 +434,25 @@ function render() {
   // Week by week
   const SK = x => AREA ? x.key + HA : x.key; // the value this chart draws for a status
   const show = SER.filter(x => !hidden.has(x.key) && rows.some(r => r[x.key])).map(x => Object.assign({}, x, { key: SK(x), status: x.key }));
-  $("h-status").textContent = AREA ? "Area at each survey status, week by week (ha)" : "SRs at each survey status, week by week";
+  $("h-status").textContent = AREA ? "Mix of survey statuses by area, week by week (ha)" : "Mix of survey statuses, week by week";
+  let wi = rows.findIndex(r => r.label === ui.week); if (wi < 0) wi = rows.length - 1; // "" = always the latest week
+  curRows = rows;
   $("legend").innerHTML = SER.filter(x => all.some(r => r[x.key])).map(x => `<button aria-pressed="${!hidden.has(x.key)}" data-k="${esc(x.key)}" title="${esc(x.members ? x.members.join(", ") : x.key)}">
       <i style="background:${x.color};color:${x.color}"></i>${esc(x.name)}</button>`).join("");
   $("legend").querySelectorAll("button").forEach(b => b.onclick = () => { const k = b.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
     try { localStorage.setItem("srdash-hidden", JSON.stringify([...hidden])); } catch (e) {} render(); });
-  $("cover").innerHTML = `lines cover <b>${B.dated.toLocaleString()}</b> of ${B.total.toLocaleString()} SRs`;
-  const top = show.slice().sort((p, q) => rows[rows.length - 1][q.key] - rows[rows.length - 1][p.key])[0];
-  const a = rows[0], z = rows[rows.length - 1], f = v => AREA ? fmtHa(v) + " ha" : v;
+  $("cover").innerHTML = `pie covers <b>${B.dated.toLocaleString()}</b> of ${B.total.toLocaleString()} SRs`;
+  const z = rows[wi], a = rows[wi - 1], f = v => AREA ? fmtHa(v) + " ha" : v, zSum = show.reduce((t, x) => t + (z[x.key] || 0), 0);
+  const top = show.slice().sort((p, q) => z[q.key] - z[p.key]).filter(x => z[x.key])[0];
   $("r-status").innerHTML = !B.dated ? "No SR here has a dated status yet, so there is nothing to draw." :
-    `Each line is ${AREA ? "the total area of the SRs" : "how many SRs were"} at that status at the end of each week. A line going <b>up</b> means SRs are piling up at that step; going <b>down</b> means they moved on.` +
-    (top ? ` Right now the biggest is <b>${esc(top.name)}</b> with <b>${f(z[top.key])}</b>${a !== z ? ` (${sayTrend(a[top.key], z[top.key], "up", "down")} from ${f(a[top.key])})` : ""}.` : "") +
+    `Each slice is ${AREA ? "the share of area (ha) of the SRs" : "the share of SRs"} at that status at the end of the chosen week; slices add up to the shown statuses. Move the week slider to go back in time: a slice that <b>grows</b> week to week means SRs are piling up at that step.` +
+    (top ? ` In the ${esc(weekName(z).replace("Week", "week"))} the biggest is <b>${esc(top.name)}</b> with <b>${f(z[top.key])}</b> (${zSum ? Math.round(z[top.key] / zSum * 100) : 0}%)${a ? `, ${sayTrend(a[top.key], z[top.key], "up", "down")} from ${f(a[top.key])} the week before` : ""}.` : "") +
     ` Click a status in the key to hide or show it.`;
-  charts.length = 0;
-  if (show.length) lineChart($("c-status"), rows, { label: AREA ? "Area at each survey status by week, hectares" : "SRs at each survey status by week", height: 320,
-    endLabels: show.length <= 2, series: show, fmt: AREA ? v => fmtHa(v) + " ha" : null,
+  $("wk-row").hidden = !B.dated || !show.length;
+  $("wk").max = rows.length - 1; $("wk").value = wi; $("wk-name").textContent = weekName(z);
+  $("wk-prev").disabled = wi <= 0; $("wk-next").disabled = wi >= rows.length - 1;
+  if (show.length) pieChart($("c-status"), z, a, { label: AREA ? "Share of area at each survey status, hectares" : "Share of SRs at each survey status",
+    spin: !weekStep, series: show, num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs",
     extra: r => `<div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>All dated SRs</span><b>${r.total} · ${fmtHa(r.totalHa)} ha</b></div>` });
   else $("c-status").innerHTML = `<p class="read" style="padding:40px 0;text-align:center">${B.dated ? "Every status is hidden. Click one in the key to show it." : "Nothing to draw."}</p>`;
 
@@ -461,14 +467,20 @@ function render() {
   $("notes").innerHTML = `<b>How these are counted</b><ul>
     <li><b>Survey status now</b> counts every SR at its current survey status, from this PC's SR Desk copy.</li>
     <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. Switch between <b>SRs</b> and <b>Area (ha)</b> at the top.</li>
-    <li>The SR Desk keeps each SR's current status and a few dates, not a full history. The week-by-week lines are rebuilt from those dates: the date received at DARPO, the date received by RPMO (or the date endorsed to RPMO), and the date of the current status. Before an SR's first dated step it is not counted.</li>
-    <li>${undated.toLocaleString()} SR${undated === 1 ? " has" : "s have"} no dated step at all, so ${undated === 1 ? "it is" : "they are"} in "Survey status now" but not in the lines. A step with no recorded date does not show: the SR stays counted at its last dated step until its next dated one. For example, an SR now at "ASP FROM LMS RECEIVED BY RPMO" counts as "SR RECEIVED BY RPMO" until that ASP date, even though it was transmitted to LMS in between.</li>
-    <li>Weeks run Monday to Sunday; the dashed last piece of each line is the week in progress.</li>
+    <li>The SR Desk keeps each SR's current status and a few dates, not a full history. The week-by-week pie is rebuilt from those dates: the date received at DARPO, the date received by RPMO (or the date endorsed to RPMO), and the date of the current status. Before an SR's first dated step it is not counted.</li>
+    <li>${undated.toLocaleString()} SR${undated === 1 ? " has" : "s have"} no dated step at all, so ${undated === 1 ? "it is" : "they are"} in "Survey status now" but not in the pie. A step with no recorded date does not show: the SR stays counted at its last dated step until its next dated one. For example, an SR now at "ASP FROM LMS RECEIVED BY RPMO" counts as "SR RECEIVED BY RPMO" until that ASP date, even though it was transmitted to LMS in between.</li>
+    <li>Weeks run Monday to Sunday; the latest week is the week in progress ("so far"). The pie opens on it and follows it as weeks pass, unless you pick an earlier week.</li>
     <li>Filters use each SR's <b>current</b> kind, survey status, DARMO and MARPO. So "Survey status: SR RECEIVED BY RPMO" shows the past weeks of the SRs now at RPMO, including the weeks they were still at DARPO. An Admin's corrections in the SR Desk are used.</li>
     <li>Read-only. Nothing on this page is written to the SR Desk or the Sheet.</li></ul>`;
 }
 
 document.querySelectorAll("#range button").forEach(b => b.onclick = () => { ui.weeks = +b.dataset.w; try { localStorage.setItem("srdash-range", ui.weeks); } catch (e) {} render(); });
+let curRows = [];
+let weekStep = false; // stepping through weeks redraws without the opening spin
+const pickWeek = i => { i = Math.max(0, Math.min(curRows.length - 1, i)); ui.week = i === curRows.length - 1 ? "" : curRows[i].label; weekStep = true; render(); weekStep = false; };
+$("wk").oninput = () => pickWeek(+$("wk").value);
+$("wk-prev").onclick = () => pickWeek(+$("wk").value - 1);
+$("wk-next").onclick = () => pickWeek(+$("wk").value + 1);
 $("tbl-btn").onclick = () => { ui.table = !ui.table; render(); };
 document.querySelectorAll("#metric button").forEach(b => b.onclick = () => { ui.metric = b.dataset.m; try { localStorage.setItem("srdash-metric", ui.metric); } catch (e) {} render(); });
 let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
