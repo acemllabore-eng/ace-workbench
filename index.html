@@ -329,7 +329,7 @@ iframe[hidden]{display:none}
 <div class="pal sign" id="sign" hidden>
   <div class="box" role="dialog" aria-label="Sign in">
     <h3>Sign in once, for every app</h3>
-    <p>Unit Desk, Time Log and Databases use one web app address and one key per person. The admin gives you your key.</p>
+    <p>One address and one key per person open Unit Desk, Time Log, Databases and SR Verification Desk. The admin gives you your key.</p>
     <label>Web app address<input id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
     <label>Your key<input id="sKey" placeholder="ABCDE-12345" autocomplete="off" style="font-family:var(--mono);letter-spacing:.06em"></label>
     <div class="row"><span class="msg" id="sMsg">Kept on this device only.</span><button class="btn" id="sOut">Sign out</button><button class="btn primary" id="sGo">Sign in</button></div>
@@ -673,7 +673,7 @@ function renderWho(){
   const s = signin(), b = $("whoBtn"), on = !!(s && s.key);
   b.classList.toggle("out", !on);
   b.querySelector("span").textContent = on ? (s.name || "Signed in") : "Sign in";
-  b.title = on ? "Signed in as " + (s.name || "?") + (s.role ? " (" + s.role + ")" : "") + " for every app" : "Sign in once for Unit Desk, Time Log and Databases";
+  b.title = on ? "Signed in as " + (s.name || "?") + (s.role ? " (" + s.role + ")" : "") + " for every app" : "Sign in once for Unit Desk, Time Log, Databases and SR Verification Desk";
 }
 function reloadFrames(){ Object.keys(frames).forEach(id => { const a = APPS.find(x => x.id === id); if(a) frames[id].src = a.url; }); }
 function signOpen(){ const s = signin() || {}; $("sUrl").value = s.url || ""; $("sKey").value = s.key || ""; $("sMsg").className = "msg"; $("sMsg").textContent = s.name ? "Signed in as " + s.name + (s.role ? " (" + s.role + ")" : "") + "." : "Kept on this device only."; $("sOut").hidden = !(s && s.key); $("sign").hidden = false; $("sUrl").focus(); }
@@ -687,7 +687,11 @@ $("sGo").onclick = async () => {
   try{
     const j = await fetch(url + (url.includes("?") ? "&" : "?") + new URLSearchParams({ app:"desk", action:"me", key }), { redirect:"follow" }).then(r => r.json());
     if(!j.ok) throw new Error(j.error || "Refused");
-    signin({ url, key, name: j.me.name, role: j.me.role }); renderWho(); reloadFrames(); $("sign").hidden = true;
+    signin({ url, key, name: j.me.name, role: j.me.role });
+    // SR Verification Desk accepts the same key at its own address, which the web app hands over here ("aw.sr").
+    const sr = j.links && okAddr(j.links.sr) ? j.links.sr : "";
+    try{ if(sr) localStorage.setItem("aw.sr", sr); else localStorage.removeItem("aw.sr"); }catch(e){}
+    renderWho(); reloadFrames(); $("sign").hidden = true;
   }catch(e){ m.className = "msg bad"; m.textContent = /fetch|network/i.test(String(e)) ? "No connection to that address." : String(e.message || e); }
   finally{ $("sGo").disabled = false; }
 };

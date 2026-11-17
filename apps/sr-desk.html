@@ -293,6 +293,10 @@ h3.eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em
 .hdr-form div, .hdr-form div:nth-last-child(-n+2) { border-bottom: 1px solid var(--line); margin-bottom: -1px; }
 .doc-card > .row > .tx { font-weight: 600; }
 .doc-card > .row > .no { font-weight: 600; color: var(--fg); }
+.doc-head { display: flex; gap: 8px 12px; align-items: baseline; flex-wrap: wrap; padding: 10px 12px; }
+.doc-head .no { font-weight: 600; min-width: 20px; } .doc-head .tx { font-weight: 600; flex: 1 1 200px; min-width: 0; }
+.doc-head .att { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 4px; white-space: nowrap; background: var(--na-bg); color: var(--na); }
+.doc-head .att.is-present { background: var(--pass-bg); color: var(--pass); } .doc-head .att.is-missing { background: var(--fail-bg); color: var(--fail); } .doc-head .att.is-unset { background: var(--warn-bg); color: var(--warn); }
 .doc-card .checks { margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
 .doc-card .checks .row { padding-left: 12px; }
 .doc-card .checks-head { font-weight: 500; }
@@ -1516,11 +1520,14 @@ function renderGuide() {
         <h3>2. Cross-check (optional)</h3>
         <ul class="tips"><li>If the documents were typed into JSON files, load them. The app compares every document with the title and re-works the computations.</li>
           <li>"Fill the checklist" answers only the items it is sure of. Items shown as "Check by hand" are left for you.</li></ul>
-        <h3>3. Checklist</h3>
+        <h3>3. Attachments</h3>
+        <ul class="tips"><li>Go through the envelope and mark every document Present, Missing or N/A. Do not read inside yet.</li>
+          <li>A document marked Missing or N/A has its checks skipped in the next tab.</li></ul>
+        <h3>4. Document checks</h3>
         <ul class="tips"><li>Start with the plan and the title, and keep both open: most checks compare another paper with them.</li>
-          <li>Go down the list in order. Mark the document first, then its checks.</li>
+          <li>Go down the documents in order and answer the checks inside each one.</li>
           <li>Look at the paper for every item. "Pass the unchecked items" is for the items you have already looked at.</li></ul>
-        <h3>4. Notice and decision</h3>
+        <h3>5. Notice and decision</h3>
         <ul class="tips"><li>Read the notice of findings as the DARMO will read it. Each line must say what to correct.</li>
           <li><b>Return for compliance</b>: copy the notice and send it to the DARMO. The SR waits at "Compliance".</li>
           <li><b>Endorse</b>: the SR moves to SR RECEIVED BY RPMO. Enter that date when RPMO receives the transmittal.</li></ul>
@@ -1650,7 +1657,8 @@ function renderSettings() {
         ${HOSTED ? `<p class="hint"><b>Phone version: needs internet.</b> Each change goes to the Sheet at once and is not kept on the phone. With no signal, a change is refused. No Excel backup is made here; the PCs make them.</p>`
           : `<div class="field"><label for="c-url">Web app address</label><input id="c-url" type="url" required placeholder="https:&#47;&#47;script.google.com/macros/s/…/exec" value="${esc(state.cfg.url)}"></div>`}
         <div class="field"><label for="c-key">Your verifier key</label><input id="c-key" required autocomplete="off" spellcheck="false" placeholder="ABCDE-12345" value="${esc(state.cfg.key)}"></div>
-        <p class="hint">Each verifier has their own key. It decides whose name goes on the checklists you save from ${HOSTED ? "this phone" : "this PC"}. Get it from the Admin.</p>
+        <p class="hint">Each verifier has their own key. It decides whose name goes on the checklists you save from ${HOSTED ? "this phone" : "this PC"}. Get it from the Admin. Your Survey Unit key (Unit Desk, Time Log, Databases) works here too.</p>
+        ${state.cfg.shared ? `<p class="readonly-note">Signed in through the Survey Unit panel${state.me ? " as <b>" + esc(state.me.name) + "</b>" : ""}. To use another key, sign out in the panel's top bar.</p>` : ""}
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Save and connect</button><span id="c-msg" class="sub" style="align-self:center"></span></div>
       </form></div></section>
     ${admin ? `<section class="panel"><div class="panel-head"><h2>Add a verifier</h2><span class="sub">Admin only · needs internet</span></div>
@@ -1673,6 +1681,7 @@ function renderSettings() {
         state.cfg.url = old.url; state.cfg.key = old.key;
         msg.textContent = "Sync this PC's waiting changes before switching to another verifier's key."; return;
       }
+      if (old.url !== url || old.key !== key) state.cfg.shared = false; // typed here, not taken from the panel's sign-in
       state.me = j.me; save(); msg.textContent = "Connected as " + j.me.name + "."; await syncNow();
       ui.view = "register"; render();
     } catch (err) { state.cfg.url = old.url; state.cfg.key = old.key; save(); msg.textContent = "Not saved: " + err.message; }
@@ -1709,13 +1718,14 @@ function nextStep(s) {
   if (!isOpen(s)) return { step: "details", text: `Nothing to verify now. The checklist is used while the survey status is ${AT_DARPO}.` };
   if (s.status === "Compliance") return { step: "details", focus: "dw-resub", text: 'Waiting for the DARMO. When the corrected SR comes back, press "Compliance submitted by DARMO".' };
   if (!c) return { step: "details", focus: "dw-route", text: "Choose who approves this SR, DENR or LRA. Its checklist opens next." };
-  const keys = activeKeys(s.route, a), order = []; // in the order of the panel: each document, then its own checks
-  keys.filter(k => k.kind === "doc").forEach(d => { order.push(d); keys.forEach(k => { if (k.kind === "check" && k.docKey === d.key) order.push(k); }); });
-  keys.forEach(k => { if (!order.includes(k)) order.push(k); });
-  const first = order.find(k => !a[k.key]);
-  if (first) return { step: "checklist", row: first.key, text: t.done ? `${t.left} of ${t.total} items left. Continue with: ${cut(first.kind === "doc" ? first.text : first.doc)}.` : "Start the checklist: mark the first document, then answer its checks." };
+  // Two separate passes (user, 2026-11-17): first every attachment (is the document there?), then the details inside each document.
+  const keys = activeKeys(s.route, a), docs = keys.filter(k => k.kind === "doc"), chks = keys.filter(k => k.kind === "check");
+  const fd = docs.find(k => !a[k.key]), dLeft = docs.filter(k => !a[k.key]).length;
+  if (fd) return { step: "attach", row: fd.key, text: dLeft < docs.length ? `Attachments: ${dLeft} of ${docs.length} left to mark. Continue with: ${cut(fd.text)}.` : "Start with the attachments: mark each document Present, Missing or N/A." };
+  const fc = chks.find(k => !a[k.key]), cLeft = chks.filter(k => !a[k.key]).length;
+  if (fc) return { step: "checks", row: fc.key, text: cLeft < chks.length ? `Document checks: ${cLeft} of ${chks.length} left. Continue with: ${cut(fc.doc)}.` : "Attachments are marked. Now check the details inside each document." };
   const noNote = keys.filter(k => ["fail", "missing"].includes(a[k.key]) && !(nt[k.key] || "").trim());
-  if (noNote.length) return { step: "checklist", note: noNote[0].key, text: `Write a note for ${noNote.length} finding${noNote.length > 1 ? "s" : ""}: what is wrong, with the figure or page.` };
+  if (noNote.length) return { step: noNote[0].kind === "doc" ? "attach" : "checks", note: noNote[0].key, text: `Write a note for ${noNote.length} finding${noNote.length > 1 ? "s" : ""}: what is wrong, with the figure or page.` };
   if (t.fail) return { step: "notice", text: `Read the notice of findings (${t.fail}), then press Return for compliance.` };
   return { step: "notice", text: `All ${t.total} items checked, no findings. Press Endorse.` };
 }
@@ -1724,7 +1734,11 @@ function showStep(step) {
   document.querySelectorAll(".pane").forEach(p => p.hidden = p.dataset.pane !== step);
   document.querySelectorAll(".step").forEach(b => b.setAttribute("aria-selected", String(b.dataset.step === step)));
   const b = document.querySelector(".dw-body"); if (b) b.scrollTop = 0;
+  stepIntoView();
 }
+// Five tabs do not fit a phone: keep the open one inside the tab strip.
+function stepIntoView() { const el = document.querySelector('.step[aria-selected="true"]'), st = el && el.parentElement; if (!st) return;
+  const l = el.offsetLeft - st.offsetLeft; if (l < st.scrollLeft || l + el.offsetWidth > st.scrollLeft + st.clientWidth) st.scrollLeft = Math.max(0, l - 24); }
 function coachGo(seq) {
   const s = sr(seq); if (!s) return; const n = nextStep(s); showStep(n.step);
   const el = n.focus ? document.getElementById(n.focus) : n.note ? document.querySelector(`[data-note="${n.note}"]`) : n.row ? document.querySelector(`[data-row="${n.row}"]`) : null;
@@ -1751,16 +1765,21 @@ function openSR(seq) {
     const h = howOf(text, kind, doc);
     return `<div class="row ${bad ? "is-fail" : ""}" data-row="${key}"><span class="no">${no}</span><span class="tx">${esc(text)}${typeTag(ty)}${h ? `<span class="how">${esc(h[0])}${h[1] ? ' <span class="tbc">To confirm</span>' : ""}</span>` : ""}</span>${seg(key, kind, v, off)}
       <div class="note" ${bad ? "" : "hidden"}><input ${dis} data-note="${key}" placeholder="What is wrong, with the figure or page (required for the notice)" value="${esc(nt[key] || "")}"></div></div>`; };
-  // One block per document: its Present/Missing/N/A row, then its own validation checks right under it.
-  const docBlock = (gi, i, text) => { const dk = `d${gi}.${i}`, di = (DOC_GUIDE[s.route] || {})[`${gi}.${i}`], d = di === undefined ? null : c.guide[di];
-    const off = skipped(a, dk);
-    return `<div class="doc-card">${row(dk, i + 1, text, "doc")}${d ? `<div class="checks ${off ? "off" : ""}">
+  // Attachments tab: one Present/Missing/N/A row per document. Document checks tab: one block per document that has checks.
+  const guideOf = (gi, i) => { const di = (DOC_GUIDE[s.route] || {})[`${gi}.${i}`]; return di === undefined ? null : di; };
+  const attachRow = (gi, i, text) => `<div class="doc-card">${row(`d${gi}.${i}`, i + 1, text, "doc")}</div>`;
+  const checkBlock = (gi, i, text) => { const dk = `d${gi}.${i}`, di = guideOf(gi, i); if (di === null) return ""; const d = c.guide[di];
+    const off = skipped(a, dk), mark = a[dk] === "present" ? "Present" : a[dk] === "missing" ? "Missing" : a[dk] === "na" ? "N/A" : "";
+    return `<div class="doc-card"><div class="doc-head"><span class="no">${i + 1}</span><span class="tx">${esc(text)}</span><span class="att ${mark ? "is-" + a[dk] : "is-unset"}">${mark ? "Attachment: " + mark : "Attachment not marked yet"}</span></div><div class="checks ${off ? "off" : ""}">
       <div class="checks-head"><span>Checks on this document</span><span class="count" id="vc-${di}"></span></div>
-      ${off ? `<div class="checks-skip">Checks skipped: document marked ${a[dk] === "na" ? "N/A" : "Missing"}.</div>` : ""}
+      ${off ? `<div class="checks-skip">Checks skipped: the attachment is marked ${mark}. Change it in the Attachments tab if the document is there.</div>` : `
       ${(() => { const ty = j => checkType(s.route, di, d.checks[j]), ord = checkOrder(s.route, di), au = ord.filter(j => ty(j) === "auto"), hand = ord.filter(j => ty(j) !== "auto"); let n = 0;
         const r = j => { n++; const t = d.checks[j]; return row(`g${di}.${j}`, `${i + 1}.${n}`, t, "check", off, d.doc, ty(j)) + (ty(j) === "auto" ? fxBox(s, di, j, t, off, editable, FXD, FXE) : ""); };
         return au.length ? `<div class="grp-label">From the documents (Auto) · ${au.length}</div>${au.map(r).join("")}${hand.length ? `<div class="grp-label">Check by hand · ${hand.length}</div>${hand.map(r).join("")}` : ""}` : ord.map(r).join(""); })()}
-      ${dis || off ? "" : `<div class="tools">${d.checks.some(t => checkType(s.route, di, t) === "auto") ? `<button class="btn small" data-fxmark="${di}">Mark the Auto items from the data</button>` : ""}<button class="btn small" data-passall="${di}">Pass the unchecked items</button></div>`}</div>` : ""}</div>`; };
+      ${dis ? "" : `<div class="tools">${d.checks.some(t => checkType(s.route, di, t) === "auto") ? `<button class="btn small" data-fxmark="${di}">Mark the Auto items from the data</button>` : ""}<button class="btn small" data-passall="${di}">Pass the unchecked items</button></div>`}`}</div></div>`; };
+  const lockNote = !c || canCheck(s) ? "" : `<p class="readonly-note">${s.status === "Compliance" ? "Locked while the SR is with the DARMO for compliance." : `Read only: the checklist is used while the survey status is ${AT_DARPO}.`}</p>`;
+  const noRoute = `<div class="banner"><div>${isOpen(s) ? "Choose <b>For approval by</b> (DENR or LRA) in Details to open its checklist. Leave it Unassigned for SRs that go to neither." : `The checklist is used while the survey status is ${AT_DARPO}.`}</div></div>`;
+  const guideToggle = `<label class="toggle"><input type="checkbox" data-guide-toggle ${ui.guide ? "checked" : ""}> Show how-to notes</label>`;
   const area = typeof s.area === "number" ? s.area.toFixed(4) : s.area;
   const inTracker = s.kind !== "No batch tracker";
   const ed = f => ovs[f] !== undefined ? `<span class="edited">Edited by Admin. Sheet: ${esc(s.orig[f] === "" || s.orig[f] === undefined ? "blank" : s.orig[f])}</span>` : "";
@@ -1773,7 +1792,7 @@ function openSR(seq) {
       ["Date transmitted", fmtDate(s.transmitted)], ["Verifier (tracker)", s.trackerVerifier], ["In-house", s.inHouse]].filter(([, v]) => v !== "" && v !== undefined && v !== null));
   const dlRows = list => list.map(([k, v, f]) => `<div><dt>${esc(k)}</dt><dd ${/No\.|Area/.test(k) ? 'class="mono"' : ""}>${esc(v) || '<span class="sub">—</span>'}${f ? ed(f) : ""}</dd></div>`).join("");
   const hid = p => ui.step === p ? "" : "hidden";
-  const stepDefs = [["details", "Details"]].concat(isOpen(s) ? [["xc", "Cross-check"]] : [], [["checklist", "Checklist"], ["notice", "Notice"]]);
+  const stepDefs = [["details", "Details"]].concat(isOpen(s) ? [["xc", "Cross-check"]] : [], [["attach", "Attachments"], ["checks", "Document checks"], ["notice", "Notice"]]);
   const verOpts = state.me && state.me.role === "admin" ? state.verifiers : [s.verifier, state.me && state.me.name].filter((v, i, x) => v && x.indexOf(v) === i);
   const holder = s.verifier && state.me && s.verifier !== state.me.name && state.me.role !== "admin";
   document.getElementById("drawer-root").innerHTML = `
@@ -1824,12 +1843,21 @@ function openSR(seq) {
         <section class="sect"><h3>Status history <span id="hist-when"></span></h3><div id="hist-body">${histHtml(s)}</div></section>
         </div>
         ${isOpen(s) ? `<div class="pane" data-pane="xc" ${hid("xc")}>${xcSection(s, editable)}</div>` : ""}
-        <div class="pane" data-pane="checklist" ${hid("checklist")}>
-        ${!c ? `<div class="banner"><div>${isOpen(s) ? "Choose <b>For approval by</b> (DENR or LRA) in Details to open its checklist. Leave it Unassigned for SRs that go to neither." : `The checklist is used while the survey status is ${AT_DARPO}.`}</div></div>` : `
-        <section class="sect"><h3>Documents and their checks <span><span id="dw-doc-count"></span> · <span id="dw-chk-count"></span></span></h3>
-          <div class="list-head" style="margin-bottom:8px"><p class="hint" style="margin:0">Mark each document, then answer the checks under it. A document marked Missing or N/A skips its checks.</p>
-            <label class="toggle"><input type="checkbox" id="dw-guide" ${ui.guide ? "checked" : ""}> Show how-to notes</label></div>
-          ${!canCheck(s) ? `<p class="readonly-note">${s.status === "Compliance" ? "Locked while the SR is with the DARMO for compliance." : `Read only: the checklist is used while the survey status is ${AT_DARPO}.`}</p>` : ""}
+        <div class="pane" data-pane="attach" ${hid("attach")}>
+        ${!c ? noRoute : `
+        <section class="sect"><h3>Attachments <span id="dw-doc-count"></span></h3>
+          <div class="list-head" style="margin-bottom:8px"><p class="hint" style="margin:0">Go through the envelope first: is each document there? Do not read inside yet. A document marked Missing or N/A skips its checks in the next tab.</p>
+            ${guideToggle}</div>
+          ${lockNote}
+          ${c.docGroups.map((g, gi) => `<div class="group-label">${g.label}${g.asNeeded ? " (mark N/A when not needed)" : ""}</div><div class="doc-list">${g.items.map((t, i) => attachRow(gi, i, t)).join("")}</div>`).join("")}
+        </section>`}
+        </div>
+        <div class="pane" data-pane="checks" ${hid("checks")}>
+        ${!c ? noRoute : `
+        <section class="sect"><h3>Document checks <span id="dw-chk-count"></span></h3>
+          <div class="list-head" style="margin-bottom:8px"><p class="hint" style="margin:0">Now read inside each document that is attached and answer its checks. Documents with no checks on the checklist are not listed here.</p>
+            ${guideToggle}</div>
+          ${lockNote}
           <details class="ref-notes" style="margin-bottom:8px"><summary>Reference notes: land use and claimant names</summary><div class="inner">
             <div><h3 class="eyebrow" style="margin-top:0">${esc(c.landUseNote)}</h3><p style="margin:0 0 6px"><b>Carpable:</b> ${esc(c.carpable)}</p><p style="margin:0"><b>Non-carpable:</b> ${esc(NONCARPABLE)}</p>
               ${c.extraNotes.map(n => `<p style="margin:8px 0 0"><b>Note:</b> ${esc(n)}</p>`).join("")}</div>
@@ -1838,7 +1866,7 @@ function openSR(seq) {
               <tr style="cursor:default"><th colspan="2">ARBs not annotated on Collective CLOA</th></tr>
               ${c.notAnnotated.map(([x, y]) => `<tr style="cursor:default"><td>${x}</td><td>${y}</td></tr>`).join("")}</tbody></table></div>
           </div></details>
-          ${c.docGroups.map((g, gi) => `<div class="group-label">${g.label}${g.asNeeded ? " (mark N/A when not needed)" : ""}</div><div class="doc-list">${g.items.map((t, i) => docBlock(gi, i, t)).join("")}</div>`).join("")}
+          ${c.docGroups.map((g, gi) => { const blocks = g.items.map((t, i) => checkBlock(gi, i, t)).join(""); return blocks ? `<div class="group-label">${g.label}</div><div class="doc-list">${blocks}</div>` : ""; }).join("")}
         </section>`}
         </div>
         <div class="pane" data-pane="notice" ${hid("notice")}>
@@ -1860,8 +1888,8 @@ function openSR(seq) {
   root.querySelector("#scrim").onclick = closeSR;
   root.querySelectorAll(".step").forEach(b => b.onclick = () => showStep(b.dataset.step));
   root.querySelector("#dw-coach-go").onclick = () => coachGo(seq);
-  const gt = root.querySelector("#dw-guide");
-  if (gt) gt.onchange = () => { ui.guide = gt.checked; try { localStorage.setItem(STORE + "-guide", ui.guide ? "1" : "0"); } catch (e) {} root.querySelector(".dw-body").classList.toggle("guide-off", !ui.guide); };
+  const gts = root.querySelectorAll("[data-guide-toggle]"); // one in each of the two checking tabs; kept the same
+  gts.forEach(gt => gt.onchange = () => { ui.guide = gt.checked; gts.forEach(x => x.checked = ui.guide); try { localStorage.setItem(STORE + "-guide", ui.guide ? "1" : "0"); } catch (e) {} root.querySelector(".dw-body").classList.toggle("guide-off", !ui.guide); });
   const pr = root.querySelector("#dw-practice-reset");
   if (pr) pr.onclick = () => { practice = null; try { localStorage.removeItem(STORE + "-practice"); } catch (e) {} delete docStore[PRACTICE]; saveDocs(); ui.step = null; openSR(seq); toast("Practice SR is back to the start"); };
   root.querySelector("#dw-ver").onchange = e => { edit(seq, d => { d.verifier = e.target.value; }); openSR(seq); };
@@ -1913,6 +1941,7 @@ function openSR(seq) {
   xcBind(seq, root);
   loadHistory(seq);
   refresh(seq);
+  stepIntoView();
   root.querySelector("#dw-close").focus();
 }
 // The tracker's status cell: as the SR Desk last wrote or saw it when that is newer than the register (rebuilt every 15 minutes).
@@ -1991,7 +2020,8 @@ function refresh(seq) {
   const c = CL[s.route], t = tally(s), a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {}, keys = activeKeys(s.route, a);
   document.getElementById("dw-coach").textContent = nextStep(s).text;
   const stn = (id, txt, cls) => { const el = document.getElementById("st-n-" + id); if (el) { el.textContent = txt; el.className = "n " + (cls || ""); } };
-  stn("checklist", c ? `${t.done}/${t.total}` : "", c && !t.left ? "ok" : "");
+  { const part = kind => { const l = c ? keys.filter(k => k.kind === kind) : [], done = l.filter(k => a[k.key]).length; return [l.length ? `${done}/${l.length}` : "", l.length && done === l.length ? "ok" : ""]; };
+    stn("attach", ...part("doc")); stn("checks", ...part("check")); }
   stn("notice", c && t.fail ? String(t.fail) : "", "bad");
   stn("xc", docsFor(seq).length ? String(docsFor(seq).length) : "");
   const pill = document.getElementById("dw-status");
@@ -2202,10 +2232,44 @@ function downloadBackup(auto) {
   if (auto) { state.lastBackup = today(); save(); toast("Daily Excel backup saved to Downloads"); }
 }
 
+/* ---------- One sign-in with the Survey Unit panel (2026-11-17) ----------
+   The panel's Sign in keeps {url, key, name, role} in localStorage "aw.signin" (the Survey Unit web app and the person's
+   key) and this desk's own address in "aw.sr". The SR Desk web app accepts that same key, so when this page is opened
+   from the same place as the panel it uses them and nobody types a second key. cfg.shared marks a key that came from
+   the panel: signing out there clears it here. A PC that never signed in through the panel keeps its own Settings.
+   Not used by the phone version served by the web app (another site, so it cannot see the panel's sign-in). */
+const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
+async function adoptSignin() {
+  if (HOSTED) return;
+  let s = null, sr = "";
+  try { s = JSON.parse(localStorage.getItem("aw.signin") || "null"); sr = localStorage.getItem("aw.sr") || ""; } catch (e) { return; }
+  if (!s) return;
+  if (!s.key) { // signed out in the panel
+    if (state.cfg.shared) { state.cfg.key = ""; state.cfg.shared = false; state.me = null; save(); }
+    return;
+  }
+  if (!okAddr(sr) && okAddr(s.url)) { // signed in from an app's own Settings: ask the Survey Unit web app for this desk's address
+    try {
+      const j = await fetch(s.url + (s.url.includes("?") ? "&" : "?") + new URLSearchParams({ app: "desk", action: "me", key: s.key }), { redirect: "follow" }).then(r => r.json());
+      sr = j && j.ok && j.links && okAddr(j.links.sr) ? j.links.sr : "";
+      if (sr) try { localStorage.setItem("aw.sr", sr); } catch (e) {}
+    } catch (e) { sr = ""; }
+  }
+  if (!okAddr(sr)) return; // no address for this desk (offline at first use, or an older Survey Unit web app)
+  if (state.cfg.url === sr && state.cfg.key === s.key) { if (!state.cfg.shared) { state.cfg.shared = true; save(); } return; }
+  if (state.cfg.key && state.cfg.key !== s.key && Object.keys(state.queue).length) { // same rule as Settings: no switch of key over unsynced work
+    state.lastError = "Signed in through the panel with another key, but this PC has changes waiting under the old one. Sync them first, then reload."; return;
+  }
+  if (state.cfg.key !== s.key) state.me = null;
+  state.cfg.url = sr; state.cfg.key = s.key; state.cfg.shared = true; save();
+  return true; // newly connected from the panel's sign-in
+}
+
 /* ---------- Start ---------- */
 renderSyncbar();
 render();
-if (state.cfg.url && state.cfg.key) syncNow();
+adoptSignin().catch(() => false).then(fresh => { if (fresh && ui.view === "settings") ui.view = "register"; // the first draw sent an unconnected page to Settings
+  renderSyncbar(); render(); if (state.cfg.url && state.cfg.key) syncNow(); });
 </script>
 </body>
 </html>
