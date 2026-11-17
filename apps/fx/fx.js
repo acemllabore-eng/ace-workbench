@@ -9,12 +9,12 @@
   var still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   function start() {
     if (!d.body) return setTimeout(start, 30);
-    root.classList.add("fx-in");
-    var top = d.createElement("div"); top.id = "fx-top"; top.setAttribute("aria-hidden", "true"); top.innerHTML = "<i></i>";
+    root.classList.add("aw-fx-in");
+    var top = d.createElement("div"); top.id = "aw-fx-top"; top.setAttribute("aria-hidden", "true"); top.innerHTML = "<i></i>";
     d.body.appendChild(top);
     if (still) return;
     if (matchMedia("(pointer: fine)").matches) {
-      var glow = d.createElement("div"); glow.id = "fx-glow"; glow.setAttribute("aria-hidden", "true");
+      var glow = d.createElement("div"); glow.id = "aw-fx-glow"; glow.setAttribute("aria-hidden", "true");
       d.body.appendChild(glow);
       var raf = 0, x = 0, y = 0;
       d.addEventListener("pointermove", function (e) {
@@ -26,7 +26,7 @@
     d.addEventListener("pointerdown", function (e) {
       var t = e.target && e.target.closest && e.target.closest("button,.btn,[role=button],a[href],summary,.tab,.pill,.chip");
       if (!t || t.disabled) return;
-      var r = d.createElement("span"); r.className = "fx-rip";
+      var r = d.createElement("span"); r.className = "aw-fx-rip";
       r.style.left = e.clientX + "px"; r.style.top = e.clientY + "px";
       d.body.appendChild(r); setTimeout(function () { r.remove(); }, 600);
     }, { passive: true });
