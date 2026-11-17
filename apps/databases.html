@@ -7,7 +7,8 @@
 <style>
 /* Databases: the unit's working workbooks (from the DAR DATABASE DIRECTORY sheet) on PCs and phones.
    Everyone with a key views and searches; the head and admin edit cells. Backend: backend/databases.gs.
-   Last-opened tabs are kept on this device (IndexedDB) so they can be read with no signal; edits need a connection. */
+   Last-opened tabs are kept on this device (IndexedDB) so they can be read with no signal. Edits made with no connection
+   are kept on this device (localStorage "db.outbox") and sent when it is back; a row changed on the Sheet meanwhile is a conflict. */
 :root{
   --bg:#f4f3ef; --panel:#ffffff; --ink:#15171a; --muted:#666a70; --line:#e1dfd9; --hover:#efede7; --field:#ffffff;
   --accent:#b8860b; --accent-ink:#ffffff; --accent-soft:#f7efd9; --cy:#0e7490; --cy-soft:#dff3f7;
@@ -266,6 +267,7 @@ mark{background:rgba(var(--accent-rgb),.3);color:inherit;border-radius:3px;paddi
     <h1 id="title" aria-label="Databases">Databases</h1>
     <nav class="crumbs grow" id="crumbs" aria-label="Where you are"></nav>
     <span class="chip role" id="role" hidden></span>
+    <button class="chip" id="obBtn" hidden title="Edits kept on this device, waiting to be sent to the Sheet"></button>
     <span class="chip" id="net"><span class="dot"></span><span class="lbl">…</span></span>
     <button class="ibtn" id="histBtn" title="Recent edits" aria-label="Recent edits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></button>
     <button class="ibtn" id="refresh" title="Load again from Google Sheets" aria-label="Load again"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg></button>
@@ -364,13 +366,135 @@ async function api(method, payload){
 let scans = 0;
 function scan(d){ scans = Math.max(0, scans + d); $("scan").hidden = !scans; }
 function setOnline(on){ state.online = on; renderNet(); }
-function setMe(me){ state.me = me; $("role").hidden = false; $("role").textContent = me.role; $("role").title = "Signed in as " + me.name; }
+function setMe(me){ state.me = me; ls("db.me", { name:me.name, role:me.role, tag:keyTag(state.cfg.key) }); $("role").hidden = false; $("role").textContent = me.role; $("role").title = "Signed in as " + me.name; }
 const canEdit = () => !!state.me && (state.me.role === "head" || state.me.role === "admin");
 function renderNet(){
   const n = $("net"), on = state.online, off = on === false || !navigator.onLine;
   n.querySelector(".dot").className = "dot " + (on === true && navigator.onLine ? "on" : off ? "off" : "");
   n.querySelector(".lbl").textContent = on === true && navigator.onLine ? "Live" : off ? "Saved copy" : "Not connected";
-  n.title = on === true ? "Connected to the Google Sheets" : off ? "No connection: showing what this device kept. Edits need a connection." : "Open Settings to connect";
+  n.title = on === true ? "Connected to the Google Sheets" : off ? "No connection: showing what this device kept. Edits are kept here and sent when the connection is back." : "Open Settings to connect";
+  const w = state.outbox.filter(mine), c = w.filter(o => o.status !== "waiting").length, b = $("obBtn");
+  b.hidden = !w.length;
+  b.innerHTML = `<span class="dot ${c ? "off" : ""}"></span>${c ? c + " edit" + (c > 1 ? "s need" : " needs") + " you" : w.length + " edit" + (w.length > 1 ? "s" : "") + " to sync"}`;
+}
+
+/* ---------- Offline edits: kept on this device, sent when online ---------- */
+// One item per row edited: the cells changed (with the value seen before the change, so the server can spot a conflict)
+// and up to 3 unchanged "guard" cells of the same row, so an edit never lands on another row if rows were moved meanwhile.
+// Items carry a tag of the key (never the key itself): they are sent only while the same person is signed in.
+function keyTag(k){ let h = 2166136261; for(const ch of String(k || "")){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+state.outbox = lsJ("db.outbox", []);
+{ const m = lsJ("db.me", null); if(m && state.cfg.key && m.tag === keyTag(state.cfg.key)) state.me = { name:m.name, role:m.role }; }
+const mine = o => o.tag === keyTag(state.cfg.key);
+function saveOutbox(){ ls("db.outbox", state.outbox); renderNet(); }
+const isOffline = () => !navigator.onLine || state.online === false;
+function guardCells(d, i, cells){
+  const r = d.rows[i], out = [];
+  for(let j = 0; j < d.headers.length && out.length < 3; j++){
+    const v = r[j] || "";
+    if(!v || d.fset.has(i + "," + j) || (d.lists[j] && d.lists[j].length) || cells.some(c => c.col === j + 1)) continue;
+    out.push({ col:j + 1, header:d.headers[j], old:v, value:v });
+  }
+  return out;
+}
+const sendCells = o => o.cells.map(c => ({ col:c.col, header:c.header, old:c.old, value:c.value })).concat(o.guards.filter(g => !o.cells.some(c => c.col === g.col)));
+function setCell(d, i, col, v){ if(!d.rows[i]) return; d.rows[i][col - 1] = v; if(d.text) d.text[i] = d.rows[i].join("\u0001").toLowerCase(); }
+// Show this person's waiting edits over a tab just read (from the Sheet or from the device copy).
+function overlay(d){
+  state.outbox.forEach(o => { if(!mine(o) || o.key !== d.key || o.headerRow !== d.headerRow) return; const i = o.row - d.headerRow - 1; o.cells.forEach(c => setCell(d, i, c.col, c.value)); });
+}
+// Change the device copy of a tab without opening it.
+async function patchKept(key, headerRow, i, fn){
+  const cur = state.data && state.data.key === key ? state.data : null;
+  if(cur){ if(cur.headerRow === headerRow){ fn(cur, i); keep(cur); } return; }
+  const k = await idb.get(key); if(k && k.headerRow === headerRow && k.rows[i]){ fn(k, i); await idb.set(key, k); }
+}
+function queueEdit(i, cells){
+  const d = state.data, row = d.headerRow + 1 + i, tag = keyTag(state.cfg.key), now = Date.now();
+  let o = state.outbox.find(x => x.key === d.key && x.row === row && x.headerRow === d.headerRow && x.tag === tag);
+  if(!o){
+    o = { id: now.toString(36) + Math.random().toString(36).slice(2, 6), tag, key:d.key, book:d.book, tab:d.tab, bookName:d.bookName || "", headerRow:d.headerRow, row,
+          cells:[], guards:guardCells(d, i, cells), at:new Date(now).toISOString(), status:"waiting" };
+    state.outbox.push(o);
+  }
+  cells.forEach(c => { const e = o.cells.find(x => x.col === c.col); if(e){ e.value = c.value; e.t = now; } else o.cells.push({ col:c.col, header:c.header, old:c.old, value:c.value, t:now }); });
+  o.guards = o.guards.filter(g => !o.cells.some(c => c.col === g.col));
+  o.cells = o.cells.filter(c => c.value !== c.old);
+  if(o.status === "refused"){ o.status = "waiting"; o.error = ""; }
+  if(!o.cells.length) state.outbox.splice(state.outbox.indexOf(o), 1);
+  cells.forEach(c => setCell(d, i, c.col, c.value));
+  keep(d); saveOutbox();
+  d.flash = i; closeDrawer(); tableBody(false);
+  setTimeout(() => { if(d.flash === i) d.flash = undefined; }, 1900);
+  return o;
+}
+let flushing = false;
+async function flushOutbox(){
+  const todo = state.outbox.filter(o => mine(o) && o.status === "waiting");
+  if(flushing || !todo.length || !state.cfg.url || !state.cfg.key || !navigator.onLine) return;
+  flushing = true;
+  let saved = 0, need = 0;
+  try{
+    for(let k = 0; k < todo.length; k += 20){
+      const part = todo.slice(k, k + 20), sentAt = Date.now();
+      const j = await api("POST", { changes: part.map(o => ({ type:"edit", book:o.book, tab:o.tab, headerRow:o.headerRow, row:o.row, cells:sendCells(o) })) });
+      j.results.forEach((res, n) => {
+        const o = part[n]; if(!state.outbox.includes(o)) return;
+        const i = o.row - o.headerRow - 1;
+        if(res.result === "saved" || res.result === "same"){
+          saved++;
+          const row = res.row || [];
+          // Cells changed again while this was being sent stay, with the Sheet's new value as the one seen before.
+          o.cells = o.cells.filter(c => c.t > sentAt); o.cells.forEach(c => c.old = row[c.col - 1] || "");
+          o.guards.forEach(g => g.old = g.value = row[g.col - 1] || "");
+          if(!o.cells.length) state.outbox.splice(state.outbox.indexOf(o), 1);
+          patchKept(o.key, o.headerRow, i, (d, i) => { row.forEach((v, j) => { if(!o.cells.some(c => c.col === j + 1)) setCell(d, i, j + 1, v); }); });
+        }else if(res.result === "conflict"){ need++; o.status = "conflict"; o.conflicts = res.conflicts; o.server = res.row; }
+        else { need++; o.status = "refused"; o.error = res.error || "Refused"; }
+      });
+    }
+  }catch(e){ if(e.server) toast("Edits not sent: " + e.message); }
+  finally{ flushing = false; saveOutbox(); }
+  if(saved || need) toast((saved ? "Sent " + saved + " kept edit" + (saved > 1 ? "s" : "") + " to the Sheets" : "") + (saved && need ? " · " : "") + (need ? need + " need you" : ""));
+  if(state.data && state.view.name === "table") tableBody(false);
+  if(need && $("obList")) outboxDrawer();
+}
+// Put the Sheet's values back for one item (its edit is dropped).
+function dropItem(o, rowFromSheet){
+  state.outbox.splice(state.outbox.indexOf(o), 1);
+  const i = o.row - o.headerRow - 1;
+  patchKept(o.key, o.headerRow, i, (d, i) => rowFromSheet ? d.headers.forEach((h, j) => setCell(d, i, j + 1, rowFromSheet[j] || "")) : o.cells.forEach(c => setCell(d, i, c.col, c.old)));
+  saveOutbox(); if(state.data && state.view.name === "table") tableBody(false);
+}
+function outboxDrawer(){
+  const list = state.outbox.filter(mine), others = state.outbox.length - list.length;
+  const item = o => {
+    const head = `<div class="m"><b>${esc(o.bookName || "Workbook")}</b> › ${esc(o.tab)} › row ${esc(o.row)} · ${esc(new Date(o.at).toLocaleString("en-PH"))}</div>`;
+    const cells = o.cells.map(c => `<div class="d"><b>${esc(c.header)}</b>: <s>${esc(c.old || "blank")}</s> → <ins>${esc(c.value || "blank")}</ins></div>`).join("");
+    let st = "";
+    if(o.status === "conflict") st = `<div class="banner warn"><div class="grow"><b>Changed on the Sheet after you edited it</b>${(o.conflicts || []).map(c => `${esc(c.header)} is now “${esc(c.server || "blank")}”.`).join(" ")}
+      If the names above are not the row you meant, the rows were moved: use the Sheet's values and edit it again.
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn sm" data-theirs="${o.id}">Use the Sheet's values</button><button class="btn sm primary" data-mine="${o.id}">Save mine over them</button></div></div></div>`;
+    else if(o.status === "refused") st = `<div class="banner bad"><div class="grow"><b>The Sheet refused it</b>${esc(o.error)}<div style="margin-top:10px"><button class="btn sm" data-drop="${o.id}">Discard this edit</button></div></div></div>`;
+    else st = `<div class="muted" style="margin-top:6px">Waiting to send <button class="btn sm" data-drop="${o.id}" style="margin-left:8px">Discard</button></div>`;
+    return `<div class="ev">${head}${cells}${st}</div>`;
+  };
+  drawer("Edits kept on this device",
+    `<div id="obList">${list.length ? `<div class="tl">${list.map(item).join("")}</div>` : `<div class="empty"><b>Nothing waiting</b>All your edits are on the Sheets.</div>`}
+     ${others ? `<p class="muted">${others} edit${others > 1 ? "s" : ""} made by another person on this device wait until they sign in here again.</p>` : ""}</div>`,
+    `<span class="chg grow">${isOffline() ? "No connection: they are sent when it is back." : "Sent automatically when online."}</span><button class="btn" id="dCancel">Close</button><button class="btn primary" id="obSync" ${list.some(o => o.status === "waiting") && !isOffline() ? "" : "disabled"}>Send now</button>`);
+  $("dCancel").onclick = closeDrawer;
+  $("obSync").onclick = async () => { $("obSync").disabled = true; $("obSync").textContent = "Sending…"; await flushOutbox(); if($("obList")) outboxDrawer(); };
+  const find = id => state.outbox.find(o => o.id === id);
+  $("dBody").querySelectorAll("[data-drop]").forEach(b => b.onclick = () => { const o = find(b.dataset.drop); if(o) dropItem(o); outboxDrawer(); });
+  $("dBody").querySelectorAll("[data-theirs]").forEach(b => b.onclick = () => { const o = find(b.dataset.theirs); if(o) dropItem(o, o.server); outboxDrawer(); });
+  $("dBody").querySelectorAll("[data-mine]").forEach(b => b.onclick = async () => {
+    const o = find(b.dataset.mine); if(!o) return;
+    const row = o.server || [];
+    o.cells.forEach(c => c.old = row[c.col - 1] || ""); o.guards.forEach(g => g.old = g.value = row[g.col - 1] || "");
+    o.status = "waiting"; o.conflicts = null; saveOutbox();
+    await flushOutbox(); if($("obList")) outboxDrawer();
+  });
 }
 function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => t.hidden = true, 3200); }
 function errText(e){ return e.setup ? "Open Settings and enter the web app address and your key." : e.server ? e.message : "No connection to Google (" + (e.name === "AbortError" ? "took too long" : "offline or blocked") + ")."; }
@@ -525,7 +649,7 @@ async function loadTab(book, tab, fresh){
       if(!pg.rows.length) break;
       pg.formulas.forEach(x => d.formulas.push((x[0] + off) + "," + x[1]));
       d.rows = d.rows.concat(pg.rows); off += pg.rows.length;
-      d.fset = new Set(d.formulas); prepare(d); tableBody(false); progress();
+      d.fset = new Set(d.formulas); overlay(d); prepare(d); tableBody(false); progress();
     }
     d.complete = true; progress(); tableBody(false);
     await keep(d);
@@ -540,6 +664,7 @@ function setData(d, kept){
   d.fset = new Set(d.formulas); d.live = !kept; d.kept = kept;
   if(kept) d.complete = true;
   d.hiddenCols = lsJ("db.cols." + d.key, []);
+  overlay(d);
   state.data = d; prepare(d); renderTable();
 }
 // Search text per row, and column widths from the first rows.
@@ -586,7 +711,7 @@ function renderTable(){
   const colOpts = d.headers.map((h, j) => `<option value="${j}" ${String(d.fcol) === String(j) ? "selected" : ""}>${esc(h)}</option>`).join("");
   const vals = d.fcol !== undefined && d.fcol !== "" ? [...new Set(d.rows.map(r => String(r[d.fcol] || "")))].filter(Boolean).sort(coll).slice(0, 400) : [];
   $("view").innerHTML = `
-    ${d.err ? `<div class="banner warn"><div class="grow"><b>Showing the copy kept on this device</b>${esc(errText(d.err))} Kept ${new Date(d.at).toLocaleString("en-PH")}. Editing needs a connection.</div></div>`
+    ${d.err ? `<div class="banner warn"><div class="grow"><b>Showing the copy kept on this device</b>${esc(errText(d.err))} Kept ${new Date(d.at).toLocaleString("en-PH")}.${canEdit() ? " Edits you make are kept here and sent when online." : ""}</div></div>`
       : d.kept ? `<div class="banner warn" id="keptNote"><div class="grow"><b>Saved copy from ${new Date(d.at).toLocaleString("en-PH")}</b>Loading the live tab…</div></div>` : ""}
     <div class="tbar">
       <div class="search">${ICO.search}<input class="f" id="tq" placeholder="Search every column" value="${esc(d.q || "")}"></div>
@@ -692,7 +817,8 @@ function drawer(title, body, foot){
   document.addEventListener("keydown", escClose);
 }
 function openRow(i){
-  const d = state.data, r = d.rows[i], live = d.live && !d.err && state.online !== false, edit = canEdit() && live, rowNum = d.headerRow + 1 + i;
+  const d = state.data, r = d.rows[i], live = d.live && !d.err && !isOffline(), edit = canEdit(), rowNum = d.headerRow + 1 + i;
+  const pend = state.outbox.find(o => mine(o) && o.key === d.key && o.row === rowNum && o.headerRow === d.headerRow);
   const fields = d.headers.map((h, j) => {
     const isF = d.fset.has(i + "," + j), list = d.lists[j], v = r[j] || "";
     let ctl;
@@ -702,9 +828,10 @@ function openRow(i){
     else ctl = `<input class="f" data-j="${j}" value="${esc(v)}">`;
     return `<div class="fld" data-fj="${j}"><span class="lb">${esc(h)}${isF ? '<span class="tag dim">formula</span>' : ""}${list && list.length ? '<span class="tag cy">list</span>' : ""}</span>${ctl}</div>`;
   }).join("");
-  const why = !live ? "Saved copy on this device: connect to edit." : "View only: the head and the admin edit.";
-  drawer(`Row ${rowNum} · ${r[0] || d.tab}`, fields,
-    edit ? `<span class="chg grow" id="chg">No changes</span><button class="btn" id="dCancel">Cancel</button><button class="btn primary" id="dSave" disabled>Save to Sheet</button>`
+  const why = "View only: the head and the admin edit.", saveLbl = live && !pend ? "Save to Sheet" : "Save on this device";
+  drawer(`Row ${rowNum} · ${r[0] || d.tab}`, (pend ? `<div class="banner warn"><div class="grow"><b>Edit kept on this device</b>${pend.status === "waiting" ? "Not on the Sheet yet; it is sent when online." : "It needs you: open the list of kept edits."}</div></div>` : "")
+      + (edit && !live ? `<div class="banner warn"><div class="grow"><b>No connection</b>Your changes are kept on this device and sent to the Sheet when the connection is back.</div></div>` : "") + fields,
+    edit ? `<span class="chg grow" id="chg">No changes</span><button class="btn" id="dCancel">Cancel</button><button class="btn primary" id="dSave" disabled>${saveLbl}</button>`
          : `<span class="chg grow">${esc(why)}</span><button class="btn" id="dCancel">Close</button>`);
   $("dCancel").onclick = closeDrawer;
   if(!edit) return;
@@ -719,7 +846,11 @@ function openRow(i){
   $("dSave").onclick = () => saveRow(i, changed().map(el => ({ col:+el.dataset.j + 1, header:d.headers[+el.dataset.j], old:r[+el.dataset.j] || "", value:el.value })));
 }
 async function saveRow(i, cells){
-  const d = state.data, btn = $("dSave");
+  const d = state.data, btn = $("dSave"), row = d.headerRow + 1 + i;
+  // No connection, a device copy, or this row already has a kept edit: keep it here, send when online.
+  if(isOffline() || !d.live || d.err || state.outbox.some(o => mine(o) && o.key === d.key && o.row === row && o.headerRow === d.headerRow)){
+    queueEdit(i, cells); toast(isOffline() ? "Kept on this device · sent when online" : "Kept on this device · sending…"); flushOutbox(); return;
+  }
   if(btn){ btn.disabled = true; btn.textContent = "Saving…"; }
   const reset = () => { if(btn && btn.isConnected){ btn.textContent = "Save to Sheet"; btn.disabled = false; } };
   try{
@@ -746,6 +877,8 @@ async function saveRow(i, cells){
     }
     throw Object.assign(new Error(res.error || "Refused"), { server:true });
   }catch(e){
+    // Connection lost while saving: keep the edit on this device instead of losing it.
+    if(!e.server && !e.setup){ queueEdit(i, cells); toast("No connection · kept on this device, sent when online"); return; }
     if($("dBody")){ $("dBody").querySelectorAll(".cfl").forEach(x => x.remove()); $("dBody").insertAdjacentHTML("afterbegin", `<div class="banner bad cfl"><div class="grow"><b>Not saved</b>${esc(errText(e))}</div></div>`); }
     reset();
   }
@@ -891,14 +1024,17 @@ const bg = (() => {
 /* ---------- Start ---------- */
 window.addEventListener("message", e => { if(e.data && e.data.type === "aw-theme"){ if(e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; bg.tone(); } });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => bg.tone());
-addEventListener("online", renderNet); addEventListener("offline", () => { state.online = false; renderNet(); });
+addEventListener("online", () => { renderNet(); flushOutbox(); }); addEventListener("offline", () => { state.online = false; renderNet(); });
+$("obBtn").onclick = outboxDrawer;
+setInterval(() => { if(state.outbox.some(o => mine(o) && o.status === "waiting")) flushOutbox(); }, 60000);
 let wasPhone = PHONE();
 addEventListener("resize", () => {
   if(PHONE() !== wasPhone){ wasPhone = PHONE(); if(state.view.name === "table") tableBody(true); }
   else if(vt){ vt.first = -1; paint(); }
 });
 renderNet(); render();
-if(state.cfg.url && state.cfg.key) loadBooks(false);
+if(state.cfg.url && state.cfg.key) loadBooks(false).then(flushOutbox);
+if(state.me){ $("role").hidden = false; $("role").textContent = state.me.role; $("role").title = "Signed in as " + state.me.name; }
 </script>
 </body>
 </html>
