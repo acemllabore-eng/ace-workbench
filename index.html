@@ -367,6 +367,7 @@ const ICON = {
   dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20a8 8 0 1 1 16 0"/><path d="M12 20l4-7"/><path d="M4 20h16"/></svg>',
   cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 13.5c-1.6 0-2.8 1.2-2.8 2.7 0 1.9 2.8 3.8 2.8 3.8s2.8-1.9 2.8-3.8c0-1.5-1.2-2.7-2.8-2.7z"/></svg>',
   chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14.5h4.5"/></svg>',
+  claim:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M8.5 10h7M8.5 13.5h4"/><path d="M13.5 17.5l1.5 1.5 3-3"/></svg>',
   desk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 7l2-3h12l2 3"/><path d="M9 12l3 3 3-3"/><path d="M12 15V9"/></svg>',
 };
 // Add an app here to put it on the panel (and an icon in ICON under its id). url: where its server serves the page; start: how to run that server.
@@ -392,6 +393,10 @@ const APPS = [
   { id:"db", group:"unit", local:true, name:"Databases", tab:"Data", short:"View and edit the unit's workbooks",
     blurb:"Every workbook in the DAR Database Directory (SPLIT, Regular / New Lands) in one place: search any tab on a phone or PC, filter and sort; the head and admin correct cells, with every edit logged. Tabs you open are kept for reading offline.",
     url:"apps/databases.html" },
+  // apps/claim-monitor.html talks to the Survey Unit web app (?app=claim, backend/claim_monitor.gs): 2025-A and SBA Batch 4 trackers.
+  { id:"claim", group:"unit", local:true, name:"Claim Monitor", tab:"Claims", short:"DARMO claims: pick LHs, print, log",
+    blurb:"Type a DARMO's claim (organic ₱450/ha or TSS ₱100/ha) and it picks the unclaimed LHs whose areas add up closest, from 2025-A or SBA Batch 4. Prints the DARMO Claim Monitoring form with its support list; logging the claim ticks the claimed columns in the tracker.",
+    url:"apps/claim-monitor.html" },
   // apps/sr-desk.html is a verbatim copy of outputs/sr-verification-desk/app/sr-desk.html; copy it again after changing that file.
   { id:"sr", group:"verify", local:true, name:"SR Verification Desk", tab:"SR Desk", short:"Verify SRs against DENR / LRA checklists",
     blurb:"Register of SRs, DENR and LRA checklists, notice of findings and dashboard. Saves on this PC first, syncs to the Google Sheet.",
@@ -528,6 +533,7 @@ const WAITS = [
   ["Dashboard",  () => (JSON.parse(localStorage.getItem("dash.v1") || "{}").outbox || []).length],
   ["Calendar",   () => (JSON.parse(localStorage.getItem("cal.v1") || "{}").outbox || []).length],
   ["Chat",       () => (JSON.parse(localStorage.getItem("chat.v1") || "{}").outbox || []).length],
+  ["Claims",     () => (JSON.parse(localStorage.getItem("claim.v1") || "{}").outbox || []).length],
 ];
 function renderWaiting(){
   const el = $("waiting"); if(!el) return;

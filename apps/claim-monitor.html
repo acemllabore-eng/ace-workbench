@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim Monitor</title>
+<style>
+/* DARMO Claim Monitor: picks the unclaimed LHs whose validated areas add up closest to a DARMO's claim, prints the
+   DARMO Claim Monitoring form with its support list, and logs the claim in the tracker (2025-A or SBA Batch 4).
+   Part of the Survey Unit panel (same look). Data comes through backend/claim_monitor.gs (?app=claim); the last list
+   read stays on this device, so a form can be worked out and printed offline. */
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#17181a; --muted:#6b6e73; --line:#e3e1dc; --hover:#f0eee9; --field:#ffffff;
+  --accent:#b8860b; --accent-ink:#ffffff; --accent-soft:#f7efd9;
+  --ok:#1d7a43; --ok-bg:#e3f2e8; --bad:#b3261e; --bad-bg:#fbe7e4; --warn:#8f5b00; --warn-bg:#fbf0d9;
+  --track:#ebe8e1; --shadow:0 1px 2px rgba(0,0,0,.05); --shadow-lg:0 16px 40px rgba(0,0,0,.2);
+  --font:"Inter","IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,monospace;
+  --r:10px; --gap-l:20px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --track:#25272a; --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --track:#25272a; --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);min-height:100vh}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:12px;padding:14px var(--gap-l) 12px;flex-wrap:wrap}
+.hrow h1{font-size:18px;margin:0;letter-spacing:-.01em}
+.sync{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-left:auto}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.dot.on{background:var(--ok)} .dot.off{background:var(--warn)} .dot.err{background:var(--bad)}
+main{padding:var(--gap-l);max-width:1280px;margin:0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{height:28px;padding:0 9px;font-size:12.5px}
+.btn.ghost{border-color:transparent;background:none}
+.btn:disabled{opacity:.5;cursor:default}
+.btn[hidden]{display:none}
+.banner{padding:12px 14px;border-radius:var(--r);margin-bottom:16px;border:1px solid var(--bad);background:var(--bad-bg)}
+.banner.warn{border-color:var(--warn);background:var(--warn-bg)}
+.banner b{display:block}
+.banner[hidden]{display:none}
+.empty{padding:32px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r)}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--hover);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--bad-bg);color:var(--bad)}
+h2.sec{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:24px 0 10px;display:flex;align-items:center;gap:10px}
+h2.sec:first-child{margin-top:0}
+h2.sec .grow{flex:1}
+.layout{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:var(--gap-l);align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
+.fgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.fgrid .full{grid-column:1/-1}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;min-width:0}
+label.f input,label.f select{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:8px 10px;font-size:14px;font-weight:400;width:100%;min-width:0}
+.hint{font-weight:400;color:var(--muted);font-size:12px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--field)}
+.seg button{flex:1;border:0;background:none;padding:8px 6px;cursor:pointer;font-size:13px;font-weight:500}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.conv{font-size:12.5px;color:var(--muted);margin-top:4px}
+.conv b{color:var(--ink);font-family:var(--mono)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+/* Summary */
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;box-shadow:var(--shadow);min-width:0}
+.tile .k{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .v{font-size:20px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;margin-top:2px;line-height:1.25;white-space:nowrap}
+.tile .s{font-size:12px;color:var(--muted)}
+.tile.bad .v{color:var(--bad)} .tile.ok .v{color:var(--ok)}
+.bar{height:8px;border-radius:999px;background:var(--track);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:#f59e0b;border-radius:999px}
+/* Support list */
+.match{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--panel);margin-bottom:10px}
+.match .big{font-family:var(--mono);font-weight:600;font-size:15px}
+.match .grow{flex:1}
+.tblwrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:auto;max-height:560px}
+table.tbl{width:100%;border-collapse:separate;border-spacing:0}
+.tbl th{position:sticky;top:0;z-index:1;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--bg);white-space:nowrap}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .r{text-align:right}
+.tbl tr.sel td{background:var(--accent-soft)}
+.tbl tr.taken td{color:var(--muted)}
+.tbl tr.pick{cursor:pointer}
+.tbl tr.pick:hover td{background:var(--hover)}
+.tbl tr.sel.pick:hover td{background:var(--accent-soft)}
+.tbl td.nm{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbl input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0}
+.listbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 0;font-size:12.5px;color:var(--muted)}
+.listbar label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.hist .tbl td{white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;font-weight:500;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+.setup{max-width:560px}
+.setup .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.setup label.f{flex:1;min-width:200px}
+details.sign{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+details.sign summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted)}
+details.sign .fgrid{margin-top:10px}
+#print{display:none}
+@media (max-width:1020px){ .layout{grid-template-columns:minmax(0,1fr)} .tiles{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:640px){
+  .hrow,main{padding-left:16px;padding-right:16px}
+  .sync{margin-left:0;width:100%}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fgrid{grid-template-columns:minmax(0,1fr)}
+  .tbl .hs{display:none}
+  .tbl td,.tbl th{padding:7px 6px}
+  .tbl td.nm{max-width:120px}
+}
+
+/* ---------- Printed form (the DARMO Claim Monitoring template) ---------- */
+@page{size:A4 portrait;margin:14mm 14mm}
+@media print{
+  html,body{background:#fff !important;color:#000 !important}
+  body>*:not(#print){display:none !important}
+  #print{display:block !important;font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;color:#000}
+  .pg{page-break-after:always;break-after:page}
+  .pg:last-child{page-break-after:auto;break-after:auto}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+#print table.form{width:100%;border-collapse:collapse;font-size:11.5pt;table-layout:fixed}
+#print .form td{border:1px solid #000;padding:3px 8px;height:24px;font-weight:700}
+#print .form td.l{text-align:right;width:25%}
+#print .form td.v{text-align:center}
+#print .form td.ttl{text-align:center;font-size:16pt;padding:6px;letter-spacing:.01em;background:#1f4e79;color:#fff}
+#print .form td.green{background:#d9ead3;color:#1e5e2f}
+#print .form td.amber{background:#fde3a7;color:#7f5a00}
+#print .form td.qh{background:#cfe2f3;text-align:center}
+#print .form td.peach{background:#fce5cd}
+#print .form td.blank{border-left:1px solid #000;border-right:1px solid #000;border-top:0;border-bottom:0;height:18px}
+#print .form td.lft{text-align:left}
+#print .form td.nb{border-top:0}
+#print .form td.thin{font-weight:400}
+#print .form .pbar{height:16px;background:#f59e0b}
+#print .form td.barcell{padding:3px 6px}
+#print h3{font-size:13pt;text-align:center;margin:0 0 4px}
+#print .sub{text-align:center;font-size:10.5pt;margin:0 0 10px}
+#print table.list{width:100%;border-collapse:collapse;font-size:10pt}
+#print .list th,#print .list td{border:1px solid #000;padding:3px 5px}
+#print .list th{background:#eee;font-weight:700}
+#print .list td.r{text-align:right;font-variant-numeric:tabular-nums}
+#print .list td.c{text-align:center}
+#print .list tfoot td{font-weight:700}
+#print .meta{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:2px 10px;font-size:10.5pt;margin:0 0 10px}
+#print .meta b{font-weight:700}
+#print .sig{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:28px;font-size:10.5pt}
+#print .sig .n{margin-top:26px;font-weight:700;text-align:center;border-top:1px solid #000;padding-top:2px}
+#print .sig .p{text-align:center}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="hrow">
+    <h1>Claim Monitor</h1>
+    <div class="sync"><span class="dot" id="sDot"></span><span id="sText">Not connected</span>
+      <button class="btn sm" id="syncBtn">Refresh</button></div>
+  </div>
+</header>
+<main id="main">
+  <div id="signin"></div>
+  <div class="banner" id="problems" hidden role="alert"></div>
+  <div class="layout" id="work" hidden>
+    <section>
+      <h2 class="sec">Claim entry</h2>
+      <div class="card">
+        <div class="fgrid">
+          <label class="f full"><span>Database</span><select id="src"></select></label>
+          <div class="f full"><label class="f"><span>Type of claimant</span></label>
+            <div class="seg" id="kind" role="group" aria-label="Type of claimant"><button type="button" data-k="ORGANIC">Organic · ₱450/ha</button><button type="button" data-k="TSS">TSS · ₱100/ha</button></div></div>
+          <label class="f full"><span>DARMO</span><select id="darmo"></select></label>
+          <label class="f full"><span id="amtLbl">Claim amount (₱)</span><input id="amount" inputmode="decimal" autocomplete="off" placeholder="e.g. 23318.91"></label>
+          <div class="full">
+            <label class="listbar" style="margin:0"><input type="checkbox" id="byHa"> Type the claim in hectares instead</label>
+            <div class="conv" id="conv"></div>
+          </div>
+          <div class="f full"><label class="f"><span>Pick LHs whose total is</span></label>
+            <div class="seg" id="mode" role="group" aria-label="Match"><button type="button" data-m="near">Closest to the claim</button><button type="button" data-m="under">Closest, not over</button></div></div>
+          <label class="f"><span>Claim date</span><input type="date" id="cdate"></label>
+          <label class="f"><span>Claimant/Position</span><input id="claimant" list="claimants" maxlength="200" placeholder="NAME/POSITION"></label>
+          <div class="full conv" id="costLine"></div>
+        </div>
+        <datalist id="claimants"></datalist>
+        <div class="actions">
+          <button class="btn primary" id="findBtn">Find best LHs</button>
+          <button class="btn" id="printBtn">Print form</button>
+          <button class="btn" id="logBtn" hidden>Log claim</button>
+        </div>
+        <details class="sign"><summary>Signatories on the form</summary>
+          <div class="fgrid">
+            <label class="f"><span>Prepared by</span><input id="prepN"></label>
+            <label class="f"><span>Position</span><input id="prepP"></label>
+            <label class="f"><span>Approved by</span><input id="apprN"></label>
+            <label class="f"><span>Position</span><input id="apprP"></label>
+          </div>
+        </details>
+      </div>
+    </section>
+    <section>
+      <h2 class="sec"><span id="sumTitle">Summary</span><span class="grow"></span><span class="muted" id="asof" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+      <div class="tiles" id="tiles"></div>
+      <h2 class="sec">Support list<span class="grow"></span><button class="btn sm" id="clearBtn">Clear picks</button></h2>
+      <div id="match"></div>
+      <div class="tblwrap"><table class="tbl" id="lhTbl"></table></div>
+      <div class="listbar"><label><input type="checkbox" id="showTaken"> Show LHs already claimed</label><span id="listNote"></span></div>
+      <h2 class="sec">Claims logged<span class="grow"></span><span class="muted" id="histNote" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+      <div class="hist" id="hist"></div>
+    </section>
+  </div>
+</main>
+<div id="print" aria-hidden="true"></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+"use strict";
+const APP = "claim", LS = "claim.v1";
+const RATES = { ORGANIC: 450, TSS: 100 };
+// Shown until the web app answers; the web app sends the same list.
+const SOURCES0 = [
+  { key: "A2025", name: "2025-A", activity: "Survey by Contract 2025-A/Assist in Survey", memo: "Memorandum 198-A dated June 18, 2026" },
+  { key: "SBA4", name: "SBA Batch 4 (2026)", activity: "Survey by Admin Batch 4/Assist in Survey", memo: "Memorandum 149 dated May 4, 2026" }
+];
+// Signatories come from the web app after sign-in (names are not kept in this public page); typed changes stay on this device.
+const SIGN0 = { prepN: "", prepP: "", apprN: "", apprP: "" };
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const today = () => { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
+const r4 = n => Math.round((+n || 0) * 10000) / 10000;
+const ha = n => (+n || 0).toLocaleString("en-PH", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const peso = n => "₱" + (+n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = n => ((+n || 0) * 100).toFixed(2) + "%";
+const fmtTime = iso => iso ? new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+const longDate = s => s ? new Date(s + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "";
+const numIn = s => { const v = Number(String(s || "").replace(/[₱,\s]/g, "")); return isFinite(v) && v > 0 ? v : 0; };
+
+function awSignin(url, key) {
+  try {
+    if (url !== undefined) localStorage.setItem("aw.signin", JSON.stringify({ url: url, key: key }));
+    return JSON.parse(localStorage.getItem("aw.signin") || "null");
+  } catch (e) { return null; }
+}
+function blank() {
+  return { cfg: { url: "", key: "", device: "" }, me: null, sources: SOURCES0, data: {}, outbox: [], problems: [], seq: 0,
+    form: { src: "SBA4", kind: "ORGANIC", darmo: "", amount: "", byHa: false, mode: "near", cdate: "", claimant: "", cost: {} },
+    picks: [], sign: Object.assign({}, SIGN0), lastSync: "" };
+}
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
+  const b = blank();
+  s = Object.assign(b, s || {});
+  s.form = Object.assign(blank().form, s.form || {}); s.sign = Object.assign(Object.assign({}, SIGN0), s.sign || {});
+  if (!s.cfg.device) s.cfg.device = (/Mobi|Android/i.test(navigator.userAgent) ? "PHONE-" : "PC-") + Math.random().toString(36).slice(2, 7).toUpperCase();
+  const si = awSignin();
+  if (si) { if (si.url) s.cfg.url = si.url; s.cfg.key = si.key || ""; }
+  return s;
+}
+let state = load(), storeOk = true;
+function save() { try { localStorage.setItem(LS, JSON.stringify(state)); storeOk = true; } catch (e) { storeOk = false; } }
+const boss = () => !!state.me && (state.me.role === "head" || state.me.role === "admin");
+const F = () => state.form;
+const src = () => state.sources.find(s => s.key === F().src) || state.sources[0];
+const data = () => state.data[F().src] || null;
+
+/* ---------- Talking to the web app ---------- */
+const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
+let syncing = false, again = false, online = navigator.onLine, lastError = "";
+async function call(method, payload) {
+  const u = state.cfg.url;
+  if (!okAddr(u)) throw new Error("The web app address is not a Google Apps Script address");
+  let r;
+  if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key, app: APP }, payload)), { redirect: "follow" });
+  else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device, app: APP }, payload)) });
+  const j = await r.json();
+  if (!j.ok) throw Object.assign(new Error(j.error || "The Sheet refused the request"), { server: true });
+  return j;
+}
+async function sync(quiet) {
+  if (!state.cfg.url || !state.cfg.key) { render(); return; }
+  if (syncing) { again = true; return; }
+  syncing = true; again = false; renderSync();
+  const want = F().src;
+  try {
+    if (state.outbox.length) {
+      const sent = state.outbox.slice();
+      const res = await call("POST", { changes: sent.map(o => o.change) });
+      res.results.forEach((r, i) => {
+        const o = sent[i];
+        state.outbox = state.outbox.filter(x => x !== o);
+        if (r.result === "saved" || r.result === "same") {
+          if (o.change.type === "claim") toast("Claim " + r.record.claim_id + " logged in " + (state.sources.find(s => s.key === o.change.src) || {}).name);
+          else toast(o.change.claim_id + " voided");
+        } else {
+          const what = o.change.type === "claim" ? "Claim of " + o.change.claimant + " (" + o.change.darmo + ", " + o.change.claim_date + ")" : "Void " + o.change.claim_id;
+          state.problems.push({ what, error: r.error || r.result });
+        }
+      });
+      save();
+    }
+    const p = await call("GET", { action: "load", src: want });
+    state.me = p.me; if (p.sources && p.sources.length) state.sources = p.sources;
+    if (p.sign) Object.keys(SIGN0).forEach(k => { if (!state.sign[k] && p.sign[k]) state.sign[k] = String(p.sign[k]); });
+    state.data[want] = { rows: p.rows, claims: p.claims || [], at: p.server_time };
+    state.lastSync = p.server_time; lastError = ""; online = true;
+    keepPicksValid(); save();
+  } catch (e) {
+    lastError = e.server ? e.message : "";
+    if (!e.server) online = false;
+    if (!quiet && e.server) toast(e.message);
+  } finally {
+    syncing = false; render();
+    if (again || F().src !== want) setTimeout(() => sync(true), 0);
+  }
+}
+
+/* ---------- The numbers ---------- */
+// A row is taken for this type if it is ticked or has an area claimed (as the tracker's template counts it),
+// or if a claim on this device that is not sent yet holds it.
+function pendingRows() {
+  const s = new Set();
+  state.outbox.forEach(o => { if (o.change.type === "claim" && o.change.src === F().src && o.change.kind === F().kind) o.change.lhs.forEach(x => s.add(x.r)); });
+  return s;
+}
+function taken(x, kind) { return kind === "TSS" ? (x.tc || x.ta > 0) : (x.oc || x.oa > 0); }
+function darmoRows() { const d = data(); return d ? d.rows.filter(x => x.darmo === F().darmo) : []; }
+function candidates() { const p = pendingRows(); return darmoRows().filter(x => !taken(x, F().kind) && !p.has(x.r) && x.area > 0); }
+function totals() {
+  const rows = darmoRows(), kind = F().kind;
+  const target = r4(rows.reduce((s, x) => s + x.area, 0)), claimed = r4(rows.reduce((s, x) => s + (kind === "TSS" ? x.ta : x.oa), 0));
+  const picked = pickedRows(), claim = r4(picked.reduce((s, x) => s + x.area, 0));
+  return { target, claimed, claim, remaining: r4(target - claimed - claim), progress: target ? claimed / target : 0, unclaimed: r4(candidates().reduce((s, x) => s + x.area, 0)) };
+}
+function requestedHa() { const v = numIn(F().amount); return F().byHa ? v : v / RATES[F().kind]; }
+function pickedRows() { const set = new Set(state.picks); return candidates().filter(x => set.has(x.r)); }
+function keepPicksValid() { const ok = new Set(candidates().map(x => x.r)); state.picks = state.picks.filter(r => ok.has(r)); }
+// Fixed, as on the trackers' templates: the rate of the type and the batch's memorandum.
+function costText() { return RATES[F().kind] + " pesos/has as per " + src().memo + "."; }
+
+// Picks the subset of LHs whose areas add up closest to the claim (or closest without going over).
+// Exact subset sum over areas in 0.001 ha steps; each reachable total remembers the LH that first reached it, so
+// one total gives back its LHs. The totals nearest the claim are then compared on the exact 4-decimal areas.
+function bestSubset(items, target, mode) {
+  if (!items.length || !(target > 0)) return [];
+  const total = r4(items.reduce((s, x) => s + x.area, 0));
+  if (total <= target + 1e-9) return items.map(x => x.r);
+  let step = 1000;
+  const maxW = Math.max(...items.map(x => x.area));
+  const cap = Math.min(total, mode === "under" ? target : target + maxW);
+  while (items.length * cap * step > 1.5e8 && step > 10) step /= 10;   // keep it under ~1 s on a phone
+  // Rounded weights can add up to n/2 steps more than the exact areas: leave that much room above the cap.
+  const w = items.map(x => Math.max(1, Math.round(x.area * step))), T = Math.round(target * step);
+  const M = Math.min(w.reduce((a, b) => a + b, 0), Math.round(cap * step) + items.length);
+  const from = new Int32Array(M + 1).fill(-1);
+  from[0] = items.length;
+  for (let i = 0; i < items.length; i++) {
+    const wi = w[i];
+    for (let s = M; s >= wi; s--) if (from[s] === -1 && from[s - wi] !== -1) from[s] = i;
+  }
+  const back = s => { const out = []; while (s > 0) { const i = from[s]; out.push(i); s -= w[i]; } return out; };
+  const tried = [];
+  for (let s = Math.min(T, M), n = 0; s > 0 && n < 25; s--) if (from[s] !== -1) { tried.push(back(s)); n++; }
+  for (let s = T + 1, n = 0; s <= M && n < 25; s++) if (from[s] !== -1) { tried.push(back(s)); n++; }   // "not over" keeps only exact totals within the claim
+  let best = null, bestD = Infinity;
+  tried.forEach(set => {
+    const sum = r4(set.reduce((a, i) => a + items[i].area, 0));
+    if (mode === "under" && sum > target + 1e-9) return;
+    const d = Math.abs(sum - target);
+    if (d < bestD - 1e-9 || (Math.abs(d - bestD) <= 1e-9 && set.length < best.length)) { best = set; bestD = d; }
+  });
+  return (best || []).map(i => items[i].r);
+}
+
+/* ---------- Rendering ---------- */
+function renderSync() {
+  const n = state.outbox.length;
+  let c = "", text;
+  if (!state.cfg.url || !state.cfg.key) text = "Not signed in";
+  else if (syncing) { c = "on"; text = "Reading the tracker…"; }
+  else if (lastError) { c = "err"; text = lastError; }
+  else if (!online) { c = "off"; text = "Offline · list as of " + (fmtTime((data() || {}).at) || "—") + (n ? " · " + n + " claim(s) waiting" : ""); }
+  else { c = "on"; text = (state.me ? state.me.name + " · " : "") + "as of " + fmtTime((data() || {}).at || state.lastSync) + (n ? " · " + n + " waiting" : ""); }
+  if (!storeOk) { c = "err"; text = "This browser is not keeping data on the device."; }
+  $("sDot").className = "dot " + c; $("sText").textContent = text;
+  $("syncBtn").disabled = syncing || !state.cfg.url || !state.cfg.key;
+}
+function render() {
+  renderSync();
+  const signed = state.cfg.url && state.cfg.key;
+  $("signin").innerHTML = signed ? "" : `<section class="setup"><h2 class="sec">Sign in</h2><p class="muted">Sign in once from the panel (top right), or here. Same web app address and key as every Survey Unit app.</p>
+    <div class="row"><label class="f"><span>Web app address</span><input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label>
+    <label class="f" style="max-width:200px"><span>Your key</span><input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
+    <button class="btn primary" id="cSave">Sign in</button></div></section>`;
+  $("work").hidden = !signed;
+  if (!signed) return;
+  const pr = $("problems");
+  pr.hidden = !state.problems.length;
+  pr.innerHTML = state.problems.length ? `<b>${state.problems.length} claim change(s) not saved</b>${state.problems.map(p => `<div>${esc(p.what)}: ${esc(p.error)}</div>`).join("")}<button class="btn sm" id="dismiss" style="margin-top:8px">Dismiss</button>` : "";
+  renderForm(); renderSummary(); renderList(); renderHist();
+}
+function renderForm() {
+  const f = F(), d = data();
+  $("src").innerHTML = state.sources.map(s => `<option value="${esc(s.key)}"${s.key === f.src ? " selected" : ""}>${esc(s.name)}</option>`).join("");
+  document.querySelectorAll("#kind button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === f.kind));
+  document.querySelectorAll("#mode button").forEach(b => b.setAttribute("aria-pressed", b.dataset.m === f.mode));
+  const names = d ? [...new Set(d.rows.map(x => x.darmo).filter(Boolean))].sort() : [];
+  if (names.length && !names.includes(f.darmo)) f.darmo = "";
+  $("darmo").innerHTML = `<option value="">${d ? "Choose the DARMO" : online ? "Reading the tracker…" : "Open once while online"}</option>` + names.map(n => {
+    const rows = d.rows.filter(x => x.darmo === n), open = rows.filter(x => !taken(x, f.kind) && x.area > 0);
+    return `<option value="${esc(n)}"${n === f.darmo ? " selected" : ""}>${esc(n)} — ${open.length} of ${rows.length} LHs unclaimed</option>`;
+  }).join("");
+  const act = document.activeElement;
+  if (act !== $("amount")) $("amount").value = f.amount;
+  $("byHa").checked = f.byHa;
+  $("amtLbl").textContent = f.byHa ? "Claim (has.)" : "Claim amount (₱)";
+  $("amount").placeholder = f.byHa ? "e.g. 51.8198" : "e.g. 23318.91";
+  if (!f.cdate) f.cdate = today();
+  if (act !== $("cdate")) $("cdate").value = f.cdate;
+  if (act !== $("claimant")) $("claimant").value = f.claimant;
+  $("costLine").innerHTML = "Cost parameter: <b>" + esc(costText()) + "</b>";
+  ["prepN", "prepP", "apprN", "apprP"].forEach(k => { if (act !== $(k)) $(k).value = state.sign[k]; });
+  const req = requestedHa(), rate = RATES[f.kind];
+  $("conv").innerHTML = numIn(f.amount) ? (f.byHa ? `= <b>${peso(req * rate)}</b> at ₱${rate}/ha` : `= <b>${ha(req)} ha</b> at ₱${rate}/ha`) : `Rate for ${f.kind === "TSS" ? "TSS" : "organic"}: ₱${rate} per hectare`;
+  const cl = new Set(); Object.values(state.data).forEach(x => (x.claims || []).forEach(c => c.claimant && cl.add(c.claimant)));
+  $("claimants").innerHTML = [...cl].sort().map(c => `<option value="${esc(c)}">`).join("");
+  $("logBtn").hidden = !boss();
+  $("logBtn").disabled = !state.picks.length;
+  $("findBtn").disabled = !f.darmo || !numIn(f.amount);
+  $("printBtn").disabled = !f.darmo;
+}
+function tile(k, v, s, tone, bar) { return `<div class="tile ${tone || ""}"><div class="k">${esc(k)}</div><div class="v">${v}</div>${s ? `<div class="s">${esc(s)}</div>` : ""}${bar != null ? `<div class="bar"><i style="width:${Math.max(0, Math.min(100, bar * 100)).toFixed(1)}%"></i></div>` : ""}</div>`; }
+function renderSummary() {
+  const f = F(), d = data();
+  $("sumTitle").textContent = f.darmo ? f.darmo + " · " + (f.kind === "TSS" ? "TSS" : "Organic") + " · " + src().name : "Summary";
+  $("asof").textContent = d ? "tracker read " + fmtTime(d.at) + (online ? "" : " (offline copy)") : "";
+  if (!f.darmo) { $("tiles").innerHTML = `<div class="empty" style="grid-column:1/-1"><b>Choose a database and a DARMO</b>Target, claimed and remaining show here, as on the tracker's template.</div>`; return; }
+  const t = totals();
+  $("tiles").innerHTML = tile("Target (has.)", ha(t.target), darmoRows().length + " LHs") + tile("Claimed (has.)", ha(t.claimed), "before this claim")
+    + tile("This claim (has.)", ha(t.claim), state.picks.length + " LHs · " + peso(t.claim * RATES[f.kind]))
+    + tile("Remaining (has.)", ha(t.remaining), "target − claimed − this claim", t.remaining < 0 ? "bad" : "")
+    + tile("Progress", pct(t.progress), "claimed ÷ target", t.progress >= 1 ? "ok" : "", t.progress);
+}
+function renderList() {
+  const f = F();
+  if (!f.darmo) { $("match").innerHTML = ""; $("lhTbl").innerHTML = ""; $("listNote").textContent = ""; return; }
+  const set = new Set(state.picks), pend = pendingRows(), req = requestedHa(), t = totals();
+  if (numIn(f.amount)) {
+    const diff = r4(t.claim - req), tone = !state.picks.length ? "" : Math.abs(diff) < 0.0001 ? "ok" : Math.abs(diff) <= 1 ? "warn" : "bad";
+    $("match").innerHTML = `<div class="match"><span>Claim <span class="big">${ha(req)} ha</span></span><span class="muted">·</span><span>Picked <span class="big">${ha(t.claim)} ha</span></span>
+      <span class="grow"></span>${state.picks.length ? `<span class="pill ${tone}">${diff === 0 ? "exact" : (diff > 0 ? "+" : "−") + ha(Math.abs(diff)) + " ha · " + (diff > 0 ? "+" : "−") + peso(Math.abs(diff) * RATES[f.kind])}</span>` : `<span class="muted">Press Find best LHs</span>`}
+      ${req > t.unclaimed + 1e-9 ? `<span class="pill bad">Claim is more than the ${ha(t.unclaimed)} ha left unclaimed</span>` : ""}</div>`;
+  } else $("match").innerHTML = "";
+  let rows = darmoRows().slice();
+  if (!$("showTaken").checked) rows = rows.filter(x => !taken(x, f.kind));
+  rows.sort((a, b) => (set.has(b.r) - set.has(a.r)) || (taken(a, f.kind) - taken(b, f.kind)) || b.area - a.area);
+  $("lhTbl").innerHTML = `<thead><tr><th style="width:34px"></th><th>Title No.</th><th class="hs">SeqNo</th><th class="hs">Lot</th><th>Name in title</th><th class="hs">Barangay</th><th class="r">Area (ha)</th></tr></thead><tbody>` +
+    (rows.length ? rows.map(x => {
+      const tk = taken(x, f.kind), pd = pend.has(x.r), can = !tk && !pd && x.area > 0, on = set.has(x.r);
+      return `<tr class="${on ? "sel " : ""}${can ? "pick" : "taken"}" data-r="${x.r}"><td>${can ? `<input type="checkbox" aria-label="Pick ${esc(x.title)}"${on ? " checked" : ""}>` : `<span class="pill ${pd ? "warn" : ""}">${pd ? "waiting" : "claimed"}</span>`}</td>
+        <td>${esc(x.title)}</td><td class="hs num">${esc(x.seq)}</td><td class="hs">${esc(x.lot)}</td><td class="nm" title="${esc(x.name)}">${esc(x.name)}</td><td class="hs">${esc(x.brgy)}</td><td class="r num">${ha(x.area)}</td></tr>`;
+    }).join("") : `<tr><td colspan="7" class="muted" style="text-align:center;padding:18px">No unclaimed LH with an area under ${esc(f.darmo)} for ${f.kind === "TSS" ? "TSS" : "organic"}.</td></tr>`) + "</tbody>";
+  const c = candidates();
+  $("listNote").textContent = c.length + " unclaimed LHs, " + ha(t.unclaimed) + " ha · " + state.picks.length + " picked";
+}
+function renderHist() {
+  const d = data();
+  const list = (d ? d.claims : []).filter(c => !F().darmo || c.darmo === F().darmo);
+  const waiting = state.outbox.filter(o => o.change.type === "claim" && o.change.src === F().src && (!F().darmo || o.change.darmo === F().darmo));
+  $("histNote").textContent = F().darmo ? "for " + F().darmo : "all DARMOs";
+  if (!list.length && !waiting.length) { $("hist").innerHTML = `<div class="empty"><b>No claim logged yet</b>${boss() ? "Log a claim after printing its form; the tracker's claimed columns are filled at the same time." : "The head logs claims."}</div>`; return; }
+  $("hist").innerHTML = `<div class="tblwrap" style="max-height:340px"><table class="tbl"><thead><tr><th>Claim</th><th>Date</th><th class="hs">DARMO</th><th>Type</th><th>Claimant</th><th class="r">Has.</th><th class="r hs">LHs</th><th></th></tr></thead><tbody>` +
+    waiting.map(o => `<tr><td><span class="pill warn">waiting</span></td><td>${esc(o.change.claim_date)}</td><td class="hs">${esc(o.change.darmo)}</td><td>${esc(o.change.kind)}</td><td>${esc(o.change.claimant)}</td><td class="r num">${ha(o.change.lhs.reduce((s, x) => s + x.area, 0))}</td><td class="r hs num">${o.change.lhs.length}</td><td></td></tr>`).join("") +
+    list.map(c => `<tr class="${c.status === "Voided" ? "taken" : ""}"><td class="num">${esc(c.claim_id)}${c.status === "Voided" ? ` <span class="pill bad">voided</span>` : ""}</td><td>${esc(c.claim_date)}</td><td class="hs">${esc(c.darmo)}</td><td>${esc(c.type)}</td><td>${esc(c.claimant)}</td>
+      <td class="r num">${ha(c.claim_ha)}</td><td class="r hs num">${esc(c.lh_count)}</td><td style="text-align:right"><button class="btn sm" data-reprint="${esc(c.claim_id)}">Print</button>${boss() && c.status !== "Voided" ? ` <button class="btn sm ghost" data-void="${esc(c.claim_id)}">Void</button>` : ""}</td></tr>`).join("") +
+    `</tbody></table></div>`;
+}
+
+/* ---------- Printing ---------- */
+// p: { kind, darmo, srcName, activity, cost, target, claimed, claim, cdate, claimant, amount, lhs, id }
+function printForm(p) {
+  const remaining = r4(p.target - p.claimed - p.claim), progress = p.target ? p.claimed / p.target : 0, s = state.sign;
+  const row = (l, v, cls) => `<tr><td class="l${cls ? " " + cls : ""}">${esc(l)}</td><td class="v">${v}</td></tr>`;
+  const gap = `<tr><td class="blank" colspan="2"></td></tr>`;
+  const form = `<div class="pg"><table class="form">
+    <tr><td class="ttl" colspan="2">DARMO CLAIM MONITORING TEMPLATE</td></tr>
+    <tr><td class="l">TYPE OF CLAIMANT:</td><td class="v ${p.kind === "TSS" ? "amber" : "green"}">${esc(p.kind)}</td></tr>
+    <tr><td class="l">DARMO:</td><td class="v green">${esc(p.darmo)}</td></tr>
+    ${row("Activity:", esc(p.activity))}${row("Cost Parameter:", esc(p.cost))}
+    ${row("TARGET (has.):", ha(p.target).replace(/,/g, ""))}${row("CLAIMED (has.):", ha(p.claimed).replace(/,/g, ""))}
+    ${row("REMAINING (has.):", ha(remaining).replace(/,/g, ""))}${row("PROGRESS:", pct(progress))}
+    <tr><td class="l">PROGRESS BAR:</td><td class="barcell"><div class="pbar" style="width:${Math.max(0, Math.min(100, progress * 100)).toFixed(1)}%"></div></td></tr>
+    <tr><td class="qh" colspan="2">QUICK CLAIM ENTRY</td></tr>
+    ${row("CLAIM DATE:", esc(longDate(p.cdate)), "peach")}${row("CLAIM (has.):", ha(p.claim).replace(/,/g, ""), "peach")}${row("Claimant/Position:", esc(p.claimant), "peach")}
+    ${gap}<tr><td class="lft" colspan="2" style="border-top:0">PREPARED BY:</td></tr>
+    <tr><td class="v" colspan="2">${esc(s.prepN)}</td></tr><tr><td class="v thin" colspan="2">${esc(s.prepP)}</td></tr>
+    ${gap}<tr><td class="lft" colspan="2" style="border-top:0">APPROVED BY:</td></tr>
+    <tr><td class="v" colspan="2">${esc(s.apprN)}</td></tr><tr><td class="v thin" colspan="2">${esc(s.apprP)}</td></tr>
+  </table></div>`;
+  const total = r4(p.lhs.reduce((a, x) => a + x.area, 0));
+  const list = `<div class="pg"><h3>SUPPORT LIST — ${esc(p.kind)} CLAIM</h3><p class="sub">${esc(p.activity)} · ${esc(p.srcName)}${p.id ? " · " + esc(p.id) : ""}</p>
+    <div class="meta"><b>DARMO:</b><span>${esc(p.darmo)}</span><b>Claim date:</b><span>${esc(longDate(p.cdate))}</span>
+      <b>Claimant/Position:</b><span>${esc(p.claimant)}</span><b>Rate:</b><span>₱${RATES[p.kind]} per hectare</span></div>
+    <table class="list"><thead><tr><th>No.</th><th>Title No.</th><th>SeqNo</th><th>Lot No.</th><th>Name in Title</th><th>Barangay</th><th>Area (has.)</th><th>Amount (₱)</th></tr></thead><tbody>
+    ${p.lhs.map((x, i) => `<tr><td class="c">${i + 1}</td><td>${esc(x.title)}</td><td class="c">${esc(x.seq)}</td><td class="c">${esc(x.lot)}</td><td>${esc(x.name)}</td><td>${esc(x.brgy)}</td><td class="r">${ha(x.area)}</td><td class="r">${(x.area * RATES[p.kind]).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>`).join("")}
+    </tbody><tfoot><tr><td colspan="6" class="r">TOTAL (${p.lhs.length} LH${p.lhs.length === 1 ? "" : "s"})</td><td class="r">${ha(total)}</td><td class="r">${(total * RATES[p.kind]).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr></tfoot></table>
+    ${p.amount ? `<p style="font-size:10.5pt;margin:8px 0 0">Amount of the claim: <b>${peso(p.amount)}</b> (${ha(p.amount / RATES[p.kind])} has. at ₱${RATES[p.kind]}/ha).</p>` : ""}
+    <div class="sig"><div><div>Prepared by:</div><div class="n">${esc(s.prepN)}</div><div class="p">${esc(s.prepP)}</div></div><div><div>Approved by:</div><div class="n">${esc(s.apprN)}</div><div class="p">${esc(s.apprP)}</div></div></div></div>`;
+  $("print").innerHTML = form + (p.lhs.length ? list : "");
+  setTimeout(() => window.print(), 50);
+}
+function printCurrent() {
+  const f = F(), t = totals(), sel = new Set(state.picks);
+  if (!f.darmo) return toast("Choose the DARMO first");
+  if (!f.claimant.trim()) toast("Claimant/Position is empty on the form");
+  printForm({ kind: f.kind, darmo: f.darmo, srcName: src().name, activity: src().activity, cost: costText(), target: t.target, claimed: t.claimed, claim: t.claim,
+    cdate: f.cdate, claimant: f.claimant.trim(), amount: f.byHa ? 0 : numIn(f.amount), lhs: candidates().filter(x => sel.has(x.r)).sort((a, b) => b.area - a.area) });
+}
+function reprint(id) {
+  const c = (data() || { claims: [] }).claims.find(x => x.claim_id === id); if (!c) return;
+  const s = state.sources.find(x => x.key === c.source) || src();
+  printForm({ kind: c.type, darmo: c.darmo, srcName: s.name, activity: s.activity, cost: c.rate + " pesos/has as per " + s.memo + ".", target: +c.target_ha, claimed: +c.claimed_before_ha,
+    claim: +c.claim_ha, cdate: c.claim_date, claimant: c.claimant, amount: +c.amount || 0, lhs: c.lhs, id: c.claim_id });
+}
+
+/* ---------- Actions ---------- */
+let toastT = 0;
+function toast(m) { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 4000); }
+function setForm(k, v) { F()[k] = v; save(); }
+function changed(resetPicks) { if (resetPicks) state.picks = []; save(); renderForm(); renderSummary(); renderList(); renderHist(); }
+function find() {
+  const req = requestedHa();
+  if (!F().darmo) return toast("Choose the DARMO first");
+  if (!(req > 0)) return toast("Type the claim amount first");
+  const t0 = performance.now();
+  state.picks = bestSubset(candidates(), req, F().mode);
+  save(); changed(false);
+  if (!state.picks.length) toast(F().mode === "under" ? "No LH fits under the claim; try Closest to the claim" : "No unclaimed LH to pick");
+  else if (performance.now() - t0 > 1500) toast("Picked in " + ((performance.now() - t0) / 1000).toFixed(1) + " s");
+}
+function logClaim() {
+  const f = F(), lhs = pickedRows();
+  if (!boss()) return;
+  if (!lhs.length) return toast("Pick the LHs first");
+  if (!f.claimant.trim()) return toast("Type the Claimant/Position first");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f.cdate)) return toast("Set the claim date first");
+  const total = r4(lhs.reduce((s, x) => s + x.area, 0));
+  if (!confirm(`Log this claim in ${src().name}?\n\n${f.darmo} · ${f.kind} · ${lhs.length} LHs · ${ha(total)} ha\n${f.claimant}\n\nThis ticks "${f.kind === "TSS" ? "TSS CLAIMED" : "DARMO CLAIMED"}" and writes each LH's area in the tracker. A logged claim can be voided later.`)) return;
+  state.seq++;
+  state.outbox.push({ change: { type: "claim", tmp: state.cfg.device + "-" + Date.now() + "-" + state.seq, src: f.src, kind: f.kind, darmo: f.darmo, claim_date: f.cdate,
+    claimant: f.claimant.trim(), amount: f.byHa ? "" : numIn(f.amount), requested_ha: r4(requestedHa()), cost_text: costText(), lhs: lhs.map(x => ({ r: x.r, title: x.title, area: x.area })) } });
+  state.picks = []; save(); changed(false);
+  toast(online ? "Logging the claim…" : "Kept on this device; it is logged when the connection is back");
+  sync(true);
+}
+function voidClaim(id) {
+  if (!confirm("Void " + id + "?\n\nIts LHs are un-ticked and their claimed areas cleared in the tracker, so they can be claimed again. The claim stays in the log, marked voided.")) return;
+  state.outbox.push({ change: { type: "void", claim_id: id } }); save(); sync(false);
+}
+
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.id === "cSave") {
+    const url = $("cUrl").value.trim();
+    if (!okAddr(url)) return toast("That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec");
+    state.cfg.url = url; state.cfg.key = $("cKey").value.trim().toUpperCase(); lastError = ""; save(); awSignin(state.cfg.url, state.cfg.key); sync(false); return;
+  }
+  if (t.id === "dismiss") { state.problems = []; save(); render(); return; }
+  const kb = t.closest("#kind button"); if (kb) { setForm("kind", kb.dataset.k); changed(true); return; }
+  const mb = t.closest("#mode button"); if (mb) { setForm("mode", mb.dataset.m); changed(false); return; }
+  const tr = t.closest("#lhTbl tr.pick");
+  if (tr) {
+    const r = +tr.dataset.r, i = state.picks.indexOf(r);
+    if (i >= 0) state.picks.splice(i, 1); else state.picks.push(r);
+    changed(false); return;
+  }
+  const rp = t.closest("[data-reprint]"); if (rp) return reprint(rp.dataset.reprint);
+  const vd = t.closest("[data-void]"); if (vd) return voidClaim(vd.dataset.void);
+});
+$("src").addEventListener("change", e => { setForm("src", e.target.value); setForm("darmo", ""); changed(true); sync(true); });
+$("darmo").addEventListener("change", e => { setForm("darmo", e.target.value); changed(true); });
+$("amount").addEventListener("input", e => { setForm("amount", e.target.value); renderForm(); renderList(); });
+$("amount").addEventListener("keydown", e => { if (e.key === "Enter") find(); });
+$("byHa").addEventListener("change", e => { setForm("byHa", e.target.checked); renderForm(); renderList(); });
+$("cdate").addEventListener("change", e => setForm("cdate", e.target.value));
+$("claimant").addEventListener("input", e => setForm("claimant", e.target.value));
+["prepN", "prepP", "apprN", "apprP"].forEach(k => $(k).addEventListener("input", e => { state.sign[k] = e.target.value; save(); }));
+$("showTaken").addEventListener("change", renderList);
+$("findBtn").addEventListener("click", find);
+$("printBtn").addEventListener("click", printCurrent);
+$("logBtn").addEventListener("click", logClaim);
+$("clearBtn").addEventListener("click", () => { state.picks = []; changed(false); });
+$("syncBtn").addEventListener("click", () => sync(false));
+window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
+window.addEventListener("online", () => { online = true; sync(true); });
+window.addEventListener("offline", () => { online = false; renderSync(); });
+window.addEventListener("storage", e => { if (e.key === "aw.signin") { const s = awSignin(); if (s && (s.key !== state.cfg.key || s.url !== state.cfg.url)) { state = load(); sync(true); } } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(true); });
+save(); render(); sync(true);
+</script>
+</body>
+</html>
