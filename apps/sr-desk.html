@@ -1617,9 +1617,11 @@ function renderDashboard() {
   const oldest = open.filter(s => s.status !== "Compliance").reduce((m, s) => Math.max(m, age(s) || 0), 0);
   const unassigned = open.filter(s => !s.verifier).length;
   // Each finding keeps the SRs (landholdings) it was recorded on, so a click on its bar lists them.
-  const fails = {};
-  list.forEach(s => { const a = (s.ans || {})[s.route] || {}; activeKeys(s.route, a).forEach(k => { const v = a[k.key]; if (v === "fail" || v === "missing") {
-    const label = k.kind === "doc" ? `Missing: ${k.text}` : `${k.doc} · ${k.text}`; (fails[label] = fails[label] || []).includes(s) || fails[label].push(s); } }); });
+  // remarks[label] maps SeqNo to the verifier's note(s) for that finding, for the Excel export.
+  const fails = {}, remarks = {};
+  list.forEach(s => { const a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {}; activeKeys(s.route, a).forEach(k => { const v = a[k.key]; if (v === "fail" || v === "missing") {
+    const label = k.kind === "doc" ? `Missing: ${k.text}` : `${k.doc} · ${k.text}`; (fails[label] = fails[label] || []).includes(s) || fails[label].push(s);
+    const r = remarks[label] = remarks[label] || {}, n = String(nt[k.key] || "").trim(); r[s.seq] = [r[s.seq], n || (v === "missing" ? "Missing (no remark)" : "Fail (no remark)")].filter(Boolean).join("; "); } }); });
   const top = Object.entries(fails).map(([l, a]) => [l, a.length]).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const maxF = top.length ? top[0][1] : 1;
   if (ui.dashFinding && !top.some(([l]) => l === ui.dashFinding)) ui.dashFinding = null;
@@ -1643,7 +1645,7 @@ function renderDashboard() {
       <div class="panel stat"><div class="k">Endorsed to RPMO</div><div class="v">${endorsed}</div><div class="s">last 30 days</div></div>
     </div>
     <div class="grid2">
-      <section class="panel"><div class="panel-head"><h2>Most frequent findings</h2><span class="sub">count of SRs, all routes${top.length ? " · click one to list its LHs" : ""}</span></div>
+      <section class="panel"><div class="panel-head"><h2>Most frequent findings</h2><span class="sub">count of SRs, all routes${top.length ? " · click one to list its LHs" : ""}</span>${top.length ? '<button type="button" class="btn link no-print" id="find-export" title="Excel file: one column per finding, one row per LH, the remark in each cell">Export to Excel</button>' : ""}</div>
         <div class="panel-body hbars">${top.length ? top.map(([l, n]) => `<button type="button" class="hbar" data-finding="${esc(l)}" aria-pressed="${ui.dashFinding === l}" title="List the LHs with this finding"><div class="lbl">${esc(l)}</div><div class="track"><i style="width:${n / maxF * 100}%"></i></div><div class="n">${n}</div></button>`).join("") : '<div class="sub">No findings recorded yet.</div>'}
         ${findList}</div></section>
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start">
@@ -1663,6 +1665,31 @@ function renderDashboard() {
   const redraw = () => { const y = scrollY; renderDashboard(); scrollTo(0, y); };
   view.querySelectorAll("[data-finding]").forEach(b => b.onclick = () => { ui.dashFinding = ui.dashFinding === b.dataset.finding ? null : b.dataset.finding; redraw(); });
   const fc = view.querySelector("#find-close"); if (fc) fc.onclick = () => { ui.dashFinding = null; redraw(); };
+  const fx = view.querySelector("#find-export"); if (fx) fx.onclick = () => exportFindings(fails, remarks);
+}
+
+/* Findings export (2026-11-18): every finding (not only the top 8 on the dashboard), most frequent first.
+   Sheet "Findings by LH": one row per LH with a finding, one column per finding, the verifier's remark in the cell.
+   Sheet "Remarks list": one row per LH and finding, for filtering. Sheet "Summary": finding and count. */
+function exportFindings(fails, remarks) {
+  const labels = Object.keys(fails).sort((a, b) => fails[b].length - fails[a].length || a.localeCompare(b));
+  if (!labels.length) return;
+  const bySeq = new Map(); labels.forEach(l => fails[l].forEach(s => bySeq.set(s.seq, s)));
+  const srs = [...bySeq.values()].sort((a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)));
+  const info = s => [s.seq, s.title || "", s.claimant || "", s.lot || "", s.darmo || "", s.route || "", s.verifier || "", STATUS_LABEL[s.status] || s.status || s.survey || NOT_SET];
+  const infoHead = ["SeqNo", "Title No.", "LO/Claimant", "Lot No.", "DARMO", "For", "Verifier", "Status"];
+  const matrix = [infoHead.concat(labels.map(l => `${l} (${fails[l].length})`))]
+    .concat(srs.map(s => info(s).concat(labels.map(l => (remarks[l] || {})[s.seq] || ""))));
+  const long = [infoHead.concat(["Finding", "Remark"])];
+  labels.forEach(l => fails[l].slice().sort((a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)))
+    .forEach(s => long.push(info(s).concat([l, (remarks[l] || {})[s.seq] || ""]))));
+  const summary = [["Finding", "SRs"]].concat(labels.map(l => [l, fails[l].length]))
+    .concat([[], ["Exported", new Date().toLocaleString("en-PH")], ["LHs with a finding", srs.length]]);
+  const blob = xlsx([["Findings by LH", matrix], ["Remarks list", long], ["Summary", summary]]);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `SR-Findings-${today()}.xlsx`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast(`Findings exported: ${labels.length} findings, ${srs.length} LHs`);
   view.querySelectorAll(".find-list tr[data-seq]").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
 }
 
