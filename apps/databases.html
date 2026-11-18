@@ -614,7 +614,8 @@ function renderBook(){
   const isKey = n => { n = n.toLowerCase(); return keys.some(k => n === k || n.startsWith(k) || k.startsWith(n)); };
   if(!v.asked){ v.asked = true; loadTabs(v.book); }
   const err = v.err; v.err = null;
-  const list = t ? t.list.slice().sort((a, c) => isKey(c.name) - isKey(a.name)) : [];
+  // Only the Directory's KEY TABS are listed; a workbook with no key tabs in the Directory lists all its tabs.
+  const list = t ? t.list.filter(x => !keys.length || isKey(x.name)) : [];
   const vis = list.filter(x => !x.hidden), hid = list.filter(x => x.hidden);
   const tc = (x, i) => `<button class="tabc rise${isKey(x.name) ? " key" : ""}" style="--i:${i}" data-tab="${esc(x.name)}">
       <span class="ti">${ICO.tab}</span><span style="min-width:0"><b>${esc(x.name)}</b><small>${fmt(Math.max(0, x.rows))} rows · ${fmt(x.cols)} columns${isKey(x.name) ? " · key tab" : ""}</small></span>
