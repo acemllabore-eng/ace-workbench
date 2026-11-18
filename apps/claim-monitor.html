@@ -102,6 +102,12 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0}
 .listbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 0;font-size:12.5px;color:var(--muted)}
 .listbar label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
 .hist .tbl td{white-space:nowrap}
+.hist tr.sum td{font-weight:600;background:var(--bg)}
+.hist tfoot td{position:sticky;bottom:0;border-top:1px solid var(--line)}
+.hist tr.lhs>td{background:var(--bg);padding:10px 12px 14px}
+.hist .combo{font-size:12.5px;color:var(--muted)}
+.hist .combo b{color:var(--ink)}
+.hist .combo .tbl{width:auto;min-width:min(520px,100%);margin-top:8px;border:1px solid var(--line);border-radius:8px;color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;font-weight:500;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px)}
 .toast[hidden]{display:none}
 .setup{max-width:560px}
@@ -489,17 +495,52 @@ function renderList() {
   const c = candidates();
   $("listNote").textContent = c.length + " unclaimed LHs, " + ha(t.unclaimed) + " ha · " + state.picks.length + " picked";
 }
+// Claim log (web app only, never printed): the amount claimed beside the LHs logged for it, so the area can be checked
+// against the money. Amount ÷ rate = hectares claimed; the LHs' total area should be close to it.
+let openClaim = "";
+function claimFigures(c) {
+  const rate = +c.rate || RATES[c.type] || 0, lhHa = +c.claim_ha || 0;
+  const amount = +c.amount || (+c.requested_ha ? +c.requested_ha * rate : 0), typedHa = !+c.amount && +c.requested_ha > 0;
+  const askHa = rate ? amount / rate : 0, diff = r4(lhHa - askHa);
+  return { rate, lhHa, amount, typedHa, askHa, diff, lhValue: lhHa * rate, diffPeso: (lhHa - askHa) * rate };
+}
+function diffPill(f) {
+  if (!f.amount) return `<span class="pill">no amount</span>`;
+  const a = Math.abs(f.diff), tone = a < 0.0001 ? "ok" : a <= 1 ? "warn" : "bad";
+  return `<span class="pill ${tone}" title="${(f.diffPeso >= 0 ? "+" : "−") + peso(Math.abs(f.diffPeso))}">${a < 0.0001 ? "exact" : (f.diff > 0 ? "+" : "−") + ha(a) + " ha"}</span>`;
+}
 function renderHist() {
   const d = data();
   const list = (d ? d.claims : []).filter(c => !F().darmo || c.darmo === F().darmo);
   const waiting = state.outbox.filter(o => o.change.type === "claim" && o.change.src === F().src && (!F().darmo || o.change.darmo === F().darmo));
-  $("histNote").textContent = F().darmo ? "for " + F().darmo : "all DARMOs";
-  if (!list.length && !waiting.length) { $("hist").innerHTML = `<div class="empty"><b>No claim logged yet</b>${boss() ? "Log a claim after printing its form; the tracker's claimed columns are filled at the same time." : "The head logs claims."}</div>`; return; }
-  $("hist").innerHTML = `<div class="tblwrap" style="max-height:340px"><table class="tbl"><thead><tr><th>Claim</th><th>Date</th><th class="hs">DARMO</th><th>Type</th><th>Claimant</th><th class="r">Has.</th><th class="r hs">LHs</th><th></th></tr></thead><tbody>` +
-    waiting.map(o => `<tr><td><span class="pill warn">waiting</span></td><td>${esc(o.change.claim_date)}</td><td class="hs">${esc(o.change.darmo)}</td><td>${esc(o.change.kind)}</td><td>${esc(o.change.claimant)}</td><td class="r num">${ha(o.change.lhs.reduce((s, x) => s + x.area, 0))}</td><td class="r hs num">${o.change.lhs.length}</td><td></td></tr>`).join("") +
-    list.map(c => `<tr class="${c.status === "Voided" ? "taken" : ""}"><td class="num">${esc(c.claim_id)}${c.status === "Voided" ? ` <span class="pill bad">voided</span>` : ""}</td><td>${esc(c.claim_date)}</td><td class="hs">${esc(c.darmo)}</td><td>${esc(c.type)}</td><td>${esc(c.claimant)}</td>
-      <td class="r num">${ha(c.claim_ha)}</td><td class="r hs num">${esc(c.lh_count)}</td><td style="text-align:right"><button class="btn sm" data-reprint="${esc(c.claim_id)}">Print</button>${boss() && c.status !== "Voided" ? ` <button class="btn sm ghost" data-void="${esc(c.claim_id)}">Void</button>` : ""}</td></tr>`).join("") +
-    `</tbody></table></div>`;
+  $("histNote").textContent = (F().darmo ? "for " + F().darmo : "all DARMOs") + " · amount vs LH area, not printed";
+  if (!list.length && !waiting.length) { $("hist").innerHTML = `<div class="empty"><b>No claim logged yet</b>Log a claim after printing its form; the tracker's claimed columns are filled at the same time.</div>`; return; }
+  const live = list.filter(c => c.status !== "Voided").map(claimFigures);
+  const sum = k => live.reduce((a, f) => a + f[k], 0);
+  const tot = { amount: sum("amount"), askHa: sum("askHa"), lhHa: sum("lhHa"), lhValue: sum("lhValue") };
+  tot.diff = r4(tot.lhHa - tot.askHa); tot.diffPeso = tot.lhValue - tot.amount;
+  const head = `<thead><tr><th>Claim</th><th>Date</th><th class="hs">DARMO</th><th>Type</th><th class="hs">Claimant</th><th class="r">Amount (₱)</th><th class="r hs">Amount ÷ rate (ha)</th><th class="r">LH area (ha)</th><th>Difference</th><th class="r hs">LHs</th><th></th></tr></thead>`;
+  const wait = waiting.map(o => {
+    const c = o.change, rate = RATES[c.kind], lhHa = r4(c.lhs.reduce((s, x) => s + x.area, 0)), amount = +c.amount || (+c.requested_ha || 0) * rate;
+    const f = { rate, lhHa, amount, askHa: rate ? amount / rate : 0 }; f.diff = r4(f.lhHa - f.askHa); f.diffPeso = f.diff * rate;
+    return `<tr><td><span class="pill warn">waiting</span></td><td>${esc(c.claim_date)}</td><td class="hs">${esc(c.darmo)}</td><td>${esc(c.kind)}</td><td class="hs">${esc(c.claimant)}</td>
+      <td class="r num">${amount ? peso(amount).slice(1) : "—"}</td><td class="r hs num">${amount ? ha(f.askHa) : "—"}</td><td class="r num">${ha(lhHa)}</td><td>${diffPill(f)}</td><td class="r hs num">${c.lhs.length}</td><td></td></tr>`;
+  }).join("");
+  const rows = list.map(c => {
+    const f = claimFigures(c), open = openClaim === c.claim_id, voided = c.status === "Voided";
+    const detail = open ? `<tr class="lhs"><td colspan="11"><div class="combo"><b>LHs logged for ${esc(c.claim_id)}</b> · ${esc(c.claimant)} · rate ₱${f.rate}/ha${f.typedHa ? " · claim typed in hectares" : ""}
+      <table class="tbl"><thead><tr><th>Title No.</th><th class="hs">SeqNo</th><th>Barangay</th><th class="r">Area (ha)</th><th class="r">× ₱${f.rate}</th></tr></thead><tbody>
+      ${(c.lhs || []).map(x => `<tr><td>${esc(x.title)}</td><td class="hs num">${esc(x.seq)}</td><td>${esc(x.brgy)}</td><td class="r num">${ha(x.area)}</td><td class="r num">${peso(x.area * f.rate).slice(1)}</td></tr>`).join("")}
+      <tr class="sum"><td colspan="3">Total of LHs</td><td class="r num">${ha(f.lhHa)}</td><td class="r num">${peso(f.lhValue).slice(1)}</td></tr>
+      <tr class="sum"><td colspan="3">Amount claimed</td><td class="r num">${f.amount ? ha(f.askHa) : "—"}</td><td class="r num">${f.amount ? peso(f.amount).slice(1) : "—"}</td></tr>
+      <tr class="sum"><td colspan="3">Difference (LHs − claim)</td><td class="r num">${f.amount ? (f.diff >= 0 ? "+" : "−") + ha(Math.abs(f.diff)) : "—"}</td><td class="r num">${f.amount ? (f.diffPeso >= 0 ? "+" : "−") + peso(Math.abs(f.diffPeso)).slice(1) : "—"}</td></tr>
+      </tbody></table></div></td></tr>` : "";
+    return `<tr class="pick${voided ? " taken" : ""}${open ? " sel" : ""}" data-claim="${esc(c.claim_id)}" title="Show the LHs of this claim"><td class="num">${esc(c.claim_id)}${voided ? ` <span class="pill bad">voided</span>` : ""}</td><td>${esc(c.claim_date)}</td><td class="hs">${esc(c.darmo)}</td><td>${esc(c.type)}</td><td class="hs">${esc(c.claimant)}</td>
+      <td class="r num">${f.amount ? peso(f.amount).slice(1) : "—"}</td><td class="r hs num">${f.amount ? ha(f.askHa) : "—"}</td><td class="r num">${ha(f.lhHa)}</td><td>${diffPill(f)}</td><td class="r hs num">${esc(c.lh_count)}</td>
+      <td style="text-align:right;white-space:nowrap"><button class="btn sm" data-reprint="${esc(c.claim_id)}">Print</button>${boss() && !voided ? ` <button class="btn sm ghost" data-void="${esc(c.claim_id)}">Void</button>` : ""}</td></tr>${detail}`;
+  }).join("");
+  const foot = live.length ? `<tfoot><tr class="sum"><td colspan="5">Total, ${live.length} claim${live.length === 1 ? "" : "s"} not voided</td><td class="r num">${peso(tot.amount).slice(1)}</td><td class="r hs num">${ha(tot.askHa)}</td><td class="r num">${ha(tot.lhHa)}</td><td>${diffPill(tot.amount ? tot : { amount: 0 })}</td><td class="hs"></td><td></td></tr></tfoot>` : "";
+  $("hist").innerHTML = `<div class="tblwrap" style="max-height:420px"><table class="tbl">${head}<tbody>${wait}${rows}</tbody>${foot}</table></div>`;
 }
 
 /* ---------- Printing ---------- */
@@ -617,6 +658,7 @@ document.addEventListener("click", e => {
   }
   const rp = t.closest("[data-reprint]"); if (rp) return reprint(rp.dataset.reprint);
   const vd = t.closest("[data-void]"); if (vd) return voidClaim(vd.dataset.void);
+  const cr = t.closest("tr[data-claim]"); if (cr) { openClaim = openClaim === cr.dataset.claim ? "" : cr.dataset.claim; renderHist(); return; }
 });
 $("src").addEventListener("change", e => { setForm("src", e.target.value); setForm("darmo", ""); changed(true); sync(true); });
 $("darmo").addEventListener("change", e => { setForm("darmo", e.target.value); changed(true); });
