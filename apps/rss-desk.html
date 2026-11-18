@@ -15,18 +15,18 @@
   --ok:#1d7a43; --ok-bg:#e3f2e8; --bad:#b3261e; --bad-bg:#fbe7e4; --warn:#8f5b00; --warn-bg:#fbf0d9; --info:#285fa8; --info-bg:#e6eef9;
   --shadow:0 1px 2px rgba(0,0,0,.05); --shadow-lg:0 16px 40px rgba(0,0,0,.2);
   --font:"Inter","IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,monospace;
-  --r:10px; --gap-l:20px;
+  --r:10px; --gap-l:20px; --hl:#fff200; --hl-ink:#17181a;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
   --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
   --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310; --info:#86b2f0; --info-bg:#15233a;
-  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; } }
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); --hl:#5a5410; --hl-ink:#fff6a8; color-scheme:dark; } }
 :root[data-theme="dark"]{
   --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
   --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
   --ok:#5fcf8c; --ok-bg:#14271b; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310; --info:#86b2f0; --info-bg:#15233a;
-  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); color-scheme:dark; }
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 16px 40px rgba(0,0,0,.6); --hl:#5a5410; --hl-ink:#fff6a8; color-scheme:dark; }
 
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -126,6 +126,20 @@ dialog.xp form{display:flex;flex-direction:column;max-height:calc(100vh - 34px)}
 .bar i{display:block;height:100%}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 h3.sec{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+/* Survey modules (Dashboard) */
+.modyear{margin-bottom:24px}
+.modtitle{margin:0 0 10px;padding:8px 12px;text-align:center;font-size:17px;letter-spacing:.02em;background:var(--accent-soft);border-radius:8px}
+.modsec{font-size:13.5px;font-weight:700;margin:14px 0 6px}
+.modtbl tr.modrow{cursor:pointer}
+.modtbl tr.modrow:hover td,.modtbl tr.modrow.open td{background:var(--hover)}
+.modtbl .caret{display:inline-block;width:1.1em;color:var(--muted);transition:transform .12s}
+.modtbl tr.open .caret{transform:rotate(90deg);color:var(--accent)}
+.modtbl tr.moddetail>td{background:var(--bg);padding:12px 14px 16px}
+.modtbl tr.modtotal td{background:var(--hl);color:var(--hl-ink);font-weight:700}
+.modedit{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.modedit label.f{flex:1;min-width:160px}
+.modinfo{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}
+.modinfo span{color:var(--muted)}
 
 /* Drawer */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
@@ -230,7 +244,7 @@ input:disabled,select:disabled,textarea:disabled{background:var(--hover);opacity
 <main id="main"></main>
 <dialog class="xp" id="xp" aria-labelledby="xpT"><form id="xpForm" method="dialog">
   <div class="xphead"><h2 id="xpT">Export survey module</h2>
-    <div class="muted" style="font-size:12.5px">Excel file in the layout of the survey module list: LHs grouped by module, the area total of each module, and the signatories.</div></div>
+    <div class="muted" style="font-size:12.5px">Excel file in the layout of the unit's module files: the module list (LHs grouped by module, area totals, signatories), a cost estimate for each module, and the summary of the survey module. In each cost estimate, check the number of monuments in the yellow cell (55 by default).</div></div>
   <div class="xpbody" id="xpBody"></div>
   <div class="xpfoot"><button type="button" class="btn ghost" id="xpCancel">Cancel</button><button type="button" class="btn primary" id="xpGo">Download Excel</button></div>
 </form></dialog>
@@ -304,7 +318,7 @@ function awSignin(url, key) {
     return JSON.parse(localStorage.getItem("aw.signin") || "null");
   } catch (e) { return null; }
 }
-function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, people: [], items: {}, outbox: [], problems: [], lastPull: "", lastSync: "" }; }
+function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, people: [], items: {}, modules: {}, outbox: [], problems: [], lastPull: "", lastSync: "" }; }
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
@@ -355,10 +369,18 @@ async function sync(quiet) {
   try {
     if (state.outbox.length) {
       const sent = state.outbox.slice(), revs = sent.map(o => o.rev);
-      const res = await call("POST", { changes: sent.map(o => ({ type: "save", id: o.id, baseVersion: o.baseVersion, data: o.data })) });
+      const res = await call("POST", { changes: sent.map(o => o.type === "module" ? { type: "module", name: o.name, baseVersion: o.baseVersion, data: o.data } : { type: "save", id: o.id, baseVersion: o.baseVersion, data: o.data }) });
       res.results.forEach((r, i) => {
         const o = sent[i], changedSince = state.outbox.includes(o) && o.rev !== revs[i];   // edited again while this send was out: keep the newer edit queued
         if (!changedSince) state.outbox = state.outbox.filter(x => x !== o);
+        if (o.type === "module") {
+          const got = r.record || r.server;
+          if (got) state.modules[o.name] = Object.assign({}, got); else if (r.result !== "saved") delete state.modules[o.name];
+          if (changedSince && r.record) { o.baseVersion = r.record.version; Object.assign(state.modules[o.name], o.data); }
+          if (r.result === "conflict" || r.result === "rejected") state.problems.push({ kind: r.result, module: true, id: o.id, what: "Module " + o.name,
+            error: r.error, detail: "Changed by someone else first; the Sheet's copy is showing now." });
+          return;
+        }
         const what = "LHID " + o.id + (regById[o.id] ? " · " + regById[o.id].landowner : "");
         if (r.result === "saved" || r.result === "same") {
           state.items[o.id] = Object.assign({}, r.record);
@@ -384,6 +406,12 @@ async function sync(quiet) {
       if (pending(s.id)) return;                      // a local edit is queued: the next send settles it, or flags a conflict
       if (!loc || (Number(s.version) || 0) >= (Number(loc.version) || 0)) state.items[s.id] = s;
     });
+    if (p.modules) {   // few rows: always the full list; a module change still queued here stays as typed
+      const m = {}; p.modules.forEach(x => { m[x.name] = x; });
+      Object.keys(state.modules || {}).forEach(k => { if (pending("MODULE:" + k)) m[k] = state.modules[k]; });
+      state.modules = m;
+    }
+    if (p.module_stages) state.moduleStages = p.module_stages;
     state.lastPull = p.server_time; state.lastSync = new Date().toISOString(); lastError = ""; online = true;
     save();
     // The register (LAD BAL (MOD) + SUMMARY) is fetched again only when the server's copy is newer than this device's.
@@ -415,6 +443,16 @@ function queueSave(id, data, baseOverride, deskOnly) {
   save(); render(); sync(true);
 }
 
+// A module's stage, contractor and ABC (Admin or Head). Sent with the next sync like a record save.
+function queueModule(name, data) {
+  const id = "MODULE:" + name, cur = state.modules[name] || { name, version: 0 };
+  const o = state.outbox.find(x => x.id === id);
+  if (o) { o.data = data; o.rev++; }
+  else state.outbox.push({ type: "module", id, name, baseVersion: Number(cur.version) || 0, data, rev: 1 });
+  state.modules[name] = Object.assign({}, cur, data);
+  save(); render(); sync(true);
+}
+
 /* ---------- Rendering ---------- */
 let view = "reg", fBal = "in", fStat = "", fTown = "", fText = "", fMine = false, shown = PAGE, editing = null, draft = null, cf = {}, sortK = "", sortD = 1;
 try { const v = JSON.parse(sessionStorage.getItem("rss.view") || "null"); if (v) ({ view, fBal, fStat, fTown, fText, fMine, cf, sortK, sortD } = Object.assign({ view, fBal, fStat, fTown, fText, fMine, cf, sortK, sortD }, v)); } catch (e) {}
@@ -443,8 +481,8 @@ function problemsHtml() {
   if (!state.problems.length) return "";
   return `<div class="banner bad" role="alert"><div style="flex:1"><b>${state.problems.length} ${state.problems.length === 1 ? "change was" : "changes were"} not saved to the Sheet</b>
     ${state.problems.map((p, i) => `<div class="prob"><div style="flex:1;min-width:220px"><span class="mono">${esc(p.what)}</span><br><span class="muted">${esc(p.kind === "conflict" ? p.detail : p.error)}</span></div>
-      ${p.kind === "conflict" ? `<button class="btn sm" data-act="mine" data-i="${i}">Use my version</button>` : ""}
-      <button class="btn sm" data-act="open" data-i="${i}">Open mine</button>
+      ${p.kind === "conflict" && !p.module ? `<button class="btn sm" data-act="mine" data-i="${i}">Use my version</button>` : ""}
+      ${p.module ? "" : `<button class="btn sm" data-act="open" data-i="${i}">Open mine</button>`}
       <button class="btn sm ghost" data-act="drop" data-i="${i}">Dismiss</button></div>`).join("")}</div></div>`;
 }
 function sourceHtml() {
@@ -578,6 +616,64 @@ function regHtml() {
     : `<div class="empty"><b>No LH matches</b>Change the filters or the search.</div>`}`;
 }
 
+/* Survey modules, in the layout of the unit's "2022 SURVEY MODULES" sheet: one block per year (from the module name),
+   a section per stage (A. BIDDED/AWARDED, B. FOR BIDDING), Module · Contractor · No. of LH · Area · ABC, a yellow total.
+   Click a module to see its LHs (and, for the Admin or a Head, to set its stage, contractor and ABC). */
+const MOD_STAGES = ["Bidded/Awarded", "For bidding"];
+let openMod = "", modDraft = {};
+const canModule = () => !!state.me && (state.me.role === "admin" || state.me.role === "head");
+const modInfo = name => state.modules[name] || {};
+const peso = v => v === "" || v == null || isNaN(+v) ? "" : (+v).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function modulesHtml() {
+  const groups = moduleGroups();
+  if (!groups.length) return `<div class="empty" style="margin-bottom:20px"><b>No survey module yet</b>Set the Module of the LHs in the register (column Module); each module then shows here with its contractor, number of LHs, area and ABC.</div>`;
+  const stages = (state.moduleStages || MOD_STAGES).slice(), years = {};
+  groups.forEach(g => { const st = modInfo(g.name).stage; if (st && !stages.includes(st)) stages.push(st); const y = (/-(\d{4})\b/.exec(g.name) || [])[1] || ""; (years[y] = years[y] || []).push(g); });
+  const fallback = stages[stages.length - 1] === "For bidding" || !stages.includes("For bidding") ? stages[stages.length - 1] : "For bidding";
+  return Object.keys(years).sort((a, b) => (b || "0").localeCompare(a || "0")).map(y => {
+    const secs = stages.map(st => [st, years[y].filter(g => (modInfo(g.name).stage || fallback) === st)]).filter(x => x[1].length);
+    return `<section class="modyear"><h2 class="modtitle">${y ? y + " " : ""}SURVEY MODULES</h2>` +
+      secs.map(([st, gs]) => `<h3 class="modsec">${"ABCDEFGH"[stages.indexOf(st)]}. ${esc(st.toUpperCase())}</h3>${modTable(gs)}`).join("") + `</section>`;
+  }).join("");
+}
+function modTable(gs) {
+  let n = 0, area = 0, abc = 0, anyAbc = false;
+  const body = gs.map(g => {
+    const m = modInfo(g.name), open = openMod === g.name;
+    n += g.rows.length; area += g.area; if (m.abc !== "" && m.abc != null && !isNaN(+m.abc)) { abc += +m.abc; anyAbc = true; }
+    return `<tr class="modrow${open ? " open" : ""}" data-mod="${esc(g.name)}" aria-expanded="${open}" tabindex="0">
+        <td><span class="caret">▸</span>${esc(g.name)}${pending("MODULE:" + g.name) ? ' <span class="pill wait">not sent</span>' : ""}</td>
+        <td>${m.contractor ? esc(m.contractor) : '<span class="muted">—</span>'}</td><td class="num">${g.rows.length}</td>
+        <td class="num">${g.area.toFixed(4)}</td><td class="num">${peso(m.abc)}</td></tr>` + (open ? `<tr class="moddetail"><td colspan="5">${modDetail(g)}</td></tr>` : "");
+  }).join("");
+  return `<div class="tblwrap"><table class="tbl modtbl" data-tt="off"><thead><tr><th>Module</th><th>Contractor</th><th class="num">No. of LH</th><th class="num">Area (has.)</th><th class="num">ABC (PHP)</th></tr></thead><tbody>
+    ${body}<tr class="modtotal"><td></td><td class="num">TOTAL:</td><td class="num">${n}</td><td class="num">${area.toFixed(4)}</td><td class="num">${anyAbc ? peso(abc) : ""}</td></tr></tbody></table></div>`;
+}
+function modDetail(g) {
+  const m = modInfo(g.name), d = modDraft[g.name] || { stage: m.stage || "", contractor: m.contractor || "", abc: m.abc || "" };
+  const stages = (state.moduleStages || MOD_STAGES);
+  const top = canModule()
+    ? `<div class="modedit"><label class="f"><span>Stage</span><select id="mStage" data-name="${esc(g.name)}">${stages.map(st => `<option ${(d.stage || "For bidding") === st ? "selected" : ""}>${esc(st)}</option>`).join("")}</select></label>
+        <label class="f" style="flex:2"><span>Contractor</span><input id="mCon" data-name="${esc(g.name)}" value="${esc(d.contractor)}" maxlength="120" placeholder="e.g. ENGR. JUAN DELA CRUZ"></label>
+        <label class="f"><span>ABC (PHP)</span><input id="mAbc" data-name="${esc(g.name)}" value="${esc(d.abc)}" inputmode="decimal" placeholder="0.00"></label>
+        <button class="btn primary" id="mSave" data-name="${esc(g.name)}">Save</button><button class="btn" data-xpmod="${esc(g.name)}">Export this module</button></div>`
+    : `<div class="modedit"><div class="modinfo"><div><span>Stage </span>${esc(m.stage || "For bidding")}</div><div><span>Contractor </span>${esc(m.contractor || "—")}</div><div><span>ABC </span>${m.abc ? "₱" + peso(m.abc) : "—"}</div></div>
+        <button class="btn sm" data-xpmod="${esc(g.name)}">Export this module</button></div>`;
+  const rows = g.rows.map(({ rec, r }) => `<tr data-id="${esc(rec.id)}"><td class="mono">${esc(r.lhid || rec.id)}</td><td class="own">${esc(r.landowner || "")}</td>
+      <td>${esc(r.municipality || "")}<small>${esc(r.barangay || "")}</small></td><td>${esc(r.title || "")}<small>${esc(r.lot || "")}</small></td>
+      <td class="num">${esc(r.area || "")}</td><td>${esc(rec.lh_status || "")}</td><td><span class="pill s-${sKey(rec.verification)}">${esc(rec.verification || "Pending")}</span></td><td>${esc(rec.holder || "")}</td></tr>`).join("");
+  return top + `<div class="tblwrap"><table class="tbl" data-tt="off"><thead><tr><th>LHID</th><th>Landowner</th><th>Location</th><th>Title · Lot</th><th class="num">Area (ha)</th><th>Status</th><th>Verification</th><th>Holder</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">${g.rows.length} LH${g.rows.length === 1 ? "" : "s"} · ${g.area.toFixed(4)} ha. Click an LH to open its RSS.</p>`;
+}
+function saveModule(name) {
+  const abc = $("mAbc").value.replace(/[,\s₱]/g, "");
+  if (abc && !/^\d+(\.\d{1,2})?$/.test(abc)) return toast("ABC must be an amount in pesos, for example 1250000 or 1,250,000.00");
+  const data = { stage: $("mStage").value, contractor: $("mCon").value.replace(/\s+/g, " ").trim(), abc };
+  delete modDraft[name];
+  queueModule(name, data);
+  toast("Module saved on this device" + (online ? "; sending to the Sheet." : ". It goes to the Sheet when online."));
+}
+
 function dashHtml() {
   if (!regRows.length) return `<div class="empty"><b>No register on this device yet</b>Sync first.</div>`;
   const ins = regRows.filter(r => r.inside);
@@ -591,7 +687,7 @@ function dashHtml() {
     if (rec.verification !== "Complete") Object.entries(parse(rec.checks, {})).forEach(([k, v]) => { if (v.m === "L") lack[k] = (lack[k] || 0) + 1; });
     if (rec.holder) { const b = by[rec.holder] = by[rec.holder] || { o: 0, r: 0, c: 0 }; if (rec.verification === "Complete") b.c++; else if (rec.verification === "Returned for compliance") b.r++; else b.o++; }
   });
-  return `<div class="stats">
+  return modulesHtml() + `<h3 class="sec" style="margin-top:8px">RSS verification · inside balance</h3><div class="stats">
       <div class="stat"><div class="k">Inside balance</div><div class="v">${ins.length.toLocaleString()}</div></div>
       ${STATUSES.map(s => `<div class="stat"><div class="k">${s}</div><div class="v">${n(s).toLocaleString()}</div></div>`).join("")}
     </div>
@@ -837,69 +933,224 @@ function zip(files) { // stored (no compression); files: [[name, string]]
   e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
   return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
-// Styles (cellXfs index): 1 title, 2 header, 3 module name, 4 text cell, 5 centred cell, 6 area cell, 7 total, 8 plain, 9 bold.
+/* Workbook in the layout of the unit's module files (Module_LOT-11-M-2026(NL)_Continuing.xlsx, read 2026-11-18):
+   sheet 1 the module list, then one "_estimate" (cost estimate) per module, then "Summary" (summary of the survey module).
+   The estimate and summary sheets take module name, location, area and number of LHs from the list by formula, as in
+   the unit's files; every formula also carries its value, so the file reads right even before Excel recalculates. */
+const XP_NUM = { area: 164, acct: 165, php: 166, money: 167 };
+const XP_FONTS = [
+  '<font><sz val="11"/><name val="Arial Narrow"/><family val="2"/></font>',          // 0 data
+  '<font><b/><sz val="11"/><name val="Arial Narrow"/><family val="2"/></font>',      // 1
+  '<font><b/><sz val="12"/><name val="Arial Narrow"/><family val="2"/></font>',      // 2 titles, headers, names
+  '<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>',               // 3 estimate
+  '<font><b/><sz val="11"/><name val="Calibri"/><family val="2"/></font>',           // 4
+  '<font><b/><sz val="10"/><name val="Calibri"/><family val="2"/></font>',           // 5
+  '<font><sz val="12"/><name val="Arial Narrow"/><family val="2"/></font>'           // 6 labels
+];
+const XP_FILLS = ["none", "gray125", "FFF2F2F2", "FFFFFF00", "FFDDD9C3"];
+// name: [numFmtId, fontId, fillId, border, horizontal, wrap]
+const XP_XF = {
+  base: [0, 0, 0, 0], title: [0, 2, 0, 0, "center"], head: [0, 2, 2, 1, "center", 1], modname: [0, 2, 0, 0], txt: [0, 0, 0, 1], ctr: [0, 0, 0, 1, "center"],
+  area: [XP_NUM.area, 0, 0, 1, "right"], total: [XP_NUM.area, 2, 0, 0, "right"], lbl: [0, 6, 0, 0], sig: [0, 2, 0, 0], cnt: [1, 2, 0, 0, "center"],
+  eT: [0, 3, 0, 0], eB: [0, 4, 0, 0], eTb: [0, 3, 0, 1], eBb: [0, 4, 0, 1], eMb: [XP_NUM.acct, 3, 0, 1], eM: [XP_NUM.acct, 3, 0, 0], eN2: [XP_NUM.money, 3, 0, 0],
+  eY: [1, 3, 3, 0], eNb: [1, 3, 0, 1], eArea: [XP_NUM.area, 4, 0, 0, "left"], eLoc: [0, 5, 0, 0], eSay: [XP_NUM.acct, 4, 0, 0], ePhp: [XP_NUM.php, 4, 0, 0],
+  sHead: [0, 2, 4, 1, "center", 1], sT: [0, 6, 0, 1], sN: [1, 6, 0, 1, "center"], sA: [XP_NUM.area, 6, 0, 1], sM: [XP_NUM.acct, 6, 0, 1],
+  sBT: [0, 2, 0, 1], sBN: [1, 2, 0, 1, "center"], sBA: [XP_NUM.area, 2, 0, 1], sBM: [XP_NUM.acct, 2, 0, 1], sigC: [0, 2, 0, 0, "center"], lblC: [0, 6, 0, 0, "center"]
+};
+const XP_XF_NAMES = Object.keys(XP_XF), XS = Object.fromEntries(XP_XF_NAMES.map((k, i) => [k, i]));
 const XP_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
-  `<numFmts count="1"><numFmt numFmtId="164" formatCode="0.0000"/></numFmts>` +
-  `<fonts count="3"><font><sz val="11"/><name val="Arial Narrow"/><family val="2"/></font><font><b/><sz val="11"/><name val="Arial Narrow"/><family val="2"/></font><font><b/><sz val="12"/><name val="Arial Narrow"/><family val="2"/></font></fonts>` +
-  `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF2F2F2"/><bgColor indexed="64"/></patternFill></fill></fills>` +
+  `<numFmts count="4"><numFmt numFmtId="164" formatCode="0.0000"/><numFmt numFmtId="165" formatCode="_(* #,##0.00_);_(* \\(#,##0.00\\);_(* &quot;-&quot;??_);_(@_)"/>` +
+  `<numFmt numFmtId="166" formatCode="_(&quot;Php&quot;* #,##0.00_);_(&quot;Php&quot;* \\(#,##0.00\\);_(&quot;Php&quot;* &quot;-&quot;??_);_(@_)"/><numFmt numFmtId="167" formatCode="#,##0.00"/></numFmts>` +
+  `<fonts count="${XP_FONTS.length}">${XP_FONTS.join("")}</fonts>` +
+  `<fills count="${XP_FILLS.length}">${XP_FILLS.map(f => f.length > 7 ? `<fill><patternFill patternType="solid"><fgColor rgb="${f}"/><bgColor indexed="64"/></patternFill></fill>` : `<fill><patternFill patternType="${f}"/></fill>`).join("")}</fills>` +
   `<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color auto="1"/></left><right style="thin"><color auto="1"/></right><top style="thin"><color auto="1"/></top><bottom style="thin"><color auto="1"/></bottom><diagonal/></border></borders>` +
-  `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10">` +
-  `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
-  `<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>` +
-  `<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>` +
-  `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
-  `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>` +
-  `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>` +
-  `<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>` +
-  `<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>` +
-  `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
-  `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
+  `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${XP_XF_NAMES.length}">` +
+  XP_XF_NAMES.map(k => { const [n, f, fl, b, h, w] = XP_XF[k];
+    return `<xf numFmtId="${n}" fontId="${f}" fillId="${fl}" borderId="${b}" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"${h ? ` horizontal="${h}"` : ""}${w ? ' wrapText="1"' : ""}/></xf>`; }).join("") +
   `</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+
+const xmlEsc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+const sheetRef = name => `'${name.replace(/'/g, "''")}'!`;
+// A sheet under construction: put(ref, value, style). value: text, number, or { f: formula, v: its value }.
+function xpSheet(name) {
+  const rows = {}, sh = { name, merges: [], widths: [], ht: {}, last: 0 };
+  sh.put = (ref, v, st) => { const m = /^([A-Z]+)(\d+)$/.exec(ref), r = +m[2]; (rows[r] = rows[r] || {})[m[1]] = [v, XS[st]]; sh.last = Math.max(sh.last, r); };
+  sh.xml = extra => {
+    const cell = (ref, v, s) => {
+      if (v && typeof v === "object") {
+        const val = v.v, t = typeof val === "string" ? ' t="str"' : "";
+        return `<c r="${ref}" s="${s}"${t}><f>${xmlEsc(v.f)}</f>${val === undefined || val === "" ? "" : `<v>${xmlEsc(typeof val === "number" ? +val.toFixed(10) : val)}</v>`}</c>`;
+      }
+      if (v === "" || v == null) return `<c r="${ref}" s="${s}"/>`;
+      if (typeof v === "number" && isFinite(v)) return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+      return `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+    };
+    const colIdx = c => [...c].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
+    const data = Object.keys(rows).map(Number).sort((a, b) => a - b).map(r => `<row r="${r}"${sh.ht[r] ? ` ht="${sh.ht[r]}" customHeight="1"` : ""}>` +
+      Object.keys(rows[r]).sort((a, b) => colIdx(a) - colIdx(b)).map(c => cell(c + r, rows[r][c][0], rows[r][c][1])).join("") + `</row>`).join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+      `<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>` +
+      `<cols>${sh.widths.map((w, i) => w ? `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>` : "").join("")}</cols>` +
+      `<sheetData>${data}</sheetData>` + (sh.merges.length ? `<mergeCells count="${sh.merges.length}">${sh.merges.map(m => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>` : "") +
+      `<printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>` +
+      `<pageSetup paperSize="${sh.paper || 9}" orientation="${sh.orient || "landscape"}" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  };
+  return sh;
+}
+// "Aroroy, Dimasalang, and Monreal" from the module's municipalities, as in the unit's files.
+function placeList(rows) {
+  const t = [...new Set(rows.map(x => String(x.r.municipality || "").trim()).filter(Boolean))].map(s => s.toLowerCase().replace(/(^|[\s.-])\S/g, c => c.toUpperCase()));
+  return t.length < 3 ? t.join(" and ") : t.slice(0, -1).join(", ") + ", and " + t[t.length - 1];
+}
+
 function moduleXlsx(groups, t1, t2, sign) {
-  const x = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
-  const L = "ABCDEFGHIJKL", rows = [], merges = [];
-  const cell = (ref, v, st) => v === "" || v == null ? `<c r="${ref}" s="${st}"/>` : typeof v === "number" && isFinite(v) ? `<c r="${ref}" s="${st}"><v>${v}</v></c>`
-    : `<c r="${ref}" s="${st}" t="inlineStr"><is><t xml:space="preserve">${x(v)}</t></is></c>`;
-  // add(cells: {col: [value, style]}, height)
-  const add = (cells, ht) => { const n = rows.length + 1; rows.push(`<row r="${n}"${ht ? ` ht="${ht}" customHeight="1"` : ""}>` +
-    Object.keys(cells).sort().map(c => cell(c + n, cells[c][0], cells[c][1])).join("") + `</row>`); return n; };
-  const full = (vals, styles) => { const o = {}; [...L].forEach((c, i) => { o[c] = [vals[i], styles[i]]; }); return o; };
-  let n = add({ A: [t1, 1] }, 18); merges.push(`A${n}:L${n}`);
-  n = add({ A: [t2, 1] }, 18); merges.push(`A${n}:L${n}`);
-  add(full(["SURVEY_RSS NUM", "LHID", "Title Number", "LOName", "MOA", "Phase", "MCD Name", "BarangayName", "Survey Number", "Lot Number", "LAD_Area", "SURVEY TYPE"], Array(12).fill(2)), 33);
-  let grand = 0;
-  groups.forEach(g => {
-    add({ A: [g.name, 3] });
-    g.rows.forEach(({ rec, r }) => {
-      const area = parseFloat(r.area);
-      add(full([r.rss_no || "", r.lhid || rec.id, r.title || "", r.landowner || "", r.moa || "", r.phase || "", r.municipality || "", r.barangay || "", r.survey_no || "",
-        r.lot || "", isNaN(area) ? (r.area || "") : area, rec.survey_type || "SUBD/PLUM"], [4, 4, 4, 4, 5, 4, 4, 4, 4, 5, 6, 5]));
-    });
-    add({ K: [Math.round(g.area * 10000) / 10000, 7] });
-    grand += g.area;
-  });
-  if (groups.length > 1) add({ J: ["TOTAL", 9], K: [Math.round(grand * 10000) / 10000, 7] });
   const sg = k => sign[k] || {};
-  add({}); add({ A: ["Prepared by:", 8], F: ["Checked by:", 8], J: ["Approved by:", 8] }); add({}); add({});
-  add({ A: [sg("prepared").name, 9], F: [sg("checked").name, 9], J: [sg("approved").name, 9] });
-  add({ A: [sg("prepared").pos, 8], F: [sg("checked").pos, 8], J: [sg("approved").pos, 8] });
-  add({}); add({ D: ["Earmarked:", 8] }); add({}); add({});
-  add({ D: [sg("earmarked").name, 9] }); add({ D: [sg("earmarked").pos, 8] });
-  const widths = [14, 14, 12, 28, 9, 11, 16, 22, 17, 12, 12, 14];
-  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
-    `<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>` +
-    `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols>` +
-    `<sheetData>${rows.join("")}</sheetData><mergeCells count="${merges.length}">${merges.map(m => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>` +
-    `<printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>` +
-    `<pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
-  const sheetName = (groups.length === 1 ? groups[0].name : "Survey module").replace(/[\\/?*[\]:]/g, "-").slice(0, 31);
+  // ---- Sheet 1: the module list
+  const L = xpSheet((groups.length === 1 ? groups[0].name : "Survey module").replace(/[\\/?*[\]:]/g, "-").slice(0, 31));
+  L.widths = [13.3, 14, 11.2, 26.7, 9, 10.5, 18.2, 21.3, 17.3, 12.8, 12.3, 15, 30];
+  L.put("A1", t1, "title"); L.merges.push("A1:L1"); L.ht[1] = 18;
+  L.put("A2", t2, "title"); L.merges.push("A2:L2"); L.ht[2] = 18;
+  ["SURVEY_RSS NUM", "LHID", "Title Number", "LOName", "MOA", "Phase", "MCD Name", "BarangayName", "Survey Number", "Lot Number", "LAD_Area", "SURVEY TYPE"]
+    .forEach((h, i) => L.put("ABCDEFGHIJKL"[i] + 4, h, "head")); L.ht[4] = 33;
+  let r = 5, grand = 0;
+  const refs = groups.map(g => {
+    const ref = { name: g.name, nameRef: "A" + r, n: g.rows.length, area: Math.round(g.area * 10000) / 10000, loc: placeList(g.rows) };
+    L.put("A" + r, g.name, "modname"); r++;
+    const first = r;
+    g.rows.forEach(({ rec, r: x }) => {
+      const area = parseFloat(x.area), st = ["txt", "txt", "txt", "txt", "ctr", "txt", "txt", "txt", "txt", "ctr", "area", "ctr"];
+      [x.rss_no || "", x.lhid || rec.id, x.title || "", x.landowner || "", x.moa || "", x.phase || "", x.municipality || "", x.barangay || "", x.survey_no || "", x.lot || "",
+        isNaN(area) ? (x.area || "") : area, rec.survey_type || "SUBD/PLUM"].forEach((v, i) => L.put("ABCDEFGHIJKL"[i] + r, v, st[i]));
+      r++;
+    });
+    const lastRow = r - 1;
+    L.put("M" + first, ref.loc, "lbl"); ref.locRef = "M" + first;
+    L.put("K" + r, { f: `SUM(K${first}:K${lastRow})`, v: ref.area }, "total"); ref.areaRef = "K" + r;
+    L.put("M" + r, { f: `SUBTOTAL(3,K${first}:K${lastRow})`, v: ref.n }, "cnt"); ref.cntRef = "M" + r;
+    ref.type = (g.rows.find(x => x.rec.survey_type) || { rec: {} }).rec.survey_type || "SUBD/PLUM";
+    grand += g.area; r++;
+    return ref;
+  });
+  if (groups.length > 1) { L.put("J" + r, "TOTAL", "sig"); L.put("K" + r, { f: refs.map(x => x.areaRef).join("+"), v: Math.round(grand * 10000) / 10000 }, "total"); r++; }
+  r++;
+  L.put("A" + r, "Prepared by:", "lbl"); L.put("F" + r, "Checked by:", "lbl"); L.put("J" + r, "Approved by:", "lbl"); r += 3;
+  const sig = { prepared: ["A" + r, "A" + (r + 1)], checked: ["F" + r, "F" + (r + 1)], approved: ["J" + r, "J" + (r + 1)] };
+  L.put("A" + r, sg("prepared").name, "sig"); L.put("F" + r, sg("checked").name, "sig"); L.put("J" + r, sg("approved").name, "sig"); r++;
+  L.put("A" + r, sg("prepared").pos, "lbl"); L.put("F" + r, sg("checked").pos, "lbl"); L.put("J" + r, sg("approved").pos, "lbl"); r += 2;
+  L.put("D" + r, "Earmarked:", "lbl"); r += 3;
+  L.put("D" + r, sg("earmarked").name, "sig"); L.put("D" + (r + 1), sg("earmarked").pos, "lbl");
+  L.printArea = `$A$1:$L$${r + 1}`;
+  const q = sheetRef(L.name), sigVal = (k, i) => i ? sg(k).pos : sg(k).name;
+
+  // ---- One cost estimate per module (rates, days and quantities as in the unit's LOT-11-M-2026 estimate; edit them in Excel)
+  const estimates = refs.map((m, i) => {
+    const E = xpSheet(groups.length === 1 ? "_estimate" : ("_estimate " + (i + 1)));
+    E.orient = "portrait"; E.widths = [29.5, 17.5, 12, 15.8, 17.5, 3.3, 1.2, 10, 13.8];
+    const n = m.n, area = m.area, amt = {};
+    E.put("A1", "COST ESTIMATE", "eB"); E.merges.push("A1:F1");
+    E.put("A3", "Module Num", "eT"); E.put("B3", { f: q + m.nameRef, v: m.name }, "eB");
+    E.put("A4", "Location", "eT"); E.put("B4", { f: q + m.locRef, v: m.loc }, "eLoc"); E.merges.push("B4:D4");
+    E.put("A5", "Total Area (has)", "eT"); E.put("B5", { f: q + m.areaRef, v: area }, "eArea");
+    E.put("A6", "Number of LHs", "eT"); E.put("B6", { f: q + m.cntRef, v: n }, "eB");
+    const box = (row, a, b, c, d, e) => { E.put("A" + row, a, "eTb"); E.put("B" + row, b, "eNb"); E.put("C" + row, c, "eMb"); E.put("D" + row, d, "eNb"); E.put("E" + row, e, "eMb"); };
+    const head = (row, t) => box(row, t, "", "", "", "");
+    // line(row, label, B, C, D, formula kind): B may be a number or [formula, value]
+    const line = (row, label, b, c, d, kind) => {
+      const bv = Array.isArray(b) ? b[1] : b, bf = Array.isArray(b) ? { f: b[0], v: b[1] } : b;
+      let f, v;
+      if (kind === "BCD") { f = `B${row}*C${row}*D${row}`; v = bv * c * d; }
+      else if (kind === "DCB") { f = `D${row}*C${row}*B${row}`; v = d * c * bv; }
+      else if (kind === "BDC") { f = `B${row}*D${row}*C${row}`; v = bv * d * c; }
+      else if (kind === "CB") { f = `C${row}*B${row}`; v = c * bv; }
+      else { f = `C${row}`; v = c; }
+      amt[row] = v; box(row, label, bf, c, d, { f, v });
+    };
+    E.put("A8", "A. PERSONNEL COST", "eTb");
+    box(9, "Personnel", "Number", "Wages/day", "No. Of days", "Amount");
+    head(10, "1. Data Gathering");
+    line(11, "a. ROD Researcher", 1, 800, 3, "BCD"); line(12, "b. T.S. Researcher", 1, 800, 4, "BCD");
+    head(13, "2. Lot Survey");
+    line(14, "a. Geodetic Engr", 1, 2500, 4, "BCD"); line(15, "b. Cartographer", ["B14", 1], 1000, 4, "BCD");
+    line(16, "c. Survey Man", ["B14", 1], 1000, 4, "BCD"); line(17, "d. Survey Aide", ["B14", 1], 800, 4, "BCD");
+    head(18, "3. Preparation of Survey Returns");
+    line(19, "a. Computer", 1, 1000, 3, "BCD"); line(20, "b. Cartographer", 1, 1000, 3, "BCD");
+    E.put("A22", "B. SUPPLIES AND MATERIALS", "eTb");
+    box(23, "", "Number", "Unit Cost", "Unit", "");
+    head(24, "1. Data Gathering");
+    line(25, "a. Verified Titles", ["B6", n], 50, 5, "DCB"); line(26, "b. LDC/Lot Descriptions", ["B25", n], 50, 5, "DCB"); line(27, "c. Cad Maps/Plans", ["B25", n], 60, 5, "DCB");
+    head(28, "2. Lot Survey");
+    line(29, "a. Total Station", 1, 2500, 4, "BDC"); line(30, "b. Fares", 4, 1200, 4, "BDC");
+    head(31, "3. Preparation of Survey Returns");
+    line(32, "a. Drafting Film", ["B6", n], 150, 7, "DCB"); line(33, "b. Survey Form", 20, 25, 7, "DCB");
+    line(34, "c. Papers/ink", "", 1000, "", "C"); line(35, "d. Survey Envelope/Plastic", ["B6", n], 70, 7, "DCB");
+    E.put("A37", "C. MONUMENTING", "eTb");
+    // Monuments: H38 (yellow), 55 by default (user's estimate, 2026-11-18); change it for each module.
+    line(38, "a. Monuments", ["H38", 55], 100, "", "CB"); line(39, "b. Transportation", ["B38", 55], 50, "", "CB"); line(40, "c. Placing/planting of mon", ["B38", 55], 50, "", "CB");
+    E.put("H38", 55, "eY"); E.put("I38", "← number of monuments of this module (55 by default)", "eT");
+    E.put("A42", "D. PRINTING OF APPROVED SURVEY PLAN", "eTb");
+    line(43, "a. Sepia Copy", 10, 400, 1, "CB"); line(44, "b. Blue Print copy", 10, 70, 1, "CB"); line(45, "c. Tabular TD", 36, 50, 1, "CB");
+    E.put("A47", "E. MISCELLANEOUS EXPENSES", "eTb");
+    box(48, "a. Other equipment rentals", "", "", "", ""); box(49, "b. Mobility", "", "", "", "");
+    const dRows = [11, 12, 14, 15, 16, 17, 19, 20, 25, 26, 27, 29, 30, 32, 33, 34, 35, 38, 39, 40, 43, 44, 45];
+    const direct = dRows.reduce((t, x) => t + amt[x], 0);
+    E.put("B51", "TOTAL DIRECT COST", "eT"); E.put("E51", { f: dRows.map(x => "E" + x).concat(["E48", "E49"]).join("+"), v: direct }, "eM");
+    E.put("B52", "Indirect Cost (40% of Direct Cost)", "eT");
+    const ind = [[53, "10% Contractor's Overhead", 0.1], [54, "", 0.15], [55, "10% Tax", 0.1], [56, "5% Contingencies", 0.05]];
+    ind.forEach(([row, l, p]) => { if (l) E.put("C" + row, l, "eT"); E.put("E" + row, { f: `E51*${p}`, v: direct * p }, "eM"); });
+    const indirect = direct * 0.4, total = direct + indirect, perHa = area ? total / area : 0, say = Math.ceil(Math.round(perHa * 100) / 100 / 100) * 100;
+    E.put("B57", "TOTAL INDIRECT COST", "eT"); E.put("E57", { f: "E53+E54+E55+E56", v: indirect }, "eM");
+    E.put("B59", "GRAND TOTAL", "eT"); E.put("E59", { f: "E51+E57", v: total }, "eM");
+    E.put("B61", "COST PER HECTARE", "eT"); E.put("E61", { f: "IF(B5,E59/B5,0)", v: perHa }, "eN2");
+    E.put("B62", "UNIT COST PER HA. SAY", "eT"); E.put("E62", { f: "CEILING(ROUND(E61,2),100)", v: say }, "eSay"); E.put("F62", "/ha.", "eB");
+    E.put("B64", "COST OF MODULE", "eBb"); E.put("D64", { f: "B5*E62", v: area * say }, "ePhp");
+    E.put("A67", "Prepared by:", "eT"); E.put("B67", "Checked by:", "eT"); E.put("D67", "Approved by:", "eT"); E.merges.push("D67:E67");
+    E.put("A72", { f: q + sig.prepared[0], v: sigVal("prepared", 0) }, "eB"); E.put("B72", { f: q + sig.checked[0], v: sigVal("checked", 0) }, "eB"); E.put("D72", { f: q + sig.approved[0], v: sigVal("approved", 0) }, "eB");
+    E.put("A73", { f: q + sig.prepared[1], v: sigVal("prepared", 1) }, "eT"); E.put("B73", { f: q + sig.checked[1], v: sigVal("checked", 1) }, "eT"); E.put("D73", { f: q + sig.approved[1], v: sigVal("approved", 1) }, "eT");
+    E.merges.push("D72:E72", "D73:E73");
+    E.printArea = "$A$1:$G$73";
+    Object.assign(m, { say, abc: area * say });
+    return E;
+  });
+
+  // ---- Summary of the survey module: one row per module, totals, signatories
+  const S = xpSheet("Summary"); S.orient = "portrait"; S.widths = [30, 9, 11, 13, 13, 15.5, 32];
+  S.put("A1", "SUMMARY OF " + t1, "title"); S.merges.push("A1:G1");
+  S.put("A2", t2.replace(/^PROVINCE OF /i, "Province of "), "title"); S.merges.push("A2:G2");
+  ["NEW LANDS", "no. of LH", "Area(has.)", "TYPE OF SURVEY", "Cost estimate per ha.", "ABC", "Municipality"].forEach((h, i) => S.put("ABCDEFG"[i] + 4, h, "sHead")); S.ht[4] = 48;
+  let s = 6;
+  refs.forEach((m, i) => {
+    const e = sheetRef(estimates[i].name);
+    S.put("A" + s, { f: q + m.nameRef, v: m.name }, "sT"); S.put("B" + s, { f: q + m.cntRef, v: m.n }, "sN"); S.put("C" + s, { f: q + m.areaRef, v: m.area }, "sA");
+    S.put("D" + s, m.type, "sT"); S.put("E" + s, { f: e + "E62", v: m.say }, "sM"); S.put("F" + s, { f: `C${s}*E${s}`, v: m.abc }, "sM"); S.put("G" + s, { f: e + "B4", v: m.loc }, "sT");
+    s++;
+  });
+  S.put("A" + s, "x-x-x-x-x-x", "sBT"); "BCDEFG".split("").forEach(c => S.put(c + s, "", "sT")); s++;
+  S.put("A" + s, "", "sBT"); S.put("B" + s, { f: `SUM(B6:B${s - 2})`, v: refs.reduce((t, m) => t + m.n, 0) }, "sBN");
+  S.put("C" + s, { f: `SUM(C6:C${s - 1})`, v: refs.reduce((t, m) => t + m.area, 0) }, "sBA"); S.put("D" + s, "", "sBT"); S.put("E" + s, "", "sBT");
+  S.put("F" + s, { f: `SUM(F6:F${s - 1})`, v: refs.reduce((t, m) => t + m.abc, 0) }, "sBM"); S.put("G" + s, "", "sBT");
+  s += 2;
+  S.put("A" + s, "Prepared by:", "lbl"); S.put("C" + s, "Checked by:", "lbl"); S.put("F" + s, "Noted:", "lbl"); s += 4;
+  [["A", "B", "prepared"], ["C", "E", "checked"], ["F", "G", "approved"]].forEach(([a, b, k]) => {
+    S.put(a + s, { f: q + sig[k][0], v: sigVal(k, 0) }, "sigC"); S.merges.push(`${a}${s}:${b}${s}`);
+    S.put(a + (s + 1), { f: q + sig[k][1], v: sigVal(k, 1) }, "lblC"); S.merges.push(`${a}${s + 1}:${b}${s + 1}`);
+  });
+  S.printArea = `$A$1:$G$${s + 1}`;
+
+  const sheets = [L, ...estimates, S];
+  const names = sheets.map((sh, i) => `<definedName name="_xlnm.Print_Area" localSheetId="${i}">${xmlEsc(sheetRef(sh.name))}${sh.printArea}</definedName>`).join("") +
+    `<definedName name="_xlnm.Print_Titles" localSheetId="0">${xmlEsc(sheetRef(L.name))}$1:$4</definedName>`;
   return zip([
-    ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+      sheets.map((sh, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("") +
+      `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
     ["_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
-    ["xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${x(sheetName)}" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">'${x(sheetName).replace(/'/g, "''")}'!$A$1:$L$${rows.length}</definedName></definedNames></workbook>`],
-    ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>` +
+      sheets.map((sh, i) => `<sheet name="${xmlEsc(sh.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("") + `</sheets><definedNames>${names}</definedNames><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>`],
+    ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      sheets.map((sh, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("") +
+      `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
     ["xl/styles.xml", XP_STYLES],
-    ["xl/worksheets/sheet1.xml", sheet]
+    ...sheets.map((sh, i) => [`xl/worksheets/sheet${i + 1}.xml`, sh.xml()])
   ]);
 }
 
@@ -962,6 +1213,14 @@ $("dBody").addEventListener("click", e => {
 $("main").addEventListener("click", e => {
   const t = e.target;
   if (t.closest("[data-lhs]") || t.closest("tr.cf")) return;
+  if (t.closest(".modedit")) {
+    if (t.id === "mSave") return saveModule(t.dataset.name);
+    const xm = t.closest("[data-xpmod]");
+    if (xm) { state.xp = Object.assign({}, state.xp || {}, { pick: [xm.dataset.xpmod], t1: "" }); return openExport(); }
+    return;
+  }
+  const mr = t.closest("tr[data-mod]");
+  if (mr) { openMod = openMod === mr.dataset.mod ? "" : mr.dataset.mod; return render(); }
   const so = t.closest("th[data-sort]");
   if (so) { const k = so.dataset.sort; if (sortK !== k) { sortK = k; sortD = 1; } else if (sortD > 0) sortD = -1; else sortK = ""; return render(); }
   if (t.id === "xpOpen") return openExport();
@@ -994,13 +1253,17 @@ $("main").addEventListener("click", e => {
   }
 });
 let qT;
+$("main").addEventListener("keydown", e => { const mr = e.target.closest && e.target.closest("tr[data-mod]"); if (mr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); mr.click(); } });
 $("main").addEventListener("input", e => {
+  // Keep what is typed in an open module's form across the redraws of each sync.
+  if (["mStage", "mCon", "mAbc"].includes(e.target.id)) { const n = e.target.dataset.name; modDraft[n] = { stage: $("mStage").value, contractor: $("mCon").value, abc: $("mAbc").value }; }
   if (e.target.id === "q") { clearTimeout(qT); qT = setTimeout(() => { fText = e.target.value; shown = PAGE; render(); }, 200); }
   if (e.target.tagName === "INPUT" && e.target.dataset.cf) { const k = e.target.dataset.cf, v = e.target.value; clearTimeout(qT); qT = setTimeout(() => { if (v) cf[k] = v; else delete cf[k]; shown = PAGE; render(); }, 200); }
 });
 $("main").addEventListener("change", e => {
   if (e.target.id === "fStat") { fStat = e.target.value; shown = PAGE; render(); }
   if (e.target.id === "fTown") { fTown = e.target.value; shown = PAGE; render(); }
+  if (e.target.id === "mStage") { const n = e.target.dataset.name; modDraft[n] = { stage: $("mStage").value, contractor: $("mCon").value, abc: $("mAbc").value }; return; }
   if (e.target.tagName === "SELECT" && e.target.dataset.cf) { const k = e.target.dataset.cf; if (e.target.value) cf[k] = e.target.value; else delete cf[k]; shown = PAGE; return render(); }
   if (e.target.dataset.lhm) {
     const id = e.target.dataset.lhm; let v = e.target.value;
