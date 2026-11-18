@@ -95,6 +95,26 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0}
 .tbl td.own{max-width:240px}
 .tbl select.lhs{height:30px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:inherit;padding:0 6px;cursor:pointer}
 .tbl small{display:block;color:var(--muted);font-size:12px}
+.tbl select.lhm{max-width:210px}
+.tbl th.sortable{cursor:pointer;user-select:none}
+.tbl th.sortable:hover{color:var(--ink)}
+.tbl th .arr{display:inline-block;margin-left:4px;opacity:.35}
+.tbl th[aria-sort] .arr{opacity:1;color:var(--accent)}
+.tbl tr.cf th{padding:0 6px 8px;text-transform:none;letter-spacing:0;font-weight:400}
+.tbl tr.cf input,.tbl tr.cf select{width:100%;min-width:64px;height:28px;border:1px solid var(--line);border-radius:6px;background:var(--field);color:inherit;font:inherit;font-size:12px;padding:0 6px}
+.tbl tr.cf .on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+dialog.xp{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);color:var(--ink);padding:0;width:min(720px,calc(100% - 32px));max-height:calc(100% - 32px);box-shadow:var(--shadow-lg)}
+dialog.xp::backdrop{background:rgba(0,0,0,.4)}
+dialog.xp form{display:flex;flex-direction:column;max-height:calc(100vh - 34px)}
+.xphead{padding:14px var(--gap-l);border-bottom:1px solid var(--line);background:var(--panel)}
+.xphead h2{margin:0;font-size:16px}
+.xpbody{padding:var(--gap-l);overflow:auto}
+.xpmods{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.xpmods label{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+.xpmods label span{flex:1;min-width:0}
+.xpmods .mono{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.xpsig{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.xpfoot{display:flex;gap:8px;justify-content:flex-end;padding:12px var(--gap-l);border-top:1px solid var(--line);background:var(--panel)}
 .more{display:flex;justify-content:center;margin-top:12px}
 
 /* Dashboard */
@@ -188,6 +208,7 @@ input:disabled,select:disabled,textarea:disabled{background:var(--hover);opacity
   .ckrow{grid-template-columns:22px minmax(0,1fr)}
   .ckrow .marks{grid-column:2}
   .ckrow .rem{flex-wrap:wrap}
+  .xpsig{grid-template-columns:1fr}
   .tbl .hide-s{display:none}
 }
 @media (prefers-reduced-motion:no-preference){ .btn,.chip,.tab{transition:background .12s,border-color .12s} }
@@ -207,6 +228,12 @@ input:disabled,select:disabled,textarea:disabled{background:var(--hover);opacity
   </nav>
 </header>
 <main id="main"></main>
+<dialog class="xp" id="xp" aria-labelledby="xpT"><form id="xpForm" method="dialog">
+  <div class="xphead"><h2 id="xpT">Export survey module</h2>
+    <div class="muted" style="font-size:12.5px">Excel file in the layout of the survey module list: LHs grouped by module, the area total of each module, and the signatories.</div></div>
+  <div class="xpbody" id="xpBody"></div>
+  <div class="xpfoot"><button type="button" class="btn ghost" id="xpCancel">Cancel</button><button type="button" class="btn primary" id="xpGo">Download Excel</button></div>
+</form></dialog>
 
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" hidden aria-labelledby="dTitle" role="dialog">
@@ -251,7 +278,11 @@ const STATUSES = ["Pending", "Ongoing Verification", "Returned for compliance", 
 const LH_STATUSES = ["For Module", "Compliance", "Pending"];   // column Status; set on the desk, kept in RSS LOG (lh_status)
 const MARK = { P: "✓", L: "✗", NA: "N/A" };
 const MARK_T = { P: "Present", L: "Lacking", NA: "Not applicable" };
-const EDIT = ["verification", "round", "holder", "tax_dec", "checks", "prev_modules", "notes", "date_received", "date_returned", "date_complete", "lh_status"];
+const EDIT = ["verification", "round", "holder", "tax_dec", "checks", "prev_modules", "notes", "date_received", "date_returned", "date_complete", "lh_status", "lh_module", "survey_type"];
+// Desk fields: Status, Module and Survey type. Changing only these does not take the hold (the server follows the same rule).
+const DESK = ["lh_status", "lh_module", "survey_type"];
+const SURVEY_TYPES = ["SUBD/PLUM"];   // printed as SUBD/PLUM when an LH has none
+const coll = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 const PAGE = 200;
 
 const $ = id => document.getElementById(id);
@@ -346,7 +377,7 @@ async function sync(quiet) {
     // Ask with 2 minutes of overlap: a save that started just before the last pull can land just after it.
     const since = state.lastPull ? new Date(new Date(state.lastPull).getTime() - 120000).toISOString() : "";
     const p = await call("GET", { action: "pull", since });
-    state.me = p.me; state.people = p.people || state.people;
+    state.me = p.me; state.people = p.people || state.people; if (p.sign) state.sign = p.sign;
     (p.items || []).forEach(s => {
       const loc = state.items[s.id];
       if (pending(s.id)) return;                      // a local edit is queued: the next send settles it, or flags a conflict
@@ -373,26 +404,27 @@ async function sync(quiet) {
 
 /* ---------- Local changes ---------- */
 const shownOf = d => Object.assign({}, d, { checks: JSON.stringify(d.checks || {}), prev_modules: JSON.stringify(d.prev_modules || []) });
-// statusOnly: the change sets only the Status, which does not take the hold (the server follows the same rule).
-function queueSave(id, data, baseOverride, statusOnly) {
+// deskOnly: the change sets only desk fields (Status, Module, Survey type), which do not take the hold.
+function queueSave(id, data, baseOverride, deskOnly) {
   const cur = recOf(id) || { id, version: 0 };
   const o = state.outbox.find(x => x.id === id);
   if (o) { o.data = data; o.rev++; if (baseOverride !== undefined) o.baseVersion = baseOverride; }
   else state.outbox.push({ type: "save", id, baseVersion: baseOverride !== undefined ? baseOverride : Number(cur.version) || 0, data, rev: 1 });
-  state.items[id] = Object.assign({}, cur, shownOf(data), { holder: data.holder || cur.holder || (state.me && !statusOnly ? state.me.name : "") });
+  state.items[id] = Object.assign({}, cur, shownOf(data), { holder: data.holder || cur.holder || (state.me && !deskOnly ? state.me.name : "") });
   save(); render(); sync(true);
 }
 
 /* ---------- Rendering ---------- */
-let view = "reg", fBal = "in", fStat = "", fTown = "", fText = "", fMine = false, shown = PAGE, editing = null, draft = null;
-try { const v = JSON.parse(sessionStorage.getItem("rss.view") || "null"); if (v) ({ view, fBal, fStat, fTown, fText, fMine } = Object.assign({ view, fBal, fStat, fTown, fText, fMine }, v)); } catch (e) {}
+let view = "reg", fBal = "in", fStat = "", fTown = "", fText = "", fMine = false, shown = PAGE, editing = null, draft = null, cf = {}, sortK = "", sortD = 1;
+try { const v = JSON.parse(sessionStorage.getItem("rss.view") || "null"); if (v) ({ view, fBal, fStat, fTown, fText, fMine, cf, sortK, sortD } = Object.assign({ view, fBal, fStat, fTown, fText, fMine, cf, sortK, sortD }, v)); } catch (e) {}
 function render() {
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === view));
   renderSync();
-  const q = document.activeElement && document.activeElement.id === "q" ? document.activeElement.selectionStart : null;
+  // Keep the focus (and the caret) in the search box or a column filter while the page redraws.
+  const ae = document.activeElement, aid = ae && ae.id && $("main").contains(ae) ? ae.id : "", pos = aid && ae.tagName === "INPUT" ? ae.selectionStart : null;
   $("main").innerHTML = problemsHtml() + sourceHtml() + ({ reg: regHtml, dash: dashHtml, settings: settingsHtml }[view] || regHtml)();
-  if (q !== null && $("q")) { $("q").focus(); $("q").setSelectionRange(q, q); }
-  try { sessionStorage.setItem("rss.view", JSON.stringify({ view, fBal, fStat, fTown, fText, fMine })); } catch (e) {}
+  if (aid && $(aid)) { $(aid).focus(); if (pos !== null) try { $(aid).setSelectionRange(pos, pos); } catch (e) {} }
+  try { sessionStorage.setItem("rss.view", JSON.stringify({ view, fBal, fStat, fTown, fText, fMine, cf, sortK, sortD })); } catch (e) {}
 }
 function renderSync() {
   const n = state.outbox.length;
@@ -433,6 +465,67 @@ function filtered() {
     return true;
   });
 }
+const lhStatusOf = id => { const r = recOf(id); return r ? r.lh_status || "" : ""; };
+const moduleOf = id => { const r = recOf(id); return r ? r.lh_module || "" : ""; };
+const knownModules = () => [...new Set(Object.values(state.items).map(r => r.lh_module).filter(Boolean))].sort(coll.compare);
+// Register columns. f: the filter under the header ("text" = contains, "list" = pick a value); s: hidden on phones;
+// v: the value sorted and filtered on; x: the grey second line, also searched by a text filter.
+const COLS = [
+  { k: "lhid", t: "LHID", f: "text", v: r => r.lhid || r.id },
+  { k: "owner", t: "Landowner", f: "text", v: r => r.landowner, x: r => r.survey_status },
+  { k: "status", t: "Status", f: "list", v: r => lhStatusOf(r.id) },
+  { k: "module", t: "Module", f: "list", v: r => moduleOf(r.id) },
+  { k: "loc", t: "Location", f: "text", s: 1, v: r => r.municipality, x: r => r.barangay },
+  { k: "title", t: "Title · Lot", f: "text", s: 1, v: r => r.title, x: r => r.lot },
+  { k: "area", t: "Area (ha)", f: "", s: 1, n: 1, v: r => r.area },
+  { k: "rss", t: "RSS no.", f: "text", s: 1, v: r => r.rss_no, x: r => r.rss_date },
+  { k: "bal", t: "Balance", f: "", v: r => r.inside ? "Inside balance" : "Outside balance" },
+  { k: "verif", t: "Verification", f: "list", v: r => statusOf(r.id) },
+  { k: "holder", t: "Holder", f: "list", s: 1, v: r => (recOf(r.id) || {}).holder || "" }
+];
+const BLANK = "__blank";
+function colFiltered(rows) {
+  const act = COLS.filter(c => c.f && cf[c.k]);
+  let out = !act.length ? rows : rows.filter(r => act.every(c => {
+    const want = cf[c.k];
+    if (c.f === "list") return want === BLANK ? !c.v(r) : String(c.v(r)) === want;
+    const q = want.trim().toUpperCase();
+    return !q || [c.v(r), c.x ? c.x(r) : ""].some(v => String(v || "").toUpperCase().includes(q));
+  }));
+  const c = sortK && COLS.find(x => x.k === sortK);
+  if (c) out = out.slice().sort((a, b) => {
+    const x = c.v(a), y = c.v(b), ex = x === "" || x == null, ey = y === "" || y == null;
+    if (ex || ey) return ex && ey ? 0 : ex ? 1 : -1;              // blanks last either way
+    if (c.n) { const nx = parseFloat(x), ny = parseFloat(y); if (!isNaN(nx) && !isNaN(ny)) return (nx - ny) * sortD; }
+    return coll.compare(String(x), String(y)) * sortD;
+  });
+  return out;
+}
+function headHtml(base) {
+  const th = c => `<th class="sortable${c.n ? " num" : ""}${c.s ? " hide-s" : ""}" data-sort="${c.k}" title="Sort by ${esc(c.t)}"${sortK === c.k ? ` aria-sort="${sortD > 0 ? "ascending" : "descending"}"` : ""}>${esc(c.t)}<span class="arr">${sortK === c.k ? (sortD > 0 ? "▲" : "▼") : "↕"}</span></th>`;
+  const fl = c => {
+    const cls = c.s ? ' class="hide-s"' : "", on = cf[c.k] ? ' class="on"' : "";
+    if (c.f === "text") return `<th${cls}><input id="cf-${c.k}" data-cf="${c.k}" value="${esc(cf[c.k] || "")}" placeholder="Filter" aria-label="Filter ${esc(c.t)}"${on}></th>`;
+    if (c.f !== "list") return `<th${cls}></th>`;
+    const n = {}; let blank = 0;
+    base.forEach(r => { const v = c.v(r); if (v) n[v] = (n[v] || 0) + 1; else blank++; });
+    const vals = Object.keys(n).sort(coll.compare);
+    if (cf[c.k] && cf[c.k] !== BLANK && !n[cf[c.k]]) vals.push(cf[c.k]);
+    return `<th${cls}><select id="cf-${c.k}" data-cf="${c.k}" aria-label="Filter ${esc(c.t)}"${on}><option value="">All</option>` +
+      (blank ? `<option value="${BLANK}" ${cf[c.k] === BLANK ? "selected" : ""}>${c.k === "holder" ? "Unassigned" : "Not set"} (${blank.toLocaleString()})</option>` : "") +
+      vals.map(v => `<option value="${esc(v)}" ${cf[c.k] === v ? "selected" : ""}>${esc(v)} (${(n[v] || 0).toLocaleString()})</option>`).join("") + `</select></th>`;
+  };
+  return `<thead><tr>${COLS.map(th).join("")}</tr><tr class="cf">${COLS.map(fl).join("")}</tr></thead>`;
+}
+// Module column: a picker of the modules already used (or a new one) for whoever may change the record, text for others.
+// The module no. in LAD BAL (MOD), if any, shows under it.
+let MODS = [];
+function moduleCell(r) {
+  const v = moduleOf(r.id), old = r.module_no ? `<small title="Module no. in LAD BAL (MOD)">LAD BAL: ${esc(r.module_no)}</small>` : "";
+  if (state.me && canEdit(r.id)) return `<select class="lhs lhm" data-lhm="${esc(r.id)}" aria-label="Module of LHID ${esc(r.id)}"><option value="">Not set</option>` +
+    MODS.concat(v && !MODS.includes(v) ? [v] : []).map(m => `<option ${m === v ? "selected" : ""}>${esc(m)}</option>`).join("") + `<option value="__new">New module…</option></select>${old}`;
+  return (v ? esc(v) : '<span class="muted">Not set</span>') + old;
+}
 const lhOptions = v => `<option value="">Not set</option>` + LH_STATUSES.map(s => `<option ${v === s ? "selected" : ""}>${s}</option>`).join("") +
   (v && !LH_STATUSES.includes(v) ? `<option selected>${esc(v)}</option>` : "");
 // Status column: a picker for whoever may change the record, plain text for everyone else.
@@ -448,7 +541,8 @@ function regHtml() {
   const nIn = regRows.filter(r => r.inside).length;
   const base = regRows.filter(r => fBal === "all" || (fBal === "in") === r.inside);
   const towns = [...new Set(regRows.map(r => r.municipality).filter(Boolean))].sort();
-  const rows = filtered(), list = rows.slice(0, shown);
+  const top = filtered(), rows = colFiltered(top), list = rows.slice(0, shown), nCol = COLS.filter(c => cf[c.k]).length;
+  MODS = knownModules();
   const cnt = s => base.filter(r => statusOf(r.id) === s).length;
   return `<div class="chips" role="group" aria-label="Balance">
       ${[["in", "Inside balance", nIn], ["out", "Outside balance", regRows.length - nIn], ["all", "All LHs", regRows.length]].map(([k, l, n]) =>
@@ -461,13 +555,15 @@ function regHtml() {
       <select id="fTown" aria-label="Municipality"><option value="">Every municipality</option>${towns.map(t => `<option ${fTown === t ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>
       <button class="chip" id="fMine" aria-pressed="${fMine}">Held by me</button>
       <button class="btn sm ghost" id="fClear">Clear filters</button>
+      <button class="btn sm" id="xpOpen" title="Excel list of the LHs of one or more modules, in the survey module layout">Export module</button>
     </div>
-    <p class="count">${rows.length.toLocaleString()} of ${regRows.length.toLocaleString()} LHs${reg && reg.stamp ? " · register read " + fmtTime(reg.stamp) : ""}</p>
-    ${rows.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>LHID</th><th>Landowner</th><th>Status</th><th class="hide-s">Location</th><th class="hide-s">Title · Lot</th><th class="num hide-s">Area (ha)</th><th class="hide-s">RSS no.</th><th>Balance</th><th>Verification</th><th class="hide-s">Holder</th></tr></thead><tbody>
+    <p class="count">${rows.length.toLocaleString()} of ${regRows.length.toLocaleString()} LHs${nCol ? " · " + nCol + " column filter" + (nCol > 1 ? "s" : "") : ""}${reg && reg.stamp ? " · register read " + fmtTime(reg.stamp) : ""}</p>
+    ${top.length ? `<div class="tblwrap"><table class="tbl" data-tt="off">${headHtml(top)}<tbody>
       ${list.map(r => { const rec = recOf(r.id), st = statusOf(r.id); return `<tr data-id="${esc(r.id)}">
         <td class="mono">${esc(r.lhid)}${r.id.includes(" / ") ? `<small>lot ${esc(r.lot)}</small>` : ""}</td>
         <td class="own">${esc(r.landowner)}<small>${esc(r.survey_status)}</small></td>
         <td>${lhStatusCell(r.id)}</td>
+        <td>${moduleCell(r)}</td>
         <td class="hide-s">${esc(r.municipality)}<small>${esc(r.barangay)}</small></td>
         <td class="hide-s">${esc(r.title)}<small>${esc(r.lot)}${r.survey_no ? " · " + esc(r.survey_no) : ""}</small></td>
         <td class="num hide-s">${esc(r.area)}</td>
@@ -476,6 +572,7 @@ function regHtml() {
         <td><span class="pill s-${sKey(st)}">${esc(st)}${rec && Number(rec.round) > 1 ? " · R" + rec.round : ""}</span>${pending(r.id) ? ' <span class="pill wait">not sent</span>' : ""}</td>
         <td class="hide-s">${esc(rec ? rec.holder : "")}</td></tr>`; }).join("")}
       </tbody></table></div>
+      ${!rows.length ? `<div class="empty" style="margin-top:12px"><b>No LH matches the column filters</b>Change or clear them.</div>` : ""}
       ${rows.length > shown ? `<div class="more"><button class="btn" id="more">Show ${Math.min(PAGE, rows.length - shown)} more</button></div>` : ""}`
     : `<div class="empty"><b>No LH matches</b>Change the filters or the search.</div>`}`;
 }
@@ -533,7 +630,7 @@ function draftFrom(id) {
   const r = recOf(id) || {};
   return { verification: r.verification || "Pending", round: Number(r.round) || 1, holder: r.holder || "", tax_dec: r.tax_dec || "",
     checks: JSON.parse(JSON.stringify(parse(r.checks, {}))), prev_modules: parse(r.prev_modules, []).slice(), notes: r.notes || "",
-    date_received: r.date_received || "", date_returned: r.date_returned || "", date_complete: r.date_complete || "", lh_status: r.lh_status || "" };
+    date_received: r.date_received || "", date_returned: r.date_returned || "", date_complete: r.date_complete || "", lh_status: r.lh_status || "", lh_module: r.lh_module || "", survey_type: r.survey_type || "" };
 }
 function openDrawer(id, preset) {
   if (!regById[id] && !recOf(id)) return toast("LHID " + id + " is not in the register on this device.");
@@ -571,6 +668,10 @@ function drawDrawer() {
       <label class="f"><span>Holder (verifier)</span><select id="dHolder" ${isAdmin() ? "" : "disabled"}><option value="">${draft.holder ? "" : "Unassigned (first to mark holds it)"}</option>
         ${people.map(p => `<option ${draft.holder === p.name ? "selected" : ""}>${esc(p.name)}</option>`).join("")}${draft.holder && !people.some(p => p.name === draft.holder) ? `<option selected>${esc(draft.holder)}</option>` : ""}</select></label>
       <label class="f"><span>Status</span><select id="dLhs" ${dis}>${lhOptions(draft.lh_status)}</select></label>
+      <label class="f"><span>Module</span><input id="dMod" list="dModList" value="${esc(draft.lh_module)}" maxlength="60" placeholder="e.g. LOT-01-M-2027 (NL)" ${dis}>
+        <datalist id="dModList">${knownModules().map(m => `<option value="${esc(m)}">`).join("")}</datalist></label>
+      <label class="f"><span>Survey type</span><input id="dSt" list="dStList" value="${esc(draft.survey_type)}" maxlength="40" placeholder="SUBD/PLUM" ${dis}>
+        <datalist id="dStList">${SURVEY_TYPES.map(m => `<option value="${esc(m)}">`).join("")}</datalist></label>
       <label class="f"><span>Tax Declaration No.</span><input id="dTax" value="${esc(draft.tax_dec)}" maxlength="120" ${dis}></label>
     </div>
     <h3 class="sec">Documentary requirements</h3>
@@ -594,7 +695,7 @@ function drawDrawer() {
 }
 function readForm() {
   if (!editing || !$("dTax")) return;
-  draft.tax_dec = $("dTax").value.trim(); draft.date_received = $("dRec").value; draft.notes = $("dNotes").value.trim(); draft.lh_status = $("dLhs").value;
+  draft.tax_dec = $("dTax").value.trim(); draft.date_received = $("dRec").value; draft.notes = $("dNotes").value.trim(); draft.lh_status = $("dLhs").value; draft.lh_module = $("dMod").value.trim().replace(/\s+/g, " "); draft.survey_type = $("dSt").value.trim();
   if (isAdmin()) draft.holder = $("dHolder").value;
   document.querySelectorAll("#ck .ckrow").forEach(row => {
     const id = row.dataset.item, c = draft.checks[id] || {};
@@ -621,7 +722,8 @@ function commit(next) {
   if (d.verification === "Pending" && Object.values(d.checks).some(c => c.m)) d.verification = "Ongoing Verification";
   const before = draftFrom(editing); before.prev_modules = before.prev_modules.filter(m => m.no || m.remarks);
   if (recOf(editing) && JSON.stringify(EDIT.map(k => d[k])) === JSON.stringify(EDIT.map(k => before[k]))) { closeDrawer(); return toast("No change to save."); }
-  queueSave(editing, d);
+  const deskOnly = EDIT.filter(k => k !== "holder" && !DESK.includes(k)).every(k => JSON.stringify(d[k]) === JSON.stringify(before[k]));
+  queueSave(editing, d, undefined, deskOnly);
   toast("Saved on this device" + (online ? "; sending to the Sheet." : ". It goes to the Sheet when online."));
   closeDrawer();
 }
@@ -666,6 +768,140 @@ function printForm(id) {
   window.print();
 }
 
+/* ---------- Survey module export (.xlsx in the layout of the "2027 SURVEY MODULE" list, written in the browser) ----------
+   One sheet: title, header row, then each chosen module: its name, its LHs (sorted by municipality, barangay, LHID),
+   the total of LAD_Area; then the signatories. Defaults for the signatories come from the web app (pull: sign). */
+const SIG_KEYS = [["prepared", "Prepared by:"], ["checked", "Checked by:"], ["approved", "Approved by:"], ["earmarked", "Earmarked:"]];
+function moduleGroups() {
+  const g = {};
+  Object.values(state.items).forEach(rec => { if (rec.lh_module) (g[rec.lh_module] = g[rec.lh_module] || []).push(rec); });
+  return Object.keys(g).sort(coll.compare).map(m => {
+    const rows = g[m].map(rec => ({ rec, r: regById[rec.id] || { lhid: rec.lhid || rec.id } }))
+      .sort((a, b) => coll.compare(a.r.municipality || "", b.r.municipality || "") || coll.compare(a.r.barangay || "", b.r.barangay || "") || coll.compare(a.r.lhid || "", b.r.lhid || ""));
+    return { name: m, rows, area: rows.reduce((t, x) => t + (parseFloat(x.r.area) || 0), 0) };
+  });
+}
+const modYear = m => { const y = /-(\d{4})\b/.exec(m || ""); return y ? y[1] : String(new Date().getFullYear()); };
+function openExport() {
+  const groups = moduleGroups(), xp = state.xp || {}, sign = Object.assign({}, state.sign || {}, xp.sign || {});
+  const pick = groups.length === 1 ? [groups[0].name] : (xp.pick || []).filter(m => groups.some(g => g.name === m));
+  $("xpBody").innerHTML = !groups.length
+    ? `<div class="empty"><b>No LH has a module yet</b>Set the Module of the LHs in the register (column Module, or the Module field of an RSS), then export.</div>`
+    : `<h3 class="sec">Modules</h3><div class="xpmods">${groups.map(g => `<label><input type="checkbox" data-xpm="${esc(g.name)}" ${!pick.length || pick.includes(g.name) ? "checked" : ""}>
+        <span><b>${esc(g.name)}</b></span><span class="mono">${g.rows.length} LH${g.rows.length === 1 ? "" : "s"} · ${g.area.toFixed(4)} ha</span></label>`).join("")}</div>
+      <div class="fgrid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <label class="f"><span>Title</span><input id="xpT1" value="${esc(xp.t1 || modYear((pick[0] || groups[0].name)) + " SURVEY MODULE")}"></label>
+        <label class="f"><span>Second line</span><input id="xpT2" value="${esc(xp.t2 || "PROVINCE OF MASBATE")}"></label></div>
+      <h3 class="sec">Signatories</h3><div class="xpsig">${SIG_KEYS.map(([k, l]) => `<div><label class="f"><span>${l.replace(":", "")}</span>
+        <input id="xpN-${k}" value="${esc((sign[k] || {}).name || "")}" aria-label="${l} name"></label>
+        <label class="f" style="margin-top:6px"><input id="xpP-${k}" value="${esc((sign[k] || {}).pos || "")}" aria-label="${l} position"></label></div>`).join("")}</div>
+      <p class="note">The names and positions are filled from the web app; a change here is kept on this device for the next export.</p>`;
+  $("xpGo").disabled = !groups.length;
+  const d = $("xp"); if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+}
+function closeExport() { const d = $("xp"); if (d.close) d.close(); else d.removeAttribute("open"); }
+function doExport() {
+  const groups = moduleGroups(), pick = [...document.querySelectorAll("[data-xpm]")].filter(c => c.checked).map(c => c.dataset.xpm);
+  const use = groups.filter(g => pick.includes(g.name));
+  if (!use.length) return toast("Tick at least one module.");
+  const sign = {}; SIG_KEYS.forEach(([k]) => { sign[k] = { name: $("xpN-" + k).value.trim(), pos: $("xpP-" + k).value.trim() }; });
+  state.xp = { pick, t1: $("xpT1").value.trim(), t2: $("xpT2").value.trim(), sign }; save();
+  const blob = moduleXlsx(use, state.xp.t1, state.xp.t2, sign);
+  const name = (use.length === 1 ? use[0].name : state.xp.t1 || "Survey module").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name + ".xlsx";
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  closeExport();
+  toast("Saved " + a.download + " (" + use.reduce((t, g) => t + g.rows.length, 0) + " LHs).");
+}
+
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(files) { // stored (no compression); files: [[name, string]]
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  files.forEach(([name, text]) => {
+    const n = enc.encode(name), d = enc.encode(text), crc = crc32(d);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint32(14, crc, true); h.setUint32(18, d.length, true); h.setUint32(22, d.length, true); h.setUint16(26, n.length, true);
+    parts.push(new Uint8Array(h.buffer), n, d);
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(8, 0x0800, true);
+    cd.setUint32(16, crc, true); cd.setUint32(20, d.length, true); cd.setUint32(24, d.length, true); cd.setUint16(28, n.length, true); cd.setUint32(42, off, true);
+    central.push(new Uint8Array(cd.buffer), n);
+    off += 30 + n.length + d.length;
+  });
+  const csize = central.reduce((m, p) => m + p.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+// Styles (cellXfs index): 1 title, 2 header, 3 module name, 4 text cell, 5 centred cell, 6 area cell, 7 total, 8 plain, 9 bold.
+const XP_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+  `<numFmts count="1"><numFmt numFmtId="164" formatCode="0.0000"/></numFmts>` +
+  `<fonts count="3"><font><sz val="11"/><name val="Arial Narrow"/><family val="2"/></font><font><b/><sz val="11"/><name val="Arial Narrow"/><family val="2"/></font><font><b/><sz val="12"/><name val="Arial Narrow"/><family val="2"/></font></fonts>` +
+  `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF2F2F2"/><bgColor indexed="64"/></patternFill></fill></fills>` +
+  `<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color auto="1"/></left><right style="thin"><color auto="1"/></right><top style="thin"><color auto="1"/></top><bottom style="thin"><color auto="1"/></bottom><diagonal/></border></borders>` +
+  `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10">` +
+  `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+  `<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>` +
+  `<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>` +
+  `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
+  `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>` +
+  `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>` +
+  `<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>` +
+  `<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>` +
+  `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+  `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
+  `</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+function moduleXlsx(groups, t1, t2, sign) {
+  const x = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+  const L = "ABCDEFGHIJKL", rows = [], merges = [];
+  const cell = (ref, v, st) => v === "" || v == null ? `<c r="${ref}" s="${st}"/>` : typeof v === "number" && isFinite(v) ? `<c r="${ref}" s="${st}"><v>${v}</v></c>`
+    : `<c r="${ref}" s="${st}" t="inlineStr"><is><t xml:space="preserve">${x(v)}</t></is></c>`;
+  // add(cells: {col: [value, style]}, height)
+  const add = (cells, ht) => { const n = rows.length + 1; rows.push(`<row r="${n}"${ht ? ` ht="${ht}" customHeight="1"` : ""}>` +
+    Object.keys(cells).sort().map(c => cell(c + n, cells[c][0], cells[c][1])).join("") + `</row>`); return n; };
+  const full = (vals, styles) => { const o = {}; [...L].forEach((c, i) => { o[c] = [vals[i], styles[i]]; }); return o; };
+  let n = add({ A: [t1, 1] }, 18); merges.push(`A${n}:L${n}`);
+  n = add({ A: [t2, 1] }, 18); merges.push(`A${n}:L${n}`);
+  add(full(["SURVEY_RSS NUM", "LHID", "Title Number", "LOName", "MOA", "Phase", "MCD Name", "BarangayName", "Survey Number", "Lot Number", "LAD_Area", "SURVEY TYPE"], Array(12).fill(2)), 33);
+  let grand = 0;
+  groups.forEach(g => {
+    add({ A: [g.name, 3] });
+    g.rows.forEach(({ rec, r }) => {
+      const area = parseFloat(r.area);
+      add(full([r.rss_no || "", r.lhid || rec.id, r.title || "", r.landowner || "", r.moa || "", r.phase || "", r.municipality || "", r.barangay || "", r.survey_no || "",
+        r.lot || "", isNaN(area) ? (r.area || "") : area, rec.survey_type || "SUBD/PLUM"], [4, 4, 4, 4, 5, 4, 4, 4, 4, 5, 6, 5]));
+    });
+    add({ K: [Math.round(g.area * 10000) / 10000, 7] });
+    grand += g.area;
+  });
+  if (groups.length > 1) add({ J: ["TOTAL", 9], K: [Math.round(grand * 10000) / 10000, 7] });
+  const sg = k => sign[k] || {};
+  add({}); add({ A: ["Prepared by:", 8], F: ["Checked by:", 8], J: ["Approved by:", 8] }); add({}); add({});
+  add({ A: [sg("prepared").name, 9], F: [sg("checked").name, 9], J: [sg("approved").name, 9] });
+  add({ A: [sg("prepared").pos, 8], F: [sg("checked").pos, 8], J: [sg("approved").pos, 8] });
+  add({}); add({ D: ["Earmarked:", 8] }); add({}); add({});
+  add({ D: [sg("earmarked").name, 9] }); add({ D: [sg("earmarked").pos, 8] });
+  const widths = [14, 14, 12, 28, 9, 11, 16, 22, 17, 12, 12, 14];
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+    `<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>` +
+    `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols>` +
+    `<sheetData>${rows.join("")}</sheetData><mergeCells count="${merges.length}">${merges.map(m => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>` +
+    `<printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>` +
+    `<pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  const sheetName = (groups.length === 1 ? groups[0].name : "Survey module").replace(/[\\/?*[\]:]/g, "-").slice(0, 31);
+  return zip([
+    ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+    ["_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${x(sheetName)}" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">'${x(sheetName).replace(/'/g, "''")}'!$A$1:$L$${rows.length}</definedName></definedNames></workbook>`],
+    ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/styles.xml", XP_STYLES],
+    ["xl/worksheets/sheet1.xml", sheet]
+  ]);
+}
+
 function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 3400); }
 
 /* ---------- Events ---------- */
@@ -697,6 +933,8 @@ $("fDone").onclick = () => {
 $("fReopen").onclick = () => { readForm(); draft.verification = "Ongoing Verification"; draft.date_complete = ""; drawDrawer(); toast("Reopened. Save to keep it."); };
 $("fPrint").onclick = () => printForm(editing);
 $("fHist").onclick = showHistory;
+$("xpCancel").onclick = closeExport;
+$("xpGo").onclick = doExport;
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
 
 $("dBody").addEventListener("click", e => {
@@ -722,11 +960,14 @@ $("dBody").addEventListener("click", e => {
 
 $("main").addEventListener("click", e => {
   const t = e.target;
-  if (t.closest("[data-lhs]")) return;
+  if (t.closest("[data-lhs]") || t.closest("tr.cf")) return;
+  const so = t.closest("th[data-sort]");
+  if (so) { const k = so.dataset.sort; if (sortK !== k) { sortK = k; sortD = 1; } else if (sortD > 0) sortD = -1; else sortK = ""; return render(); }
+  if (t.id === "xpOpen") return openExport();
   const row = t.closest("tr[data-id]"); if (row) return openDrawer(row.dataset.id);
   const bal = t.closest("[data-bal]"); if (bal) { fBal = bal.dataset.bal; shown = PAGE; return render(); }
   if (t.id === "fMine") { fMine = !fMine; shown = PAGE; return render(); }
-  if (t.id === "fClear") { fStat = fTown = fText = ""; fMine = false; fBal = "in"; shown = PAGE; return render(); }
+  if (t.id === "fClear") { fStat = fTown = fText = ""; fMine = false; fBal = "in"; cf = {}; sortK = ""; shown = PAGE; return render(); }
   if (t.id === "more") { shown += PAGE; return render(); }
   if (t.id === "pBlank") return printForm(null);
   const act = t.closest("[data-act]");
@@ -752,10 +993,24 @@ $("main").addEventListener("click", e => {
   }
 });
 let qT;
-$("main").addEventListener("input", e => { if (e.target.id === "q") { clearTimeout(qT); qT = setTimeout(() => { fText = e.target.value; shown = PAGE; render(); }, 200); } });
+$("main").addEventListener("input", e => {
+  if (e.target.id === "q") { clearTimeout(qT); qT = setTimeout(() => { fText = e.target.value; shown = PAGE; render(); }, 200); }
+  if (e.target.tagName === "INPUT" && e.target.dataset.cf) { const k = e.target.dataset.cf, v = e.target.value; clearTimeout(qT); qT = setTimeout(() => { if (v) cf[k] = v; else delete cf[k]; shown = PAGE; render(); }, 200); }
+});
 $("main").addEventListener("change", e => {
   if (e.target.id === "fStat") { fStat = e.target.value; shown = PAGE; render(); }
   if (e.target.id === "fTown") { fTown = e.target.value; shown = PAGE; render(); }
+  if (e.target.tagName === "SELECT" && e.target.dataset.cf) { const k = e.target.dataset.cf; if (e.target.value) cf[k] = e.target.value; else delete cf[k]; shown = PAGE; return render(); }
+  if (e.target.dataset.lhm) {
+    const id = e.target.dataset.lhm; let v = e.target.value;
+    if (v === "__new") {
+      v = (prompt("Name of the new module, for example LOT-01-M-2027 (NL)") || "").trim().replace(/\s+/g, " ");
+      if (!v) return render();
+      if (v.length > 60) { toast("A module name has 60 characters at most."); return render(); }
+    }
+    queueSave(id, Object.assign(draftFrom(id), { lh_module: v }), undefined, true);
+    return toast("Module saved on this device" + (online ? "; sending to the Sheet." : ". It goes to the Sheet when online."));
+  }
   if (e.target.dataset.lhs) {
     const id = e.target.dataset.lhs;
     queueSave(id, Object.assign(draftFrom(id), { lh_status: e.target.value }), undefined, true);
