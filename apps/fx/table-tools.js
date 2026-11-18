@@ -21,10 +21,11 @@
     'th.tt-sort .tt-arrow{display:inline-block;width:1em;margin-left:4px;opacity:.35;font-size:.85em}',
     'th.tt-sort[aria-sort=ascending] .tt-arrow,th.tt-sort[aria-sort=descending] .tt-arrow{opacity:1}',
     'tr.tt-frow th{padding-top:2px!important;padding-bottom:6px!important;position:static!important}',
-    'tr.tt-frow select,tr.tt-frow input{width:100%;min-width:64px;box-sizing:border-box;font:inherit;font-size:12px;font-weight:400;',
+    'tr.tt-frow select,tr.tt-frow input{width:100%;min-width:44px;box-sizing:border-box;font:inherit;font-size:12px;font-weight:400;',
     'text-transform:none;letter-spacing:0;padding:3px 4px;border-radius:6px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit}',
     'tr.tt-frow select option{color:#111;background:#fff}',
     'tr.tt-frow .tt-on{border-color:currentColor;box-shadow:0 0 0 1px currentColor inset}',
+    '.tt-note[hidden]{display:none!important}',
     '.tt-note{font-size:12px;opacity:.85;margin:4px 2px 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
     '.tt-note button{font:inherit;background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer}',
     '@media print{tr.tt-frow,.tt-note,th.tt-sort .tt-arrow{display:none!important}}'

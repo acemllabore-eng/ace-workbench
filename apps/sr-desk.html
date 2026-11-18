@@ -100,7 +100,7 @@ td.who { min-width: 160px; }
 .panel h2 { font-size: 15px; margin: 0; font-weight: 600; }
 .panel-head { padding: 14px 16px 10px; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .panel-body { padding: 0 16px 16px; }
-.hbars { display: grid; gap: 10px; }
+.hbars { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; } /* minmax: a wide LH list scrolls inside the panel instead of widening it */
 .hbar { display: grid; grid-template-columns: minmax(0, 1fr) 40px; gap: 4px 10px; align-items: center; }
 .hbar .lbl { font-size: 13px; grid-column: 1 / -1; }
 .hbar .lbl span { color: var(--muted); }
@@ -1646,7 +1646,7 @@ function renderDashboard() {
       <section class="panel"><div class="panel-head"><h2>Most frequent findings</h2><span class="sub">count of SRs, all routes${top.length ? " · click one to list its LHs" : ""}</span></div>
         <div class="panel-body hbars">${top.length ? top.map(([l, n]) => `<button type="button" class="hbar" data-finding="${esc(l)}" aria-pressed="${ui.dashFinding === l}" title="List the LHs with this finding"><div class="lbl">${esc(l)}</div><div class="track"><i style="width:${n / maxF * 100}%"></i></div><div class="n">${n}</div></button>`).join("") : '<div class="sub">No findings recorded yet.</div>'}
         ${findList}</div></section>
-      <div style="display:grid;gap:12px;align-content:start">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start">
         <section class="panel"><div class="panel-head"><h2>By survey status</h2><span class="sub">all SRs</span></div>
           <div class="table-scroll"><table><thead><tr><th>Survey status</th><th class="r">SRs</th></tr></thead>
           <tbody>${[...SURVEYS, NOT_SET].map(k => `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${list.filter(s => (s.survey || NOT_SET) === k).length}</td></tr>`).join("")}</tbody></table></div></section>
