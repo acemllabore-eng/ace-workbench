@@ -651,7 +651,7 @@ async function openView(id){
   if(!frames[id]){
     const f = document.createElement("iframe");
     f.title = app.name; f.src = app.url; f.setAttribute("allow", "clipboard-read; clipboard-write; fullscreen; geolocation");
-    f.addEventListener("load", () => { sendTheme(f); addFx(f); $("load").hidden = true; });
+    f.addEventListener("load", () => { sendTheme(f); addFx(f); addTableTools(f); $("load").hidden = true; });
     $("load").hidden = false;
     document.querySelector(".stage").appendChild(f); frames[id] = f;
   }
@@ -776,6 +776,14 @@ function addFx(f){
     const base = new URL("apps/fx/", location.href).href;
     const l = d.createElement("link"); l.id = "aw-fx-css"; l.rel = "stylesheet"; l.href = base + "fx.css"; d.head.appendChild(l);
     const s = d.createElement("script"); s.src = base + "fx.js"; d.head.appendChild(s);
+  }catch(e){}
+}
+// Sort and filter on every table with column headers (apps/fx/table-tools.js), added the same way as the effects
+// but not switched off with them. Same-origin pages only; the Apps Script phone pages do not get it.
+function addTableTools(f){
+  try{
+    const d = f.contentDocument; if(!d || !d.head || d.getElementById("aw-tt-js")) return;
+    const s = d.createElement("script"); s.id = "aw-tt-js"; s.src = new URL("apps/fx/table-tools.js", location.href).href; d.head.appendChild(s);
   }catch(e){}
 }
 // Apps that listen (Unit Desk) follow the panel's light/dark choice; others ignore the message.
