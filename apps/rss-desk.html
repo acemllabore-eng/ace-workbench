@@ -373,12 +373,13 @@ async function sync(quiet) {
 
 /* ---------- Local changes ---------- */
 const shownOf = d => Object.assign({}, d, { checks: JSON.stringify(d.checks || {}), prev_modules: JSON.stringify(d.prev_modules || []) });
-function queueSave(id, data, baseOverride) {
+// statusOnly: the change sets only the Status, which does not take the hold (the server follows the same rule).
+function queueSave(id, data, baseOverride, statusOnly) {
   const cur = recOf(id) || { id, version: 0 };
   const o = state.outbox.find(x => x.id === id);
   if (o) { o.data = data; o.rev++; if (baseOverride !== undefined) o.baseVersion = baseOverride; }
   else state.outbox.push({ type: "save", id, baseVersion: baseOverride !== undefined ? baseOverride : Number(cur.version) || 0, data, rev: 1 });
-  state.items[id] = Object.assign({}, cur, shownOf(data), { holder: data.holder || cur.holder || (state.me ? state.me.name : "") });
+  state.items[id] = Object.assign({}, cur, shownOf(data), { holder: data.holder || cur.holder || (state.me && !statusOnly ? state.me.name : "") });
   save(); render(); sync(true);
 }
 
@@ -757,7 +758,7 @@ $("main").addEventListener("change", e => {
   if (e.target.id === "fTown") { fTown = e.target.value; shown = PAGE; render(); }
   if (e.target.dataset.lhs) {
     const id = e.target.dataset.lhs;
-    queueSave(id, Object.assign(draftFrom(id), { lh_status: e.target.value }));
+    queueSave(id, Object.assign(draftFrom(id), { lh_status: e.target.value }), undefined, true);
     toast("Status saved on this device" + (online ? "; sending to the Sheet." : ". It goes to the Sheet when online."));
   }
 });
