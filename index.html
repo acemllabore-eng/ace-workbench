@@ -372,7 +372,7 @@ const ICON = {
 };
 // Add an app here to put it on the panel (and an icon in ICON under its id). url: where its server serves the page; start: how to run that server.
 // local: true for a page inside this folder (apps/…): it needs no server, so it is never pinged and works offline.
-const APPS = [
+const ALL_APPS = [
   // apps/dashboard.html, apps/calendar.html and apps/chat.html talk to the Survey Unit web app (?app=dash|cal|chat, backend/unit_hub.gs).
   { id:"dash", group:"unit", local:true, name:"Dashboard", tab:"Dash", short:"Targets, accomplishments, open work",
     blurb:"The unit's targets for the year, quarter or month with what is done so far, counted from Unit Desk, the RSS Desk and the calendar. Opens on the status of open work: overdue, urgent, due this week, and each member's load. Last figures kept for offline reading.",
@@ -394,7 +394,7 @@ const APPS = [
     blurb:"Every workbook in the DAR Database Directory (SPLIT, Regular / New Lands) in one place: search any tab on a phone or PC, filter and sort; the head and admin correct cells, with every edit logged. Tabs you open are kept for reading offline.",
     url:"apps/databases.html" },
   // apps/claim-monitor.html talks to the Survey Unit web app (?app=claim, backend/claim_monitor.gs): 2025-A and SBA Batch 4 trackers.
-  { id:"claim", group:"unit", local:true, name:"Claim Monitor", tab:"Claims", short:"DARMO claims: pick LHs, print, log",
+  { id:"claim", group:"unit", local:true, admin:true, name:"Claim Monitor", tab:"Claims", short:"DARMO claims: pick LHs, print, log",
     blurb:"Type a DARMO's claim (organic ₱450/ha or TSS ₱100/ha) and it picks the unclaimed LHs whose areas add up closest, from 2025-A or SBA Batch 4. Prints the DARMO Claim Monitoring form with its support list; logging the claim ticks the claimed columns in the tracker.",
     url:"apps/claim-monitor.html" },
   // apps/sr-desk.html is a verbatim copy of outputs/sr-verification-desk/app/sr-desk.html; copy it again after changing that file.
@@ -413,6 +413,11 @@ const APPS = [
     blurb:"Type or paste a title's technical description, check closure and area, see the lot on satellite imagery (or a plain grid offline), export a PRS92 shapefile. Runs in the browser; title OCR stays in the Python app.",
     url:"apps/title-to-shapefile.html" },
 ];
+// Apps marked admin:true show only to a person signed in as admin (Claim Monitor, user 2026-11-18). The web app refuses
+// everyone else too; hiding it here only keeps it off their screens.
+let APPS = [];
+function filterApps(){ const s = signin(); APPS = ALL_APPS.filter(a => !a.admin || !!(s && s.key && s.role === "admin")); }
+function rolesChanged(){ filterApps(); renderNav(); if(current && !APPS.some(a => a.id === current)) location.hash = ""; }
 const GREETINGS = ["Staking corners","Closing the traverse","Checking the bearings","Plotting the lot","Setting up the instrument","Tying to the BLLM","Reading the TD","Balancing the misclosure"];
 
 const $ = id => document.getElementById(id);
@@ -749,14 +754,14 @@ $("sGo").onclick = async () => {
     // SR Verification Desk accepts the same key at its own address, which the web app hands over here ("aw.sr").
     const sr = j.links && okAddr(j.links.sr) ? j.links.sr : "";
     try{ if(sr) localStorage.setItem("aw.sr", sr); else localStorage.removeItem("aw.sr"); }catch(e){}
-    renderWho(); reloadFrames(); $("sign").hidden = true;
+    renderWho(); rolesChanged(); reloadFrames(); $("sign").hidden = true;
   }catch(e){ m.className = "msg bad"; m.textContent = /fetch|network/i.test(String(e)) ? "No connection to that address." : String(e.message || e); }
   finally{ $("sGo").disabled = false; }
 };
-$("sOut").onclick = () => { const s = signin() || {}; signin({ url: s.url || "", key: "" }); renderWho(); reloadFrames(); $("sign").hidden = true; };
+$("sOut").onclick = () => { const s = signin() || {}; signin({ url: s.url || "", key: "" }); renderWho(); rolesChanged(); reloadFrames(); $("sign").hidden = true; };
 document.addEventListener("keydown", e => { if(e.key === "Escape") $("sign").hidden = true; });
 // A sign-in made inside an app (its Settings) shows here too; the other apps pick it up when they next load.
-window.addEventListener("storage", e => { if(e.key === "aw.signin") renderWho(); });
+window.addEventListener("storage", e => { if(e.key === "aw.signin"){ renderWho(); rolesChanged(); } });
 renderWho();
 $("fxLbl").textContent = store("aw.fx") === "off" ? "Effects off" : "Effects on";
 $("fxBtn").onclick = () => { store("aw.fx", store("aw.fx") === "off" ? "on" : "off"); location.reload(); };
@@ -799,6 +804,7 @@ window.addEventListener("hashchange", () => show(location.hash.slice(1)));
 const t = store("aw.theme"); if(t) document.documentElement.dataset.theme = t;
 if(store("aw.collapsed") === "1") document.body.classList.add("collapsed");
 themeIcon(); field.tone(); renderNet(); renderWaiting();
+filterApps();
 renderNav();
 show(location.hash.slice(1));
 setInterval(() => APPS.forEach(ping), 30000);

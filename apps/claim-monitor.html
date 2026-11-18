@@ -290,7 +290,7 @@ const data = () => state.data[F().src] || null;
 
 /* ---------- Talking to the web app ---------- */
 const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
-let syncing = false, again = false, online = navigator.onLine, lastError = "";
+let syncing = false, again = false, online = navigator.onLine, lastError = "", locked = false;
 async function call(method, payload) {
   const u = state.cfg.url;
   if (!okAddr(u)) throw new Error("The web app address is not a Google Apps Script address");
@@ -298,6 +298,7 @@ async function call(method, payload) {
   if (method === "GET") r = await fetch(u + (u.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({ key: state.cfg.key, app: APP }, payload)), { redirect: "follow" });
   else r = await fetch(u, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device, app: APP }, payload)) });
   const j = await r.json();
+  if (j.locked) { locked = true; state.data = {}; state.outbox = []; save(); }   // not admin: forget what this device held
   if (!j.ok) throw Object.assign(new Error(j.error || "The Sheet refused the request"), { server: true });
   return j;
 }
@@ -416,8 +417,9 @@ function render() {
     <div class="row"><label class="f"><span>Web app address</span><input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label>
     <label class="f" style="max-width:200px"><span>Your key</span><input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
     <button class="btn primary" id="cSave">Sign in</button></div></section>`;
-  $("work").hidden = !signed;
-  if (!signed) return;
+  if (signed && locked) $("signin").innerHTML = `<div class="empty"><b>Claim Monitor is for the admin only</b>Sign in with the admin key to use it.</div>`;
+  $("work").hidden = !signed || locked;
+  if (!signed || locked) return;
   const pr = $("problems");
   pr.hidden = !state.problems.length;
   pr.innerHTML = state.problems.length ? `<b>${state.problems.length} claim change(s) not saved</b>${state.problems.map(p => `<div>${esc(p.what)}: ${esc(p.error)}</div>`).join("")}<button class="btn sm" id="dismiss" style="margin-top:8px">Dismiss</button>` : "";
@@ -602,7 +604,7 @@ document.addEventListener("click", e => {
   if (t.id === "cSave") {
     const url = $("cUrl").value.trim();
     if (!okAddr(url)) return toast("That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec");
-    state.cfg.url = url; state.cfg.key = $("cKey").value.trim().toUpperCase(); lastError = ""; save(); awSignin(state.cfg.url, state.cfg.key); sync(false); return;
+    state.cfg.url = url; state.cfg.key = $("cKey").value.trim().toUpperCase(); lastError = ""; locked = false; save(); awSignin(state.cfg.url, state.cfg.key); sync(false); return;
   }
   if (t.id === "dismiss") { state.problems = []; save(); render(); return; }
   const kb = t.closest("#kind button"); if (kb) { setForm("kind", kb.dataset.k); changed(true); return; }
@@ -633,7 +635,7 @@ $("syncBtn").addEventListener("click", () => sync(false));
 window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
 window.addEventListener("online", () => { online = true; sync(true); });
 window.addEventListener("offline", () => { online = false; renderSync(); });
-window.addEventListener("storage", e => { if (e.key === "aw.signin") { const s = awSignin(); if (s && (s.key !== state.cfg.key || s.url !== state.cfg.url)) { state = load(); sync(true); } } });
+window.addEventListener("storage", e => { if (e.key === "aw.signin") { const s = awSignin(); if (s && (s.key !== state.cfg.key || s.url !== state.cfg.url)) { state = load(); locked = false; sync(true); } } });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(true); });
 save(); render(); sync(true);
 </script>
