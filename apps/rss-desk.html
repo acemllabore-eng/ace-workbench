@@ -93,6 +93,7 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0}
 .tbl tbody tr[data-id]{cursor:pointer}
 .tbl tbody tr[data-id]:hover td{background:var(--hover)}
 .tbl td.own{max-width:240px}
+.tbl select.lhs{height:30px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:inherit;padding:0 6px;cursor:pointer}
 .tbl small{display:block;color:var(--muted);font-size:12px}
 .more{display:flex;justify-content:center;margin-top:12px}
 
@@ -247,9 +248,10 @@ const ITEMS = [
   { id: "f10b", label: "Form 10-B" }
 ];
 const STATUSES = ["Pending", "Ongoing Verification", "Returned for compliance", "Complete"];
+const LH_STATUSES = ["For Module", "Compliance", "Pending"];   // column Status; set on the desk, kept in RSS LOG (lh_status)
 const MARK = { P: "✓", L: "✗", NA: "N/A" };
 const MARK_T = { P: "Present", L: "Lacking", NA: "Not applicable" };
-const EDIT = ["verification", "round", "holder", "tax_dec", "checks", "prev_modules", "notes", "date_received", "date_returned", "date_complete"];
+const EDIT = ["verification", "round", "holder", "tax_dec", "checks", "prev_modules", "notes", "date_received", "date_returned", "date_complete", "lh_status"];
 const PAGE = 200;
 
 const $ = id => document.getElementById(id);
@@ -430,6 +432,14 @@ function filtered() {
     return true;
   });
 }
+const lhOptions = v => `<option value="">Not set</option>` + LH_STATUSES.map(s => `<option ${v === s ? "selected" : ""}>${s}</option>`).join("") +
+  (v && !LH_STATUSES.includes(v) ? `<option selected>${esc(v)}</option>` : "");
+// Status column: a picker for whoever may change the record, plain text for everyone else.
+function lhStatusCell(id) {
+  const rec = recOf(id), v = rec ? rec.lh_status || "" : "";
+  if (state.me && canEdit(id)) return `<select class="lhs" data-lhs="${esc(id)}" aria-label="Status of LHID ${esc(id)}">${lhOptions(v)}</select>`;
+  return v ? esc(v) : '<span class="muted">Not set</span>';
+}
 function regHtml() {
   if (!regRows.length) {
     return `<div class="empty"><b>No register on this device yet</b>${state.cfg.key ? "It is read from LAD BAL (MOD) at the first sync. Press Sync now." : "Sign in from the Survey Unit panel (top bar), or add the address and your key in Settings."}</div>`;
@@ -452,10 +462,11 @@ function regHtml() {
       <button class="btn sm ghost" id="fClear">Clear filters</button>
     </div>
     <p class="count">${rows.length.toLocaleString()} of ${regRows.length.toLocaleString()} LHs${reg && reg.stamp ? " · register read " + fmtTime(reg.stamp) : ""}</p>
-    ${rows.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>LHID</th><th>Landowner</th><th class="hide-s">Location</th><th class="hide-s">Title · Lot</th><th class="num hide-s">Area (ha)</th><th class="hide-s">RSS no.</th><th>Balance</th><th>Verification</th><th class="hide-s">Holder</th></tr></thead><tbody>
+    ${rows.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>LHID</th><th>Landowner</th><th>Status</th><th class="hide-s">Location</th><th class="hide-s">Title · Lot</th><th class="num hide-s">Area (ha)</th><th class="hide-s">RSS no.</th><th>Balance</th><th>Verification</th><th class="hide-s">Holder</th></tr></thead><tbody>
       ${list.map(r => { const rec = recOf(r.id), st = statusOf(r.id); return `<tr data-id="${esc(r.id)}">
         <td class="mono">${esc(r.lhid)}${r.id.includes(" / ") ? `<small>lot ${esc(r.lot)}</small>` : ""}</td>
         <td class="own">${esc(r.landowner)}<small>${esc(r.survey_status)}</small></td>
+        <td>${lhStatusCell(r.id)}</td>
         <td class="hide-s">${esc(r.municipality)}<small>${esc(r.barangay)}</small></td>
         <td class="hide-s">${esc(r.title)}<small>${esc(r.lot)}${r.survey_no ? " · " + esc(r.survey_no) : ""}</small></td>
         <td class="num hide-s">${esc(r.area)}</td>
@@ -521,7 +532,7 @@ function draftFrom(id) {
   const r = recOf(id) || {};
   return { verification: r.verification || "Pending", round: Number(r.round) || 1, holder: r.holder || "", tax_dec: r.tax_dec || "",
     checks: JSON.parse(JSON.stringify(parse(r.checks, {}))), prev_modules: parse(r.prev_modules, []).slice(), notes: r.notes || "",
-    date_received: r.date_received || "", date_returned: r.date_returned || "", date_complete: r.date_complete || "" };
+    date_received: r.date_received || "", date_returned: r.date_returned || "", date_complete: r.date_complete || "", lh_status: r.lh_status || "" };
 }
 function openDrawer(id, preset) {
   if (!regById[id] && !recOf(id)) return toast("LHID " + id + " is not in the register on this device.");
@@ -558,6 +569,7 @@ function drawDrawer() {
       <label class="f"><span>Date RSS documents received</span><input type="date" id="dRec" value="${esc(draft.date_received)}" ${dis}></label>
       <label class="f"><span>Holder (verifier)</span><select id="dHolder" ${isAdmin() ? "" : "disabled"}><option value="">${draft.holder ? "" : "Unassigned (first to mark holds it)"}</option>
         ${people.map(p => `<option ${draft.holder === p.name ? "selected" : ""}>${esc(p.name)}</option>`).join("")}${draft.holder && !people.some(p => p.name === draft.holder) ? `<option selected>${esc(draft.holder)}</option>` : ""}</select></label>
+      <label class="f"><span>Status</span><select id="dLhs" ${dis}>${lhOptions(draft.lh_status)}</select></label>
       <label class="f"><span>Tax Declaration No.</span><input id="dTax" value="${esc(draft.tax_dec)}" maxlength="120" ${dis}></label>
     </div>
     <h3 class="sec">Documentary requirements</h3>
@@ -581,7 +593,7 @@ function drawDrawer() {
 }
 function readForm() {
   if (!editing || !$("dTax")) return;
-  draft.tax_dec = $("dTax").value.trim(); draft.date_received = $("dRec").value; draft.notes = $("dNotes").value.trim();
+  draft.tax_dec = $("dTax").value.trim(); draft.date_received = $("dRec").value; draft.notes = $("dNotes").value.trim(); draft.lh_status = $("dLhs").value;
   if (isAdmin()) draft.holder = $("dHolder").value;
   document.querySelectorAll("#ck .ckrow").forEach(row => {
     const id = row.dataset.item, c = draft.checks[id] || {};
@@ -709,6 +721,7 @@ $("dBody").addEventListener("click", e => {
 
 $("main").addEventListener("click", e => {
   const t = e.target;
+  if (t.closest("[data-lhs]")) return;
   const row = t.closest("tr[data-id]"); if (row) return openDrawer(row.dataset.id);
   const bal = t.closest("[data-bal]"); if (bal) { fBal = bal.dataset.bal; shown = PAGE; return render(); }
   if (t.id === "fMine") { fMine = !fMine; shown = PAGE; return render(); }
@@ -742,6 +755,11 @@ $("main").addEventListener("input", e => { if (e.target.id === "q") { clearTimeo
 $("main").addEventListener("change", e => {
   if (e.target.id === "fStat") { fStat = e.target.value; shown = PAGE; render(); }
   if (e.target.id === "fTown") { fTown = e.target.value; shown = PAGE; render(); }
+  if (e.target.dataset.lhs) {
+    const id = e.target.dataset.lhs;
+    queueSave(id, Object.assign(draftFrom(id), { lh_status: e.target.value }));
+    toast("Status saved on this device" + (online ? "; sending to the Sheet." : ". It goes to the Sheet when online."));
+  }
 });
 
 // Theme from the ACE Workbench shell when shown inside it.
