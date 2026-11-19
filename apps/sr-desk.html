@@ -110,10 +110,42 @@ td.who { min-width: 160px; }
 .hbar .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 button.hbar { width: 100%; background: none; border: 0; padding: 6px 8px; margin: 0; border-radius: 8px; color: inherit; font: inherit; text-align: left; cursor: pointer; box-sizing: border-box; }
 button.hbar:hover, button.hbar:focus-visible { background: var(--surface-2); }
+.hbar .lbl .sw { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; vertical-align: 1px; }
+button.hbar.sub { padding-left: 26px; }
+button.hbar.sub .lbl { font-size: 12.5px; }
 button.hbar[aria-pressed="true"] { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--fail); }
 .find-list { margin-top: 4px; }
 .find-list .head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
 .find-list tr[data-seq] { cursor: pointer; }
+.find-list .fr { font-size: 12.5px; } .find-list .fr + .fr { margin-top: 3px; } .find-list .fr b { font-weight: 600; }
+/* Findings pie (2026-11-19): categorical slots from the validated dataviz default palette, stepped for each mode; "Other" uses --na. */
+:root { --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; } }
+:root[data-theme="dark"] { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; }
+.fdonut { display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); gap: 16px 24px; align-items: center; }
+.fdonut svg { width: 100%; max-width: 210px; height: auto; display: block; margin: 0 auto; }
+.fdonut .slice { stroke: var(--surface); stroke-width: 2; cursor: pointer; transition: opacity .15s; }
+.fdonut.has-pick .slice:not(.on), .fdonut svg:hover .slice:not(:hover) { opacity: .4; }
+.fdonut .c-n { font-size: 30px; font-weight: 600; fill: var(--fg); font-variant-numeric: tabular-nums; }
+.fdonut .c-l { font-size: 11px; fill: var(--muted); }
+.pleg { display: grid; gap: 2px; min-width: 0; }
+.pleg button { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 40px; gap: 8px; align-items: center; width: 100%; background: none; border: 0; padding: 5px 6px; border-radius: 6px; text-align: left; cursor: pointer; font-size: 12.5px; }
+.pleg button:hover, .pleg button:focus-visible, .pleg button[aria-pressed="true"] { background: var(--surface-2); }
+.pleg .sw { width: 10px; height: 10px; border-radius: 3px; }
+.pleg .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pleg .nm small { color: var(--muted); margin-left: 4px; }
+.pleg .n { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.pleg .p { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.cat-edit { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; display: grid; gap: 10px; }
+.cat-pick { display: grid; gap: 2px; max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px; }
+.cat-pick label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+.cat-pick label:hover { background: var(--surface-2); }
+.cat-pick label[hidden] { display: none; }
+.rem-empty { border: 1px dashed var(--line); border-radius: var(--radius); padding: 28px 16px; text-align: center; color: var(--muted); }
+.cat-pick .sub { font-size: 12px; }
+.cat-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cat-row input { flex: 1 1 200px; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 10px; background: var(--surface); }
+@media (max-width: 600px) { .fdonut { grid-template-columns: 1fr; } }
 
 /* Checklist reference tab */
 .ref-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
@@ -261,6 +293,8 @@ h3.eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em
 .seg button:disabled { cursor: not-allowed; opacity: .6; }
 .btn:disabled { cursor: not-allowed; opacity: .55; }
 @media (max-width: 600px) { .filters { grid-template-columns: minmax(0, 1fr); } }
+.dash-kind { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 14px; margin-bottom: 12px; }
+.dash-kind .field { min-width: min(100%, 280px); }
 /* ---- Steps, coaching and the Guide (2026-11-12) ---- */
 .coach { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; background: var(--accent-bg); border-bottom: 1px solid var(--line); padding: 9px 20px; }
 .coach .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; color: var(--accent); white-space: nowrap; }
@@ -1200,9 +1234,16 @@ let state = load();
 let netDown = false; // phone version: the last request could not reach the web app
 if (HOSTED) { state.cfg.url = HOSTED.url; state.queue = {}; }
 try { localStorage.setItem(STORE + "-probe", "1"); localStorage.removeItem(STORE + "-probe"); } catch (e) { storageOk = false; }
-let ui = { view: "register", status: "Open", route: "All", verifier: "All", kind: "All", survey: "All", vstat: "All", q: "", open: null, limit: PAGE, editFields: false,
+let ui = { view: "register", status: "Open", route: "All", verifier: "All", kind: "All", dashKind: "All", survey: "All", vstat: "All", q: "", open: null, limit: PAGE, editFields: false,
   step: null, guide: true, guideRoute: "DENR" };
 try { const v = localStorage.getItem(STORE + "-view"); if (v) ui.view = v; ui.guide = localStorage.getItem(STORE + "-guide") !== "0"; } catch (e) {}
+/* Remark categories (2026-11-19): {finding label: {category name: [remark keys]}}. On the Dashboard, a click on a finding in the
+   Findings share pie opens its own pie of remark categories, empty until remarks are combined. A remark key is the remark text,
+   trimmed, spaces collapsed, lower case. Kept on this device only (not synced to the Sheet). A remark belongs to at most one category. */
+const RCAT_STORE = STORE + "-rcat";
+let rcats = {}; try { rcats = JSON.parse(localStorage.getItem(RCAT_STORE)) || {}; localStorage.removeItem(STORE + "-fcat"); localStorage.removeItem(STORE + "-fcat-mode"); } catch (e) { rcats = {}; }
+const saveRcats = () => { try { localStorage.setItem(RCAT_STORE, JSON.stringify(rcats)); } catch (e) {} };
+const remKey = t => String(t || "").trim().replace(/\s+/g, " ").toLowerCase();
 /* Practice SR: a made-up SR for learning the panel. Kept on this PC only; never queued, synced, backed up or counted. */
 const PRACTICE = "PRACTICE";
 const PRACTICE_REG = { seq: PRACTICE, title: "T-00000 (made up)", claimant: "PRACTICE SR: SAMPLE CLAIMANT, ET AL.", lo: "", lot: "0000", area: 5, asp: "", mode: "",
@@ -1609,7 +1650,10 @@ function renderGuide() {
 }
 
 function renderDashboard() {
-  const list = allSRs(), open = list.filter(isOpen), t0 = today();
+  // Kind of survey picker: every number on the dashboard counts only SRs of the picked kind.
+  const every = allSRs(), allKinds = kindsOf(every).filter(k => every.some(s => s.kind === k));
+  if (ui.dashKind !== "All" && !allKinds.includes(ui.dashKind)) ui.dashKind = "All";
+  const list = ui.dashKind === "All" ? every : every.filter(s => s.kind === ui.dashKind), open = list.filter(isOpen), t0 = today();
   const inMonth = s => isIso(s.decided) && daysBetween(s.decided, t0) <= 30;
   const compliance = open.filter(s => s.status === "Compliance").length;
   const pastDarpo = s => SURVEYS.indexOf(s.survey) > SURVEYS.indexOf(AT_DARPO);
@@ -1622,22 +1666,85 @@ function renderDashboard() {
   list.forEach(s => { const a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {}; activeKeys(s.route, a).forEach(k => { const v = a[k.key]; if (v === "fail" || v === "missing") {
     const label = k.kind === "doc" ? `Missing: ${k.text}` : `${k.doc} · ${k.text}`; (fails[label] = fails[label] || []).includes(s) || fails[label].push(s);
     const r = remarks[label] = remarks[label] || {}, n = String(nt[k.key] || "").trim(); r[s.seq] = [r[s.seq], n || (v === "missing" ? "Missing (no remark)" : "Fail (no remark)")].filter(Boolean).join("; "); } }); });
-  const top = Object.entries(fails).map(([l, a]) => [l, a.length]).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const maxF = top.length ? top[0][1] : 1;
-  if (ui.dashFinding && !top.some(([l]) => l === ui.dashFinding)) ui.dashFinding = null;
-  const picked = ui.dashFinding ? fails[ui.dashFinding].slice().sort((a, b) => (isOpen(b) - isOpen(a)) || (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq))) : [];
-  const findList = !picked.length ? "" : `<div class="find-list">
-      <div class="head"><b>${picked.length} LH${picked.length === 1 ? "" : "s"} with this finding</b><button class="btn link" id="find-close">Close list</button></div>
-      <div class="table-scroll"><table><thead><tr><th>SeqNo</th><th>LO / Claimant</th><th>DARMO</th><th>For</th><th>Verifier</th><th>Status</th></tr></thead>
-      <tbody>${picked.map(s => `<tr data-seq="${esc(s.seq)}" tabindex="0" aria-label="Open SR ${esc(s.seq)}">
+  // Findings share pie: one slice per finding; past 7 slices the rest fold into "Other". A slice click opens that finding's remark pie.
+  const uniq = arrs => [...new Set([].concat(...arrs))];
+  const items = Object.keys(fails).map(l => ({ key: l, name: l, members: [l], srs: fails[l] }))
+    .sort((a, b) => b.srs.length - a.srs.length || a.name.localeCompare(b.name));
+  const PIE_MAX = 7, rest = items.slice(PIE_MAX);
+  const slices = items.length > PIE_MAX + 1 ? items.slice(0, PIE_MAX).concat([{ key: "other", name: "Other", other: true, n: rest.length, members: rest.map(x => x.key), srs: uniq(rest.map(x => x.srs)) }]) : items;
+  const withAny = uniq(Object.values(fails)).length;
+  if (ui.dashFinding && !fails[ui.dashFinding]) ui.dashFinding = null;
+  if (ui.dashFinding && rest.some(x => x.key === ui.dashFinding) && items.length > PIE_MAX + 1) ui.showOther = true;
+  if (ui.remFinding && ui.remFinding !== "other" && !fails[ui.remFinding]) ui.remFinding = null;
+  if (ui.remFinding === "other" && !slices.some(x => x.other)) ui.remFinding = null;
+  const sortSeq = arr => arr.slice().sort((a, b) => (isOpen(b) - isOpen(a)) || (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)));
+  const lhTable = (srsList, remarkOf) => `<div class="table-scroll"><table><thead><tr><th>SeqNo</th><th>LO / Claimant</th>${remarkOf ? "<th>Remark</th>" : ""}<th>DARMO</th><th>For</th><th>Verifier</th><th>Status</th></tr></thead>
+      <tbody>${srsList.map(s => `<tr data-seq="${esc(s.seq)}" tabindex="0" aria-label="Open SR ${esc(s.seq)}">
         <td class="mono">${esc(s.seq)}<div class="sub">${esc(s.title || "")}</div></td>
         <td class="who">${esc(s.claimant || "")}<div class="sub">Lot ${esc(s.lot || "")}</div></td>
+        ${remarkOf ? `<td>${esc(remarkOf(s))}</td>` : ""}
         <td>${esc(s.darmo || "")}</td><td>${esc(s.route || "")}</td><td>${esc(s.verifier || "—")}</td>
-        <td>${s.status ? `<span class="pill ${STATUS_CLASS[s.status] || ""}">${esc(STATUS_LABEL[s.status] || s.status)}</span>` : `<span class="sub">${esc(s.survey || NOT_SET)}</span>`}</td></tr>`).join("")}</tbody></table></div></div>`;
+        <td>${s.status ? `<span class="pill ${STATUS_CLASS[s.status] || ""}">${esc(STATUS_LABEL[s.status] || s.status)}</span>` : `<span class="sub">${esc(s.survey || NOT_SET)}</span>`}</td></tr>`).join("")}</tbody></table></div>`;
+  const picked = ui.dashFinding ? sortSeq(fails[ui.dashFinding]) : [];
+  const findList = !picked.length ? "" : `<div class="find-list">
+      <div class="head"><b>${picked.length} LH${picked.length === 1 ? "" : "s"} with this finding</b><button class="btn link" id="find-close">Close list</button></div>
+      ${lhTable(picked)}</div>`;
+  const sliceSum = slices.reduce((t, x) => t + x.srs.length, 0) || 1;
+  const colorOf = (x, i) => x.other ? "var(--na)" : `var(--s${i + 1})`;
+  // Most frequent findings shows the same items as the Findings share pie (top 7 + Other), each with its pie colour.
+  // The Other bar opens to list the findings folded into it; each of those lists its LHs like any other bar.
+  const maxF = Math.max(1, ...slices.map(x => x.srs.length));
+  const bar = (l, n, sw, sub) => `<button type="button" class="hbar${sub ? " sub" : ""}" data-finding="${esc(l)}" aria-pressed="${ui.dashFinding === l}" title="List the LHs with this finding"><div class="lbl"><span class="sw" style="background:${sw}"></span>${esc(l)}</div><div class="track"><i style="width:${n / maxF * 100}%"></i></div><div class="n">${n}</div></button>`;
+  const bars = slices.map((x, i) => !x.other ? bar(x.key, x.srs.length, colorOf(x, i))
+    : `<button type="button" class="hbar" id="bar-other" aria-expanded="${!!ui.showOther}" title="${ui.showOther ? "Hide" : "Show"} the ${x.n} findings in Other"><div class="lbl"><span class="sw" style="background:${colorOf(x, i)}"></span>Other <span>· ${x.n} more findings, ${ui.showOther ? "click to hide" : "click to show"}</span></div><div class="track"><i style="width:${x.srs.length / maxF * 100}%;background:var(--na)"></i></div><div class="n">${x.srs.length}</div></button>`
+      + (ui.showOther ? x.members.map(l => bar(l, fails[l].length, "var(--na)", true)).join("") : "")).join("");
+  const pct = (x, sum) => Math.round(x.srs.length / sum * 100) + "%";
+  const ncat = l => Object.keys(rcats[l] || {}).length;
+  const pie = !slices.length ? "" : `<section class="panel"><div class="panel-head"><h2>Findings share</h2><span class="sub">LHs per finding · click a slice to sort its remarks into categories</span></div>
+    <div class="panel-body"><div class="fdonut${ui.remFinding && slices.some(x => x.key === ui.remFinding) ? " has-pick" : ""}">${donutSVG(slices, colorOf, withAny, "LHs with a finding", ui.remFinding, "data-rfind")}
+      <div class="pleg">${slices.map((x, i) => `<button type="button" data-rfind="${esc(x.key)}" aria-pressed="${ui.remFinding === x.key}" title="${esc(x.other ? x.members.join("\n") : x.name)}"><span class="sw" style="background:${colorOf(x, i)}"></span><span class="nm">${esc(x.name)}${x.other ? `<small>${x.n} more</small>` : ncat(x.key) ? `<small>${ncat(x.key)} categor${ncat(x.key) === 1 ? "y" : "ies"}</small>` : ""}</span><span class="n">${x.srs.length}</span><span class="p">${pct(x, sliceSum)}</span></button>`).join("")}</div></div>
+      <p class="sub" style="margin:10px 0 0">Share is of the slice totals. An LH with findings in two slices counts in both.</p></div></section>`;
+  // Remark pie for the finding picked above: its slices are only the categories made from its remarks; empty until one is combined.
+  let remPanel = "", remCtx = null;
+  if (ui.remFinding === "other") {
+    const o = slices.find(x => x.other);
+    remPanel = `<section class="panel" id="rem-panel"><div class="panel-head"><h2>Other findings</h2><span class="sub">pick one to sort its remarks</span><button type="button" class="btn link no-print" id="rem-close">Close</button></div>
+      <div class="panel-body"><div class="pleg">${o.members.map(l => `<button type="button" data-rfind="${esc(l)}"><span class="sw" style="background:var(--na)"></span><span class="nm">${esc(l)}${ncat(l) ? `<small>${ncat(l)} categor${ncat(l) === 1 ? "y" : "ies"}</small>` : ""}</span><span class="n">${fails[l].length}</span><span class="p"></span></button>`).join("")}</div></div></section>`;
+  } else if (ui.remFinding) {
+    const f = ui.remFinding, rm = remarks[f] || {}, cats = rcats[f] || {};
+    const distinct = new Map(); // remark key -> {text, srs}
+    fails[f].forEach(s => { const t = rm[s.seq] || "", k = remKey(t); const d = distinct.get(k) || { text: t, srs: [] }; d.srs.push(s); distinct.set(k, d); });
+    const catOfRem = {}; Object.entries(cats).forEach(([c, ks]) => ks.forEach(k => { catOfRem[k] = c; }));
+    const catNames = Object.keys(cats);
+    const cslices = catNames.map(c => { const ks = cats[c].filter(k => distinct.has(k)); return { key: c, name: c, n: ks.length, srs: uniq(ks.map(k => distinct.get(k).srs)) }; }).filter(x => x.srs.length);
+    const shown = cslices.length > PIE_MAX + 1 ? cslices.slice(0, PIE_MAX).concat([{ key: "", name: "More categories", other: true, n: cslices.length - PIE_MAX, srs: uniq(cslices.slice(PIE_MAX).map(x => x.srs)) }]) : cslices;
+    const inCat = uniq(cslices.map(x => x.srs)).length, csum = shown.reduce((t, x) => t + x.srs.length, 0) || 1;
+    // Remarks already in a category leave the pick list; Ungroup brings them back.
+    const remList = [...distinct.entries()].filter(([k]) => !catOfRem[k]).sort((a, b) => b[1].srs.length - a[1].srs.length || a[1].text.localeCompare(b[1].text));
+    if (ui.remCat && !cslices.some(x => x.key === ui.remCat)) ui.remCat = null;
+    const rpicked = ui.remCat ? sortSeq(cslices.find(x => x.key === ui.remCat).srs) : [];
+    remCtx = { f, remList };
+    remPanel = `<section class="panel" id="rem-panel"><div class="panel-head"><h2>Remark categories</h2><span class="sub">${esc(f)}</span><button type="button" class="btn link no-print" id="rem-close">Close</button></div>
+      <div class="panel-body">
+      ${shown.length ? `<div class="fdonut${ui.remCat ? " has-pick" : ""}">${donutSVG(shown, colorOf, inCat, `of ${fails[f].length} LHs in a category`, ui.remCat, "data-rcat")}
+        <div class="pleg">${shown.map((x, i) => `<button type="button" ${x.other ? "disabled" : `data-rcat="${esc(x.key)}"`} aria-pressed="${ui.remCat === x.key}"><span class="sw" style="background:${colorOf(x, i)}"></span><span class="nm">${esc(x.name)}<small>${x.n} remark${x.n === 1 ? "" : "s"}</small></span><span class="n">${x.srs.length}</span><span class="p">${pct(x, csum)}</span></button>`).join("")}</div></div>
+        <p class="sub" style="margin:10px 0 0">${fails[f].length - inCat} of ${fails[f].length} LHs not in a category yet. Click a slice to list its LHs.</p>`
+        : `<div class="rem-empty">No categories yet for this finding. Tick the remarks that mean the same thing, name the category, then press Combine. The pie starts with your first category.</div>`}
+      ${rpicked.length ? `<div class="find-list"><div class="head"><b>${rpicked.length} LH${rpicked.length === 1 ? "" : "s"} in ${esc(ui.remCat)}</b><button class="btn link" id="rcat-close">Close list</button></div>${lhTable(rpicked, s => rm[s.seq] || "")}</div>` : ""}
+      <div class="cat-edit no-print">
+        ${catNames.length ? `<div class="chips">${catNames.map((c, i) => `<span class="chip" style="cursor:default">${esc(c)} <b>${cats[c].length}</b><button type="button" class="btn link" data-uncat="${i}" title="Delete this category; its remarks go back to the list">Ungroup</button></span>`).join("")}</div>` : ""}
+        <div class="cat-row"><input id="cat-q" type="search" placeholder="Search remarks" aria-label="Search remarks" autocomplete="off"><span class="sub" id="cat-qn">${remList.length} distinct remark${remList.length === 1 ? "" : "s"}</span></div>
+        <div class="cat-pick">${remList.length ? "" : `<div class="sub" style="padding:8px">Every remark is in a category. Ungroup one to edit it.</div>`}${remList.map(([k, d], i) => `<label><input type="checkbox" data-i="${i}"><span>${esc(d.text || "(blank)")}${catOfRem[k] ? `<div class="sub">in ${esc(catOfRem[k])}</div>` : ""}</span><span class="sub num">${d.srs.length}</span></label>`).join("")}</div>
+        <div class="cat-row"><input id="cat-name" list="cat-names" maxlength="60" placeholder="Category name, e.g. Not notarized" aria-label="Category name"><datalist id="cat-names">${catNames.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+          <button type="button" class="btn primary" id="cat-add">Combine</button></div>
+        <p class="sub" style="margin:0">Typing an existing name adds to it. Categories are saved on this device only.</p></div></div></section>`;
+  }
   const buckets = [["0–7 days", 0, 7], ["8–14 days", 8, 14], ["15–30 days", 15, 30], ["Over 30 days", 31, 1e9]].map(([l, a, b]) => [l, open.filter(s => (age(s) || 0) >= a && (age(s) || 0) <= b).length]);
   const maxB = Math.max(1, ...buckets.map(b => b[1]));
   const vrows = state.verifiers.map(v => [v, list.filter(s => s.verifier === v && isOpen(s)).length, list.filter(s => s.verifier === v && !isOpen(s) && inMonth(s)).length]);
   view.innerHTML = `
+    <div class="dash-kind"><div class="field"><label for="d-kind">Kind of survey</label><select id="d-kind"><option value="All" ${ui.dashKind === "All" ? "selected" : ""}>All kinds (${every.length})</option>${allKinds.map(k => `<option value="${esc(k)}" ${ui.dashKind === k ? "selected" : ""}>${esc(k)} (${every.filter(s => s.kind === k).length})</option>`).join("")}</select></div>
+      <span class="sub">${ui.dashKind === "All" ? "Showing all kinds of survey" : `Showing ${list.length} SR${list.length === 1 ? "" : "s"} of ${esc(ui.dashKind)} only`}</span></div>
     <div class="stats">
       <div class="panel stat"><div class="k">At DARPO</div><div class="v">${open.length}</div><div class="s">${SUBS.map(x => open.filter(s => s.status === x).length + " " + x.toLowerCase()).join(" · ")} · ${unassigned} unassigned</div></div>
       <div class="panel stat"><div class="k">Oldest at DARPO</div><div class="v" style="${oldest > 14 ? "color:var(--fail)" : ""}">${oldest}<span style="font-size:15px;font-weight:500"> days</span></div><div class="s">since received, not counting compliance</div></div>
@@ -1645,16 +1752,20 @@ function renderDashboard() {
       <div class="panel stat"><div class="k">Endorsed to RPMO</div><div class="v">${endorsed}</div><div class="s">last 30 days</div></div>
     </div>
     <div class="grid2">
-      <section class="panel"><div class="panel-head"><h2>Most frequent findings</h2><span class="sub">count of SRs, all routes${top.length ? " · click one to list its LHs" : ""}</span>${top.length ? '<button type="button" class="btn link no-print" id="find-export" title="Excel file: one column per finding, one row per LH, the remark in each cell">Export to Excel</button>' : ""}</div>
-        <div class="panel-body hbars">${top.length ? top.map(([l, n]) => `<button type="button" class="hbar" data-finding="${esc(l)}" aria-pressed="${ui.dashFinding === l}" title="List the LHs with this finding"><div class="lbl">${esc(l)}</div><div class="track"><i style="width:${n / maxF * 100}%"></i></div><div class="n">${n}</div></button>`).join("") : '<div class="sub">No findings recorded yet.</div>'}
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start">
+      <section class="panel"><div class="panel-head"><h2>Most frequent findings</h2><span class="sub">count of SRs, all routes · same as the pie${slices.length ? " · click one to list its LHs" : ""}</span>${slices.length ? '<button type="button" class="btn link no-print" id="find-export" title="Excel file: one column per finding, one row per LH, the remark in each cell">Export to Excel</button>' : ""}</div>
+        <div class="panel-body hbars">${slices.length ? bars : '<div class="sub">No findings recorded yet.</div>'}
         ${findList}</div></section>
+      ${pie}
+      ${remPanel}
+      </div>
       <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start">
         <section class="panel"><div class="panel-head"><h2>By survey status</h2><span class="sub">all SRs</span></div>
           <div class="table-scroll"><table><thead><tr><th>Survey status</th><th class="r">SRs</th></tr></thead>
           <tbody>${[...SURVEYS, NOT_SET].map(k => `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${list.filter(s => (s.survey || NOT_SET) === k).length}</td></tr>`).join("")}</tbody></table></div></section>
         <section class="panel"><div class="panel-head"><h2>By kind of survey</h2><span class="sub">all SRs · at DARPO · past DARPO</span></div>
           <div class="table-scroll"><table><thead><tr><th>Kind</th><th class="r">SRs</th><th class="r">At DARPO</th><th class="r">Past DARPO</th></tr></thead>
-          <tbody>${kindsOf(list).map(k => { const l = list.filter(s => s.kind === k); return `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${l.length}</td><td class="r num">${l.filter(isOpen).length}</td><td class="r num">${l.filter(pastDarpo).length}</td></tr>`; }).join("")}</tbody></table></div></section>
+          <tbody>${allKinds.filter(k => ui.dashKind === "All" || k === ui.dashKind).map(k => { const l = list.filter(s => s.kind === k); return `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${l.length}</td><td class="r num">${l.filter(isOpen).length}</td><td class="r num">${l.filter(pastDarpo).length}</td></tr>`; }).join("")}</tbody></table></div></section>
         <section class="panel"><div class="panel-head"><h2>SRs at DARPO by age</h2></div>
           <div class="panel-body hbars">${buckets.map(([l, n]) => `<div class="hbar"><div class="lbl">${l}</div><div class="track blue"><i style="width:${n / maxB * 100}%"></i></div><div class="n">${n}</div></div>`).join("")}</div></section>
         <section class="panel"><div class="panel-head"><h2>Verifier load</h2><span class="sub">open · closed last 30 days</span></div>
@@ -1663,9 +1774,55 @@ function renderDashboard() {
       </div>
     </div>`;
   const redraw = () => { const y = scrollY; renderDashboard(); scrollTo(0, y); };
-  view.querySelectorAll("[data-finding]").forEach(b => b.onclick = () => { ui.dashFinding = ui.dashFinding === b.dataset.finding ? null : b.dataset.finding; redraw(); });
+  const bindKey = b => { if (b.tagName === "path") b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); b.onclick(); } }; };
+  view.querySelectorAll("[data-finding]").forEach(b => { b.onclick = () => { const k = b.dataset.finding; ui.dashFinding = ui.dashFinding === k ? null : k; redraw(); }; });
+  view.querySelectorAll("[data-rfind]").forEach(b => { b.onclick = () => { const k = b.dataset.rfind; ui.remFinding = ui.remFinding === k ? null : k; ui.remCat = null; redraw();
+    const rp = view.querySelector("#rem-panel"); if (rp) rp.scrollIntoView({ block: "nearest", behavior: "smooth" }); }; bindKey(b); });
+  view.querySelectorAll("[data-rcat]").forEach(b => { b.onclick = () => { const k = b.dataset.rcat; ui.remCat = ui.remCat === k ? null : k; redraw(); }; bindKey(b); });
+  const dk = view.querySelector("#d-kind"); if (dk) dk.onchange = () => { ui.dashKind = dk.value; ui.dashFinding = null; ui.remFinding = null; ui.remCat = null; redraw(); };
+  const bo = view.querySelector("#bar-other"); if (bo) bo.onclick = () => { ui.showOther = !ui.showOther; redraw(); };
   const fc = view.querySelector("#find-close"); if (fc) fc.onclick = () => { ui.dashFinding = null; redraw(); };
+  const rc = view.querySelector("#rem-close"); if (rc) rc.onclick = () => { ui.remFinding = null; ui.remCat = null; redraw(); };
+  const rcc = view.querySelector("#rcat-close"); if (rcc) rcc.onclick = () => { ui.remCat = null; redraw(); };
   const fx = view.querySelector("#find-export"); if (fx) fx.onclick = () => exportFindings(fails, remarks);
+  view.querySelectorAll(".find-list tr[data-seq]").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
+  // Search filters the remark list in place (no redraw), so ticks survive; ticked remarks stay in the Combine even when hidden.
+  const cq = view.querySelector("#cat-q"); if (cq) cq.oninput = () => {
+    const words = cq.value.toLowerCase().split(/\s+/).filter(Boolean), rows = [...view.querySelectorAll(".cat-pick label")];
+    let shown = 0; rows.forEach(r => { const hit = words.every(w => r.textContent.toLowerCase().includes(w)); r.hidden = !hit; shown += hit; });
+    const ticked = rows.filter(r => r.querySelector("input").checked).length;
+    view.querySelector("#cat-qn").textContent = (words.length ? `${shown} of ${rows.length} shown` : `${rows.length} distinct remark${rows.length === 1 ? "" : "s"}`) + (ticked ? ` · ${ticked} ticked` : "");
+  };
+  if (remCtx) {
+    const { f, remList } = remCtx;
+    view.querySelectorAll("[data-uncat]").forEach(b => b.onclick = () => { const c = Object.keys(rcats[f] || {})[+b.dataset.uncat]; delete rcats[f][c]; if (!Object.keys(rcats[f]).length) delete rcats[f]; saveRcats(); toast(`Category "${c}" removed`); redraw(); });
+    const ca = view.querySelector("#cat-add"); if (ca) ca.onclick = () => {
+      const name = view.querySelector("#cat-name").value.trim().replace(/\s+/g, " ");
+      const picks = [...view.querySelectorAll(".cat-pick input:checked")].map(c => remList[+c.dataset.i][0]);
+      if (!picks.length) { toast("Tick at least one remark"); return; }
+      if (!name) { toast("Type a name for the category"); view.querySelector("#cat-name").focus(); return; }
+      const cats = rcats[f] = rcats[f] || {};
+      Object.keys(cats).forEach(c => { cats[c] = cats[c].filter(k => !picks.includes(k)); if (!cats[c].length) delete cats[c]; });
+      cats[name] = (cats[name] || []).concat(picks);
+      saveRcats(); toast(`${picks.length} remark${picks.length === 1 ? "" : "s"} combined into "${name}"`); redraw();
+    };
+  }
+}
+
+/* Donut for the findings pie: hand-drawn SVG (works offline). Each slice is a keyboard-focusable path with a native tooltip. */
+function donutSVG(slices, colorOf, center, centerLabel, pick, attr) {
+  const sum = slices.reduce((t, x) => t + x.srs.length, 0) || 1, C = 100, R = 94, r = 60, TAU = Math.PI * 2;
+  const pt = (rad, a) => `${(C + rad * Math.cos(a)).toFixed(2)} ${(C + rad * Math.sin(a)).toFixed(2)}`;
+  let a0 = -Math.PI / 2;
+  const paths = slices.map((x, i) => {
+    const f = x.srs.length / sum, a1 = a0 + f * TAU, big = f > .5 ? 1 : 0, top = -Math.PI / 2, bot = Math.PI / 2;
+    const d = f > .9999
+      ? `M${pt(R, top)}A${R} ${R} 0 1 1 ${pt(R, bot)}A${R} ${R} 0 1 1 ${pt(R, top)}ZM${pt(r, top)}A${r} ${r} 0 1 0 ${pt(r, bot)}A${r} ${r} 0 1 0 ${pt(r, top)}Z`
+      : `M${pt(R, a0)}A${R} ${R} 0 ${big} 1 ${pt(R, a1)}L${pt(r, a1)}A${r} ${r} 0 ${big} 0 ${pt(r, a0)}Z`;
+    a0 = a1;
+    return `<path class="slice${pick === x.key ? " on" : ""}" fill-rule="evenodd" d="${d}" style="fill:${colorOf(x, i)}" ${x.key ? `${attr}="${esc(x.key)}" tabindex="0" role="button"` : ""} aria-label="${esc(x.name)}: ${x.srs.length} LHs"><title>${esc(x.name)}: ${x.srs.length} LH${x.srs.length === 1 ? "" : "s"} (${Math.round(f * 100)}%)</title></path>`;
+  }).join("");
+  return `<svg viewBox="0 0 200 200" role="group" aria-label="Findings share">${paths}<text class="c-n" x="100" y="102" text-anchor="middle">${center}</text><text class="c-l" x="100" y="120" text-anchor="middle">${esc(centerLabel)}</text></svg>`;
 }
 
 /* Findings export (2026-11-18): every finding (not only the top 8 on the dashboard), most frequent first.
@@ -1680,17 +1837,21 @@ function exportFindings(fails, remarks) {
   const infoHead = ["SeqNo", "Title No.", "LO/Claimant", "Lot No.", "DARMO", "For", "Verifier", "Status"];
   const matrix = [infoHead.concat(labels.map(l => `${l} (${fails[l].length})`))]
     .concat(srs.map(s => info(s).concat(labels.map(l => (remarks[l] || {})[s.seq] || ""))));
-  const long = [infoHead.concat(["Finding", "Remark"])];
+  // Remark category: the category the remark was put in on the Dashboard (this device's categories only).
+  const rcatOf = (l, t) => { const k = remKey(t); return Object.keys(rcats[l] || {}).find(c => rcats[l][c].includes(k)) || ""; };
+  const long = [infoHead.concat(["Finding", "Remark", "Remark category"])];
   labels.forEach(l => fails[l].slice().sort((a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)))
-    .forEach(s => long.push(info(s).concat([l, (remarks[l] || {})[s.seq] || ""]))));
+    .forEach(s => { const t = (remarks[l] || {})[s.seq] || ""; long.push(info(s).concat([l, t, rcatOf(l, t)])); }));
+  const catRows = [];
+  labels.forEach(l => Object.keys(rcats[l] || {}).forEach(c => { const n = fails[l].filter(s => rcatOf(l, (remarks[l] || {})[s.seq] || "") === c).length; if (n) catRows.push([l, c, n]); }));
   const summary = [["Finding", "SRs"]].concat(labels.map(l => [l, fails[l].length]))
+    .concat(catRows.length ? [[], ["Finding", "Remark category", "LHs"]].concat(catRows) : [])
     .concat([[], ["Exported", new Date().toLocaleString("en-PH")], ["LHs with a finding", srs.length]]);
   const blob = xlsx([["Findings by LH", matrix], ["Remarks list", long], ["Summary", summary]]);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = `SR-Findings-${today()}.xlsx`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   toast(`Findings exported: ${labels.length} findings, ${srs.length} LHs`);
-  view.querySelectorAll(".find-list tr[data-seq]").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
 }
 
 function renderChecklists() {
