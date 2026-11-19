@@ -324,6 +324,8 @@ function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
   s = Object.assign(blank(), s || {});
+  // Drop empty entries a broken click could leave in the saved problem list (they stopped every view from drawing).
+  s.problems = (Array.isArray(s.problems) ? s.problems : []).filter(p => p && typeof p === "object");
   if (!s.cfg.device) s.cfg.device = (/Mobi|Android/i.test(navigator.userAgent) ? "PHONE-" : "PC-") + Math.random().toString(36).slice(2, 7).toUpperCase();
   if (window.RSS_HOSTED && window.RSS_HOSTED.url) s.cfg.url = window.RSS_HOSTED.url;
   const si = awSignin();
@@ -506,6 +508,8 @@ function moduleResult(r, id, what, notes) {
 }
 // Re-check notice: the Admin or a Head chooses to overwrite the Sheet cell with the desk's value (only if the cell still shows what was seen).
 async function overwriteModule(p) {
+  if (!p) return render();
+  render();   // take the button away while the overwrite is out, so it cannot be clicked twice
   try {
     const res = await call("POST", { changes: [{ type: "sheetField", id: p.id, field: p.field || "lh_module", ack: p.was }] }), r = res.results[0], notes = [];
     if (r.result !== "saved") { state.problems.push({ kind: "rejected", id: p.id, what: p.what, error: r.error || r.result }); }
@@ -515,6 +519,7 @@ async function overwriteModule(p) {
   save(); render();
 }
 function problemsHtml() {
+  state.problems = state.problems.filter(p => p && typeof p === "object");
   if (!state.problems.length) return "";
   const boss = state.me && (state.me.role === "admin" || state.me.role === "head"), checks = state.problems.filter(p => p.kind === "recheck").length;
   return `<div class="banner bad" role="alert"><div style="flex:1"><b>${checks === state.problems.length ? `${checks} value${checks === 1 ? "" : "s"} to re-check against the Sheet` : `${state.problems.length} ${state.problems.length === 1 ? "change" : "changes"} need${state.problems.length === 1 ? "s" : ""} attention`}</b>
@@ -1274,6 +1279,7 @@ $("main").addEventListener("click", e => {
   const act = t.closest("[data-act]");
   if (act) {
     const i = +act.dataset.i, p = state.problems[i];
+    if (!p) return render();   // a button left from an older drawing (clicked twice, or changed in another tab)
     if (act.dataset.act === "open") return openDrawer(p.id, p.mine);
     state.problems.splice(i, 1); save();
     if (act.dataset.act === "mine") { const s = recOf(p.id); return queueSave(p.id, p.mine, s ? Number(s.version) || 0 : 0); }
