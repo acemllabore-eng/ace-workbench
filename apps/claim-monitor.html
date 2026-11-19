@@ -6,7 +6,7 @@
 <title>Claim Monitor</title>
 <style>
 /* DARMO Claim Monitor: picks the unclaimed LHs whose validated areas add up closest to a DARMO's claim, prints the
-   DARMO Claim Monitoring form with its support list, and logs the claim in the tracker (2025-A or SBA Batch 4).
+   DARMO Claim Monitoring form with its support list, and logs the claim in the tracker (2025-A, 2025-B or SBA Batch 4).
    Part of the Survey Unit panel (same look). Data comes through backend/claim_monitor.gs (?app=claim); the last list
    read stays on this device, so a form can be worked out and printed offline. */
 :root{
@@ -245,6 +245,7 @@ const RATES = { ORGANIC: 450, TSS: 100 };
 // Shown until the web app answers; the web app sends the same list.
 const SOURCES0 = [
   { key: "A2025", name: "2025-A", activity: "Survey by Contract 2025-A/Assist in Survey", memo: "Memorandum 198-A dated June 18, 2026" },
+  { key: "B2025", name: "2025-B", activity: "Survey by Contract 2025-B/Assist in Survey", memo: "Memorandum 198-A dated June 18, 2026" },
   { key: "SBA4", name: "SBA Batch 4 (2026)", activity: "Survey by Admin Batch 4/Assist in Survey", memo: "Memorandum 149 dated May 4, 2026" }
 ];
 // Signatories come from the web app after sign-in (names are not kept in this public page); typed changes stay on this device.
@@ -575,8 +576,8 @@ function printForm(p) {
   const total = r4(p.lhs.reduce((a, x) => a + x.area, 0));
   const muni = x => x.muni || String(p.darmo || "").replace(/\s+\d+$/, "");
   const rows = p.lhs.slice().sort((a, b) => muni(a).localeCompare(muni(b)) || String(a.brgy).localeCompare(String(b.brgy)) || String(a.title).localeCompare(String(b.title)));
-  const sba = p.src !== "A2025";
-  const covered = sba ? "the survey by administration batch 4 under Project SPLIT" : "the survey by contract 2025-A under Project SPLIT";
+  const sba = p.src === "SBA4";
+  const covered = sba ? "the survey by administration batch 4 under Project SPLIT" : "the survey by contract " + (p.src === "B2025" ? "2025-B" : "2025-A") + " under Project SPLIT";
   const activity = sba ? "survey by admin activity" : "survey by contract activity";
   const list = `<div class="pg cert">
     <div class="lh"><img class="dar" src="${LOGO.dar}" alt=""><div class="tx"><div class="a">REPUBLIC OF THE PHILIPPINES</div><div class="b">DEPARTMENT OF AGRARIAN REFORM</div><div class="c">Tunay na Pagbabago sa Repormang Agraryo</div></div><img class="bp" src="${LOGO.bp}" alt=""><img class="iso" src="${LOGO.iso}" alt=""></div>
