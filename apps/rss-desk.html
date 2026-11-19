@@ -1100,16 +1100,17 @@ function moduleXlsx(groups, t1, t2, sign) {
     E.put("A6", "Number of LHs", "eT"); E.put("B6", { f: q + m.cntRef, v: n }, "eB");
     const box = (row, a, b, c, d, e) => { E.put("A" + row, a, "eTb"); E.put("B" + row, b, "eNb"); E.put("C" + row, c, "eMb"); E.put("D" + row, d, "eNb"); E.put("E" + row, e, "eMb"); };
     const head = (row, t) => box(row, t, "", "", "", "");
-    // line(row, label, B, C, D, formula kind): B may be a number or [formula, value]
-    const line = (row, label, b, c, d, kind) => {
+    // line(row, label, B, C, D, formula kind): B and D may be a number or [formula, value]
+    const line = (row, label, b, c, dIn, kind) => {
       const bv = Array.isArray(b) ? b[1] : b, bf = Array.isArray(b) ? { f: b[0], v: b[1] } : b;
+      const d = Array.isArray(dIn) ? dIn[1] : dIn, df = Array.isArray(dIn) ? { f: dIn[0], v: dIn[1] } : dIn;
       let f, v;
       if (kind === "BCD") { f = `B${row}*C${row}*D${row}`; v = bv * c * d; }
       else if (kind === "DCB") { f = `D${row}*C${row}*B${row}`; v = d * c * bv; }
       else if (kind === "BDC") { f = `B${row}*D${row}*C${row}`; v = bv * d * c; }
       else if (kind === "CB") { f = `C${row}*B${row}`; v = c * bv; }
       else { f = `C${row}`; v = c; }
-      amt[row] = v; box(row, label, bf, c, d, { f, v });
+      amt[row] = v; box(row, label, bf, c, df, { f, v });
     };
     E.put("A8", "A. PERSONNEL COST", "eTb");
     box(9, "Personnel", "Number", "Wages/day", "No. Of days", "Amount");
@@ -1125,7 +1126,8 @@ function moduleXlsx(groups, t1, t2, sign) {
     head(24, "1. Data Gathering");
     line(25, "a. Verified Titles", ["B6", n], 50, 5, "DCB"); line(26, "b. LDC/Lot Descriptions", ["B25", n], 50, 5, "DCB"); line(27, "c. Cad Maps/Plans", ["B25", n], 60, 5, "DCB");
     head(28, "2. Lot Survey");
-    line(29, "a. Total Station", 1, 2500, 4, "BDC"); line(30, "b. Fares", 4, 1200, 4, "BDC");
+    // Total Station days follow the Geodetic Engr's days (D14), as in the unit's 2027 NL module (user, 2026-11-19).
+    line(29, "a. Total Station", 1, 2500, ["D14", 4], "BDC"); line(30, "b. Fares", 4, 1200, 4, "BDC");
     head(31, "3. Preparation of Survey Returns");
     line(32, "a. Drafting Film", ["B6", n], 150, 7, "DCB"); line(33, "b. Survey Form", 20, 25, 7, "DCB");
     line(34, "c. Papers/ink", "", 1000, "", "C"); line(35, "d. Survey Envelope/Plastic", ["B6", n], 70, 7, "DCB");
@@ -1134,7 +1136,8 @@ function moduleXlsx(groups, t1, t2, sign) {
     line(38, "a. Monuments", ["H38", 55], 100, "", "CB"); line(39, "b. Transportation", ["B38", 55], 50, "", "CB"); line(40, "c. Placing/planting of mon", ["B38", 55], 50, "", "CB");
     E.put("H38", 55, "eY"); E.put("I38", "← number of monuments of this module (55 by default)", "eT");
     E.put("A42", "D. PRINTING OF APPROVED SURVEY PLAN", "eTb");
-    line(43, "a. Sepia Copy", 10, 400, 1, "CB"); line(44, "b. Blue Print copy", 10, 70, 1, "CB"); line(45, "c. Tabular TD", 36, 50, 1, "CB");
+    // Sepia copies = number of LHs (B6); blue prints = sepia copies, as in the unit's 2027 NL module (user, 2026-11-19).
+    line(43, "a. Sepia Copy", ["B6", n], 400, 1, "CB"); line(44, "b. Blue Print copy", ["B43", n], 70, 1, "CB"); line(45, "c. Tabular TD", 36, 50, 1, "CB");
     E.put("A47", "E. MISCELLANEOUS EXPENSES", "eTb");
     box(48, "a. Other equipment rentals", "", "", "", ""); box(49, "b. Mobility", "", "", "", "");
     const dRows = [11, 12, 14, 15, 16, 17, 19, 20, 25, 26, 27, 29, 30, 32, 33, 34, 35, 38, 39, 40, 43, 44, 45];
