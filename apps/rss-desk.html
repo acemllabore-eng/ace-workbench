@@ -470,7 +470,14 @@ function render() {
   renderSync();
   // Keep the focus (and the caret) in the search box or a column filter while the page redraws.
   const ae = document.activeElement, aid = ae && ae.id && $("main").contains(ae) ? ae.id : "", pos = aid && ae.tagName === "INPUT" ? ae.selectionStart : null;
-  $("main").innerHTML = problemsHtml() + sourceHtml() + ({ reg: regHtml, dash: dashHtml, settings: settingsHtml }[view] || regHtml)();
+  // A drawing error shows on the page (with its message) instead of leaving it blank.
+  let body;
+  try { body = problemsHtml() + sourceHtml() + ({ reg: regHtml, dash: dashHtml, settings: settingsHtml }[view] || regHtml)(); }
+  catch (e) {
+    console.error("RSS Desk render failed", e);
+    body = `<div class="banner bad" role="alert"><div><b>This view could not be drawn</b>${esc((e && e.message) || e)}<br><span class="muted">${esc(String((e && e.stack) || "").split("\n").slice(0, 3).join(" · "))}</span><br>Send this message to the Admin. Other tabs may still work.</div></div>`;
+  }
+  $("main").innerHTML = body;
   if (aid && $(aid)) { $(aid).focus(); if (pos !== null) try { $(aid).setSelectionRange(pos, pos); } catch (e) {} }
   try { sessionStorage.setItem("rss.view", JSON.stringify({ view, fBal, fStat, fTown, fText, fMine, cf, sortK, sortD })); } catch (e) {}
 }
