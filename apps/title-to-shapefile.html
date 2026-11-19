@@ -1490,5 +1490,6 @@ loadDbs("");
 startNew();
 if (!window.ACE_CONTROL_POINTS) $("#tiedbmsg").innerHTML = `<div class="msg bad">vendor/control-points.js did not load: the built-in tie points are missing. Keep the vendor folder beside this page.</div>`;
 </script>
+<script id="aw-tt-loader">/* Sort, filter and search on every table (fx/table-tools.js). The panel also adds it; it runs once. Skipped on the Apps Script copies, which have no fx folder. */(function(){if(/google/.test(location.hostname))return;var s=document.createElement("script");s.src="fx/table-tools.js";document.head.appendChild(s);})();</script>
 </body>
 </html>

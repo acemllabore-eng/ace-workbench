@@ -527,5 +527,6 @@ let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(ren
 addEventListener("storage", e => { if (e.key === STORE) render(); }); // the SR Desk synced in another tab
 render();
 </script>
+<script id="aw-tt-loader">/* Sort, filter and search on every table (fx/table-tools.js). The panel also adds it; it runs once. Skipped on the Apps Script copies, which have no fx folder. */(function(){if(/google/.test(location.hostname))return;var s=document.createElement("script");s.src="fx/table-tools.js";document.head.appendChild(s);})();</script>
 </body>
 </html>

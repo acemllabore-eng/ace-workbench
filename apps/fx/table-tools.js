@@ -5,7 +5,11 @@
    - Click a column header: sort A to Z (numbers and dates in order), again Z to A, a third time back to the
      app's own order. An arrow shows the sorted column.
    - The row under the headers filters: a list of the column's values when there are few, else a text box
-     ("contains"). Filters on several columns combine. "Showing n of m · Clear filters" appears while filtering.
+     ("contains"). Filters on several columns combine.
+   - A bar above each table: "Search this table" (every word must appear somewhere in the row), the row count
+     ("Showing n of m" while searching or filtering) and "Clear search and filters".
+   - Loaded two ways: the panel injects it into same-origin frames, and each app page loads it itself
+     (needed when the panel is opened as a file:// page, where the panel cannot reach into its frames).
    - Apps redraw their tables often (every sync, every filter of their own): the choices are kept per table
      (by its column names) and applied again to the new table, until the page is reloaded.
    Only tables with a header row and at least 3 body rows of the same width get the tools; a table can opt out
@@ -25,8 +29,11 @@
     'text-transform:none;letter-spacing:0;padding:3px 4px;border-radius:6px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit}',
     'tr.tt-frow select option{color:#111;background:#fff}',
     'tr.tt-frow .tt-on{border-color:currentColor;box-shadow:0 0 0 1px currentColor inset}',
-    '.tt-note[hidden]{display:none!important}',
-    '.tt-note{font-size:12px;opacity:.85;margin:4px 2px 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
+    '.tt-note [hidden]{display:none!important}',
+    '.tt-note{font-size:12px;margin:6px 2px 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
+    '.tt-note span{opacity:.75}',
+    '.tt-note .tt-q{flex:0 1 260px;min-width:140px;font:inherit;font-size:13px;padding:5px 8px;border-radius:6px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit}',
+    '.tt-note .tt-q.tt-on{border-color:currentColor}',
     '.tt-note button{font:inherit;background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer}',
     '@media print{tr.tt-frow,.tt-note,th.tt-sort .tt-arrow{display:none!important}}'
   ].join('');
@@ -88,8 +95,10 @@
     }
     // Filter
     var shown = 0, f = s.filters, cols = Object.keys(f).filter(function (k) { return f[k] !== ''; });
+    var words = norm(s.q || '').split(' ').filter(Boolean);
     rows.forEach(function (r) {
-      var ok = cols.every(function (k) {
+      var all = words.length ? norm(txt(r)) : '';
+      var ok = words.every(function (w) { return all.indexOf(w) >= 0; }) && cols.every(function (k) {
         var c = r.cells[k]; if (!c) return true;
         return info.kinds[k] === 'list' ? first(c) === f[k] : norm(txt(c)).indexOf(norm(f[k])) >= 0;
       });
@@ -100,11 +109,11 @@
       var a = c.querySelector('.tt-arrow'); if (a) a.textContent = s.sort && s.sort.col === i ? (s.sort.dir > 0 ? '▲' : '▼') : '↕';
     });
     [].forEach.call(info.frow.cells, function (c, i) { var x = c.firstChild; if (x) { if (x.value !== (f[i] || '')) x.value = f[i] || ''; x.classList.toggle('tt-on', !!f[i]); } });
-    var note = info.note;
-    if (cols.length) {
-      note.hidden = false;
-      note.firstChild.textContent = 'Showing ' + shown + ' of ' + rows.length + ' rows';
-    } else note.hidden = true;
+    var busy = cols.length || words.length;
+    if (info.search.value !== (s.q || '')) info.search.value = s.q || '';
+    info.search.classList.toggle('tt-on', !!words.length);
+    info.count.textContent = busy ? 'Showing ' + shown + ' of ' + rows.length + ' rows' : rows.length + ' rows';
+    info.clear.hidden = !busy;
   }
 
   function enhance(t) {
@@ -146,14 +155,18 @@
       frow.appendChild(th);
     });
     g.hr.parentNode.appendChild(frow);
-    var note = document.createElement('div'); note.className = 'tt-note'; note.hidden = true;
-    note.appendChild(document.createElement('span'));
-    var clr = document.createElement('button'); clr.type = 'button'; clr.textContent = 'Clear filters';
-    clr.addEventListener('click', function () { s.filters = {}; apply(t); });
+    // Bar above the table: a search box over every column, the row count, and Clear.
+    var note = document.createElement('div'); note.className = 'tt-note';
+    var q = document.createElement('input'); q.type = 'search'; q.className = 'tt-q'; q.placeholder = 'Search this table'; q.setAttribute('aria-label', 'Search this table');
+    q.addEventListener('input', function () { s.q = q.value; apply(t); });
+    note.appendChild(q);
+    var cnt = document.createElement('span'); note.appendChild(cnt);
+    var clr = document.createElement('button'); clr.type = 'button'; clr.textContent = 'Clear search and filters';
+    clr.addEventListener('click', function () { s.filters = {}; s.q = ''; apply(t); });
     note.appendChild(clr);
     var host = t.parentNode && t.parentNode.classList && /table-scroll|scroll|wrap/.test(t.parentNode.className) ? t.parentNode : t;
     host.parentNode.insertBefore(note, host);
-    t.__tt = { key: k, hr: g.hr, frow: frow, kinds: kinds, note: note, order: g.rows.slice() };
+    t.__tt = { key: k, hr: g.hr, frow: frow, kinds: kinds, note: note, search: q, count: cnt, clear: clr, order: g.rows.slice() };
     apply(t);
   }
 
