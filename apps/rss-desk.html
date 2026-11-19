@@ -369,6 +369,7 @@ async function sync(quiet) {
   try {
     if (state.outbox.length) {
       const sent = state.outbox.slice(), revs = sent.map(o => o.rev);
+      const sheetNotes = [];   // Status set to For Module: what the server did to LAD BAL (MOD)
       const res = await call("POST", { changes: sent.map(o => o.type === "module" ? { type: "module", name: o.name, baseVersion: o.baseVersion, data: o.data } : { type: "save", id: o.id, baseVersion: o.baseVersion, data: o.data }) });
       res.results.forEach((r, i) => {
         const o = sent[i], changedSince = state.outbox.includes(o) && o.rev !== revs[i];   // edited again while this send was out: keep the newer edit queued
@@ -382,6 +383,7 @@ async function sync(quiet) {
           return;
         }
         const what = "LHID " + o.id + (regById[o.id] ? " · " + regById[o.id].landowner : "");
+        if (r.sheet) sheetNotes.push(`LHID ${o.id}: ${r.sheet === "updated" ? "LAD Balance survey status updated" : r.sheet === "kept" ? "LAD Balance not changed" : "LAD Balance not updated"} (${r.sheet_note || ""})`);
         if (r.result === "saved" || r.result === "same") {
           state.items[o.id] = Object.assign({}, r.record);
           if (changedSince) { o.baseVersion = r.record.version; Object.assign(state.items[o.id], shownOf(o.data)); }
@@ -396,6 +398,7 @@ async function sync(quiet) {
       });
       if (res.people) state.people = res.people;
       state.me = res.me; save();
+      if (sheetNotes.length) toast(sheetNotes.join(" · "));
     }
     // Ask with 2 minutes of overlap: a save that started just before the last pull can land just after it.
     const since = state.lastPull ? new Date(new Date(state.lastPull).getTime() - 120000).toISOString() : "";
