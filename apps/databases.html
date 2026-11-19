@@ -274,7 +274,7 @@ mark{background:rgba(var(--accent-rgb),.3);color:inherit;border-radius:3px;paddi
     <button class="ibtn" id="setBtn" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></button>
     <div class="scan" id="scan" hidden><i></i></div>
   </header>
-  <main id="main"><div class="wrap" id="view"></div></main>
+  <main id="main"><div class="wrap" id="sheetChecks"></div><div class="wrap" id="view"></div></main>
 </div>
 <div id="drawerHost"></div>
 <div class="toast" id="toast" hidden></div>
@@ -443,6 +443,7 @@ async function flushOutbox(){
         const i = o.row - o.headerRow - 1;
         if(res.result === "saved" || res.result === "same"){
           saved++;
+          if(res.check_error) sheetWarn(res.check_error);
           const row = res.row || [];
           // Cells changed again while this was being sent stay, with the Sheet's new value as the one seen before.
           o.cells = o.cells.filter(c => c.t > sentAt); o.cells.forEach(c => c.old = row[c.col - 1] || "");
@@ -495,6 +496,14 @@ function outboxDrawer(){
     o.status = "waiting"; o.conflicts = null; saveOutbox();
     await flushOutbox(); if($("obList")) outboxDrawer();
   });
+}
+// Sheet checks: the backend read back a saved cell and the Sheet did not hold it. Stays on screen (and on this device)
+// until dismissed, so it is not missed like a toast.
+function sheetWarn(text){ const a = lsJ("db.checks", []); a.unshift({ t: new Date().toLocaleString(), text }); ls("db.checks", a.slice(0, 20)); drawChecks(); }
+function drawChecks(){
+  const el = $("sheetChecks"), a = lsJ("db.checks", []); if(!el) return;
+  el.innerHTML = a.map((x, i) => `<div class="banner bad" role="alert"><div class="grow"><b>An edit did not go through to the Google Sheet</b>${esc(x.t)} · ${esc(x.text)}</div><button class="btn sm" data-dropcheck="${i}">Dismiss</button></div>`).join("");
+  el.querySelectorAll("[data-dropcheck]").forEach(b => b.onclick = () => { const l = lsJ("db.checks", []); l.splice(+b.dataset.dropcheck, 1); ls("db.checks", l); drawChecks(); });
 }
 function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => t.hidden = true, 3200); }
 function errText(e){ return e.setup ? "Open Settings and enter the web app address and your key." : e.server ? e.message : "No connection to Google (" + (e.name === "AbortError" ? "took too long" : "offline or blocked") + ")."; }
@@ -864,6 +873,7 @@ async function saveRow(i, cells){
       d.flash = i; closeDrawer(); tableBody(false);
       setTimeout(() => { if(d.flash === i) d.flash = undefined; }, 1900);
       toast(res.result === "saved" ? "Saved to " + d.tab + " · " + res.changed + " cell" + (res.changed > 1 ? "s" : "") : "Nothing changed");
+      if(res.check_error) sheetWarn(res.check_error);
       keep(d);
       return;
     }
@@ -1033,7 +1043,7 @@ addEventListener("resize", () => {
   if(PHONE() !== wasPhone){ wasPhone = PHONE(); if(state.view.name === "table") tableBody(true); }
   else if(vt){ vt.first = -1; paint(); }
 });
-renderNet(); render();
+renderNet(); render(); drawChecks();
 if(state.cfg.url && state.cfg.key) loadBooks(false).then(flushOutbox);
 if(state.me){ $("role").hidden = false; $("role").textContent = state.me.role; $("role").title = "Signed in as " + state.me.name; }
 </script>

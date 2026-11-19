@@ -380,10 +380,14 @@ async function sync(quiet) {
           if (changedSince && r.record) { o.baseVersion = r.record.version; Object.assign(state.modules[o.name], o.data); }
           if (r.result === "conflict" || r.result === "rejected") state.problems.push({ kind: r.result, module: true, id: o.id, what: "Module " + o.name,
             error: r.error, detail: "Changed by someone else first; the Sheet's copy is showing now." });
+          if (r.check_error) state.problems.push({ kind: "rejected", module: true, id: o.id, what: "Module " + o.name, error: r.check_error });
           return;
         }
         const what = "LHID " + o.id + (regById[o.id] ? " · " + regById[o.id].landowner : "");
         if (r.sheet) sheetNotes.push(`LHID ${o.id}: ${r.sheet === "updated" ? "LAD Balance survey status updated" : r.sheet === "kept" ? "LAD Balance not changed" : "LAD Balance not updated"} (${r.sheet_note || ""})`);
+        // Sheet checks: a change the Sheet did not take stays on the problem list until dismissed.
+        if (r.sheet === "error") state.problems.push({ kind: "rejected", id: o.id, mine: o.data, what, error: "LAD Balance survey status NOT updated: " + (r.sheet_note || "") + ". Ask the Admin to run runSheetChecks." });
+        if (r.check_error) state.problems.push({ kind: "rejected", id: o.id, mine: o.data, what, error: r.check_error });
         if (r.result === "saved" || r.result === "same") {
           state.items[o.id] = Object.assign({}, r.record);
           if (changedSince) { o.baseVersion = r.record.version; Object.assign(state.items[o.id], shownOf(o.data)); }

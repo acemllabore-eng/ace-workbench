@@ -1373,6 +1373,8 @@ async function syncNow(opts = {}) {
         const q = state.queue[res.id];
         if (res.result === "saved") {
           state.records[res.id] = res.server;
+          // Sheet checks: saved, but the Sheet (log or batch tracker) did not keep it; marked "Needs attention" until dismissed.
+          if (res.check_error) state.conflicts[res.id] = { kind: "unverified", error: res.check_error, local: null, server: res.server || null, at: new Date().toISOString() };
           if (q && q.client_time === sent[res.id]) delete state.queue[res.id];
           else if (q) q.baseVersion = res.version; // edited again while the request was out: keep it, on top of the new version
         } else {
@@ -1381,6 +1383,8 @@ async function syncNow(opts = {}) {
           delete state.queue[res.id];
         }
       });
+      const unk = j.results.filter(r => r.check_error).length;
+      if (unk) toast(`${unk} change${unk > 1 ? "s" : ""} did not go through to the Google Sheet. Open the SR marked "Needs attention".`);
       const bad = j.results.filter(r => r.result !== "saved").length;
       if (bad) toast(`${bad} change${bad > 1 ? "s were" : " was"} refused. Open the SR marked "Needs attention".`);
     }
@@ -1423,6 +1427,7 @@ function renderSyncbar() {
     ${c ? `<span style="color:var(--warn)"><b>${c}</b> need${c > 1 ? "" : "s"} attention</span>` : ""}
     <span class="sub">Last sync ${fmtTime(state.lastSync)}</span>
     ${storageOk ? "" : `<span style="color:var(--fail)"><b>This browser is not saving data. Do not use it for verification.</b></span>`}
+    ${state.registerBuilt && Date.now() - Date.parse(state.registerBuilt) > 45 * 60e3 ? `<span style="color:var(--fail)"><b>Register not refreshed since ${esc(fmtTime(state.registerBuilt))}.</b> The trackers may have changed since; ask the Admin to run runSheetChecks.</span>` : ""}
     ${unread.length ? `<span style="color:var(--warn)" title="${esc(unread.map(s => s.name + ": " + s.error).join("\n"))}"><b>Not read:</b> ${esc(unread.map(s => s.kind + " tracker").join(", "))}. Its SRs are not listed until it can be read.</span>` : ""}
     <span class="grow"></span>
     <span>${state.me ? esc(state.me.name) + (state.me.role === "admin" ? " (Admin)" : "") : ""}</span>
@@ -2025,8 +2030,8 @@ function openSR(seq) {
       <div class="steps" role="tablist" aria-label="Parts of the verification">${stepDefs.map(([id, l]) => `<button class="step" role="tab" data-step="${id}" aria-selected="${ui.step === id}">${l}<span class="n" id="st-n-${id}"></span></button>`).join("")}</div>
       <div class="dw-body ${ui.guide ? "" : "guide-off"}">
         ${isPractice(seq) ? `<div class="banner"><div><b>Practice SR.</b> Made up for learning. Nothing you do here is saved to the Sheet or the trackers.</div><div class="acts"><button class="btn small" id="dw-practice-reset">Start over</button></div></div>` : ""}
-        ${s.conflict ? `<div class="banner ${s.conflict.kind === "rejected" ? "err" : ""}"><div><b>${s.conflict.kind === "conflict" ? "Your change from this PC was refused: someone saved this SR first." : "Your change was refused: " + esc(s.conflict.error)}</b>
-          ${s.conflict.server ? ` The Sheet's copy (saved by ${esc(s.conflict.server.saved_by)}, ${fmtTime(s.conflict.server.server_time)}) is shown below.` : ""} Your refused version was not saved anywhere else.</div>
+        ${s.conflict ? `<div class="banner ${s.conflict.kind !== "conflict" ? "err" : ""}"><div><b>${s.conflict.kind === "conflict" ? "Your change from this PC was refused: someone saved this SR first." : s.conflict.kind === "unverified" ? "Saved, but the Google Sheet did not keep it: " + esc(s.conflict.error) : "Your change was refused: " + esc(s.conflict.error)}</b>
+          ${s.conflict.kind === "unverified" ? "" : `${s.conflict.server ? ` The Sheet's copy (saved by ${esc(s.conflict.server.saved_by)}, ${fmtTime(s.conflict.server.server_time)}) is shown below.` : ""} Your refused version was not saved anywhere else.`}</div>
           <div class="acts">${s.conflict.local ? `<button class="btn small" id="cf-copy">Copy my refused version as text</button>` : ""}<button class="btn small" id="cf-ok">I've checked it, dismiss</button></div></div>` : ""}
         ${s.flags ? `<div class="banner"><div><b>Check the trackers:</b> ${s.flags.map(esc).join(". ")}.</div></div>` : ""}
         <div class="pane" data-pane="details" ${hid("details")}>

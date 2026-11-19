@@ -343,6 +343,8 @@ async function sync(quiet) {
         const what = o.name + " · " + fmtLong(o.date);
         if (r.result === "saved" || r.result === "same") {
           state.items[o.id] = Object.assign({}, r.record);
+          // Sheet checks: saved, but the Sheet did not keep it; stays on the problem list until dismissed.
+          if (r.check_error) state.problems.push({ kind: "rejected", id: o.id, name: o.name, date: o.date, mine: o.data, error: r.check_error, what });
           if (changedSince) { o.baseVersion = r.record.version; Object.assign(state.items[o.id], o.data); }
         } else if (r.result === "conflict") {
           if (r.server) state.items[o.id] = Object.assign({}, r.server); else delete state.items[o.id];

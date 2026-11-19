@@ -252,6 +252,8 @@ async function sync(quiet) {
           if (o.tmp && state.items[o.tmp]) delete state.items[o.tmp];
           state.items[r.id] = Object.assign({}, r.record);
           if (changedSince) { o.id = r.id; o.tmp = ""; o.baseVersion = r.record.version; Object.assign(state.items[r.id], o.data); }
+          // Sheet checks: saved, but the Sheet did not keep it; stays on the problem list until dismissed.
+          if (r.check_error) state.problems.push({ kind: "rejected", key: r.id, mine: o.data, what, error: r.check_error });
         } else if (r.result === "conflict") {
           if (r.server) state.items[r.server.id] = Object.assign({}, r.server);
           state.problems.push({ kind: "conflict", key: r.server ? r.server.id : k, mine: o.data, what, detail: "Someone changed this activity first; the Sheet's copy is showing now." });

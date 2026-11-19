@@ -262,6 +262,8 @@ async function sync(quiet) {
         if (r.result === "saved" || r.result === "same") {
           if (o.tmp) delete state.targets[o.tmp];
           state.targets[r.id] = r.record;
+          // Sheet checks: saved, but the Sheet did not keep it; stays on the problem list until dismissed.
+          if (r.check_error) state.problems.push({ what: o.data.title || k, error: r.check_error });
           if (changedSince) { o.id = r.id; o.tmp = ""; o.baseVersion = r.record.version; Object.assign(state.targets[r.id], o.data); }
         } else {
           if (r.server) state.targets[r.server.id] = r.server; else if (o.tmp) delete state.targets[o.tmp];

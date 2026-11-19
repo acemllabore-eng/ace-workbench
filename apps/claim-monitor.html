@@ -323,6 +323,8 @@ async function sync(quiet) {
         if (r.result === "saved" || r.result === "same") {
           if (o.change.type === "claim") toast("Claim " + r.record.claim_id + " logged in " + (state.sources.find(s => s.key === o.change.src) || {}).name);
           else toast(o.change.claim_id + " voided");
+          // Sheet checks: the Sheet did not keep part of it; stays on the problem list until dismissed.
+          if (r.check_error) state.problems.push({ what: o.change.type === "claim" ? "Claim " + r.record.claim_id : "Void " + o.change.claim_id, error: r.check_error });
         } else {
           const what = o.change.type === "claim" ? "Claim of " + o.change.claimant + " (" + o.change.darmo + ", " + o.change.claim_date + ")" : "Void " + o.change.claim_id;
           state.problems.push({ what, error: r.error || r.result });

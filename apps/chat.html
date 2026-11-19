@@ -189,6 +189,7 @@ async function sync(quiet) {
       res.results.forEach((r, i) => {
         const o = sent[i];
         if (r.result === "saved" || o.type !== "send") state.outbox = state.outbox.filter(x => x !== o);
+        if (r.check_error) toast(r.check_error);   // Sheet checks: saved, but the Sheet did not keep it
         if (r.result !== "saved") {
           if (o.type === "send") { o.error = r.error; } else toast(r.error);
         } else if (o.type === "remove") {

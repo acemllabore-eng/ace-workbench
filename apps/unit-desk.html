@@ -314,6 +314,8 @@ async function sync(quiet) {
           if (o.tmp && state.items[o.tmp]) delete state.items[o.tmp];
           state.items[r.id] = Object.assign({}, r.record);
           remapTmp(o.tmp, r.id);
+          // Sheet checks: saved, but the Sheet did not keep it; stays on the problem list until dismissed.
+          if (r.check_error) state.problems.push({ kind: "rejected", key: r.id, mine: o.data, what: r.id, error: r.check_error });
           if (changedSince) { o.id = r.id; o.tmp = ""; o.baseVersion = r.record.version; Object.assign(state.items[r.id], o.data); }
         } else if (r.result === "conflict") {
           state.items[r.id || k] = Object.assign({}, r.server);
