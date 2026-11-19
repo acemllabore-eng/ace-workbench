@@ -293,9 +293,10 @@ const STATUSES = ["Pending", "Ongoing Verification", "Returned for compliance", 
 const LH_STATUSES = ["For Module", "Compliance", "Pending"];   // column Status; set on the desk, kept in RSS LOG (lh_status)
 const MARK = { P: "✓", L: "✗", NA: "N/A" };
 const MARK_T = { P: "Present", L: "Lacking", NA: "Not applicable" };
-const EDIT = ["verification", "round", "holder", "tax_dec", "checks", "prev_modules", "notes", "date_received", "date_returned", "date_complete", "lh_status", "lh_module", "survey_type"];
-// Desk fields: Status, Module and Survey type. Changing only these does not take the hold (the server follows the same rule).
-const DESK = ["lh_status", "lh_module", "survey_type"];
+const EDIT = ["verification", "round", "holder", "tax_dec", "checks", "prev_modules", "notes", "date_received", "date_returned", "date_complete", "lh_status", "lh_module", "survey_type", "fund_year"];
+// Desk fields: Status, Module and Fund year (Survey type is kept for older records and the module export, no longer shown).
+// Changing only these does not take the hold (the server follows the same rule).
+const DESK = ["lh_status", "lh_module", "survey_type", "fund_year"];
 const SURVEY_TYPES = ["SUBD/PLUM"];   // printed as SUBD/PLUM when an LH has none
 const coll = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 const PAGE = 200;
@@ -485,18 +486,21 @@ function renderSync() {
   $("sDot").className = "dot " + cls; $("sText").textContent = text;
   $("syncBtn").disabled = syncing || !state.cfg.url || !state.cfg.key;
 }
-// Module write-back answer (rssWriteSheetModule_): written, same, a different module already in the Sheet (re-check), or failed.
+// Desk-field write-back answers (rssWriteSheetField_: Module -> MODULE NO., Fund year -> FUND YEAR): written, same,
+// a different value already in the Sheet (re-check), or failed.
 function moduleResult(r, id, what, notes) {
-  if (!r.module_sheet) return;
-  if (r.module_sheet === "updated") notes.push(`LHID ${id}: LAD Balance ${r.module_note}`);
-  else if (r.module_sheet === "recheck") state.problems.push({ kind: "recheck", id, what, was: r.module_was || "",
-    error: "Re-check the module: " + r.module_note + ". The desk keeps your module; the Sheet keeps its own until one is corrected." });
-  else if (r.module_sheet === "error") state.problems.push({ kind: "rejected", id, what, error: "LAD Balance MODULE NO. NOT updated: " + (r.module_note || "") + ". Ask the Admin to run runSheetChecks." });
+  (r.sheet_fields || []).forEach(w => {
+    const name = w.field === "fund_year" ? "fund year" : "module";
+    if (w.sheet === "updated") notes.push(`LHID ${id}: LAD Balance ${w.note}`);
+    else if (w.sheet === "recheck") state.problems.push({ kind: "recheck", id, what, field: w.field, label: w.label, was: w.was || "",
+      error: `Re-check the ${name}: ${w.note}. The desk keeps your ${name}; the Sheet keeps its own until one is corrected.` });
+    else if (w.sheet === "error") state.problems.push({ kind: "rejected", id, what, error: `LAD Balance ${w.label} NOT updated: ${w.note || ""}. Ask the Admin to run runSheetChecks.` });
+  });
 }
-// Re-check notice: the Admin or a Head chooses to overwrite MODULE NO. with the desk's module (only if the cell still shows what was seen).
+// Re-check notice: the Admin or a Head chooses to overwrite the Sheet cell with the desk's value (only if the cell still shows what was seen).
 async function overwriteModule(p) {
   try {
-    const res = await call("POST", { changes: [{ type: "sheetModule", id: p.id, ack: p.was }] }), r = res.results[0], notes = [];
+    const res = await call("POST", { changes: [{ type: "sheetField", id: p.id, field: p.field || "lh_module", ack: p.was }] }), r = res.results[0], notes = [];
     if (r.result !== "saved") { state.problems.push({ kind: "rejected", id: p.id, what: p.what, error: r.error || r.result }); }
     else moduleResult(r, p.id, p.what, notes);
     if (notes.length) toast(notes.join(" · "));
@@ -506,10 +510,10 @@ async function overwriteModule(p) {
 function problemsHtml() {
   if (!state.problems.length) return "";
   const boss = state.me && (state.me.role === "admin" || state.me.role === "head"), checks = state.problems.filter(p => p.kind === "recheck").length;
-  return `<div class="banner bad" role="alert"><div style="flex:1"><b>${checks === state.problems.length ? `${checks} module${checks === 1 ? "" : "s"} to re-check against the Sheet` : `${state.problems.length} ${state.problems.length === 1 ? "change" : "changes"} need${state.problems.length === 1 ? "s" : ""} attention`}</b>
+  return `<div class="banner bad" role="alert"><div style="flex:1"><b>${checks === state.problems.length ? `${checks} value${checks === 1 ? "" : "s"} to re-check against the Sheet` : `${state.problems.length} ${state.problems.length === 1 ? "change" : "changes"} need${state.problems.length === 1 ? "s" : ""} attention`}</b>
     ${state.problems.map((p, i) => `<div class="prob"><div style="flex:1;min-width:220px"><span class="mono">${esc(p.what)}</span><br><span class="muted">${esc(p.kind === "conflict" ? p.detail : p.error)}</span></div>
       ${p.kind === "conflict" && !p.module ? `<button class="btn sm" data-act="mine" data-i="${i}">Use my version</button>` : ""}
-      ${p.kind === "recheck" && boss ? `<button class="btn sm" data-act="overwrite" data-i="${i}" title="Replace ${esc(p.was)} in MODULE NO. with the desk's module">Overwrite the Sheet</button>` : ""}
+      ${p.kind === "recheck" && boss ? `<button class="btn sm" data-act="overwrite" data-i="${i}" title="Replace ${esc(p.was)} in ${esc(p.label || "MODULE NO.")} with the desk's value">Overwrite the Sheet</button>` : ""}
       ${p.module ? "" : `<button class="btn sm" data-act="open" data-i="${i}">Open mine</button>`}
       <button class="btn sm ghost" data-act="drop" data-i="${i}">Dismiss</button></div>`).join("")}</div></div>`;
 }
@@ -535,6 +539,8 @@ function filtered() {
 const lhStatusOf = id => { const r = recOf(id); return r ? r.lh_status || "" : ""; };
 const moduleOf = id => { const r = recOf(id); return r ? r.lh_module || "" : ""; };
 const knownModules = () => [...new Set(Object.values(state.items).map(r => r.lh_module).filter(Boolean))].sort(coll.compare);
+// Fund year suggestions: the years already in the register and on the desk.
+const fundYears = () => [...new Set(regRows.map(r => r.fund_year).concat(Object.values(state.items).map(r => r.fund_year)).filter(Boolean))].sort(coll.compare);
 // Register columns. f: the filter under the header ("text" = contains, "list" = pick a value); s: hidden on phones;
 // v: the value sorted and filtered on; x: the grey second line, also searched by a text filter.
 const COLS = [
@@ -755,7 +761,7 @@ function draftFrom(id) {
   const r = recOf(id) || {};
   return { verification: r.verification || "Pending", round: Number(r.round) || 1, holder: r.holder || "", tax_dec: r.tax_dec || "",
     checks: JSON.parse(JSON.stringify(parse(r.checks, {}))), prev_modules: parse(r.prev_modules, []).slice(), notes: r.notes || "",
-    date_received: r.date_received || "", date_returned: r.date_returned || "", date_complete: r.date_complete || "", lh_status: r.lh_status || "", lh_module: r.lh_module || "", survey_type: r.survey_type || "" };
+    date_received: r.date_received || "", date_returned: r.date_returned || "", date_complete: r.date_complete || "", lh_status: r.lh_status || "", lh_module: r.lh_module || "", survey_type: r.survey_type || "", fund_year: r.fund_year || "" };
 }
 function openDrawer(id, preset) {
   if (!regById[id] && !recOf(id)) return toast("LHID " + id + " is not in the register on this device.");
@@ -795,8 +801,8 @@ function drawDrawer() {
       <label class="f"><span>Status</span><select id="dLhs" ${dis}>${lhOptions(draft.lh_status)}</select></label>
       <label class="f"><span>Module</span><input id="dMod" list="dModList" value="${esc(draft.lh_module)}" maxlength="60" placeholder="e.g. LOT-01-M-2027 (NL)" ${dis}>
         <datalist id="dModList">${knownModules().map(m => `<option value="${esc(m)}">`).join("")}</datalist></label>
-      <label class="f"><span>Survey type</span><input id="dSt" list="dStList" value="${esc(draft.survey_type)}" maxlength="40" placeholder="SUBD/PLUM" ${dis}>
-        <datalist id="dStList">${SURVEY_TYPES.map(m => `<option value="${esc(m)}">`).join("")}</datalist></label>
+      <label class="f"><span>Fund year</span><input id="dFy" list="dFyList" value="${esc(draft.fund_year)}" maxlength="20" placeholder="${esc(g.fund_year ? "Sheet: " + g.fund_year : "e.g. 2027")}" title="Saved here and written to FUND YEAR in LAD BAL (MOD)" ${dis}>
+        <datalist id="dFyList">${fundYears().map(m => `<option value="${esc(m)}">`).join("")}</datalist></label>
       <label class="f"><span>Tax Declaration No.</span><input id="dTax" value="${esc(draft.tax_dec)}" maxlength="120" ${dis}></label>
     </div>
     <h3 class="sec">Documentary requirements</h3>
@@ -820,7 +826,7 @@ function drawDrawer() {
 }
 function readForm() {
   if (!editing || !$("dTax")) return;
-  draft.tax_dec = $("dTax").value.trim(); draft.date_received = $("dRec").value; draft.notes = $("dNotes").value.trim(); draft.lh_status = $("dLhs").value; draft.lh_module = $("dMod").value.trim().replace(/\s+/g, " "); draft.survey_type = $("dSt").value.trim();
+  draft.tax_dec = $("dTax").value.trim(); draft.date_received = $("dRec").value; draft.notes = $("dNotes").value.trim(); draft.lh_status = $("dLhs").value; draft.lh_module = $("dMod").value.trim().replace(/\s+/g, " "); draft.fund_year = $("dFy").value.trim().replace(/\s+/g, " ");
   if (isAdmin()) draft.holder = $("dHolder").value;
   document.querySelectorAll("#ck .ckrow").forEach(row => {
     const id = row.dataset.item, c = draft.checks[id] || {};
