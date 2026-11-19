@@ -1,7 +1,7 @@
 /* ACE Workbench service worker: keeps the panel and every app page on the device so the Workbench opens with no signal.
    Only files from this site are kept. Google Sheet sync (script.google.com) and satellite tiles always go to the network.
    VERSION is stamped by build-pages.py from the files' content; a new VERSION makes phones fetch the new files. */
-const VERSION = "d16ab4cd458c";
+const VERSION = "8f1129dc3b55";
 const CACHE = "aw-" + VERSION;
 const FILES = [
   "./", "index.html", "manifest.webmanifest",

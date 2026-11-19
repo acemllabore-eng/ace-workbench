@@ -388,6 +388,7 @@ async function sync(quiet) {
         // Sheet checks: a change the Sheet did not take stays on the problem list until dismissed.
         if (r.sheet === "error") state.problems.push({ kind: "rejected", id: o.id, mine: o.data, what, error: "LAD Balance survey status NOT updated: " + (r.sheet_note || "") + ". Ask the Admin to run runSheetChecks." });
         if (r.check_error) state.problems.push({ kind: "rejected", id: o.id, mine: o.data, what, error: r.check_error });
+        moduleResult(r, o.id, what, sheetNotes);
         if (r.result === "saved" || r.result === "same") {
           state.items[o.id] = Object.assign({}, r.record);
           if (changedSince) { o.baseVersion = r.record.version; Object.assign(state.items[o.id], shownOf(o.data)); }
@@ -484,11 +485,31 @@ function renderSync() {
   $("sDot").className = "dot " + cls; $("sText").textContent = text;
   $("syncBtn").disabled = syncing || !state.cfg.url || !state.cfg.key;
 }
+// Module write-back answer (rssWriteSheetModule_): written, same, a different module already in the Sheet (re-check), or failed.
+function moduleResult(r, id, what, notes) {
+  if (!r.module_sheet) return;
+  if (r.module_sheet === "updated") notes.push(`LHID ${id}: LAD Balance ${r.module_note}`);
+  else if (r.module_sheet === "recheck") state.problems.push({ kind: "recheck", id, what, was: r.module_was || "",
+    error: "Re-check the module: " + r.module_note + ". The desk keeps your module; the Sheet keeps its own until one is corrected." });
+  else if (r.module_sheet === "error") state.problems.push({ kind: "rejected", id, what, error: "LAD Balance MODULE NO. NOT updated: " + (r.module_note || "") + ". Ask the Admin to run runSheetChecks." });
+}
+// Re-check notice: the Admin or a Head chooses to overwrite MODULE NO. with the desk's module (only if the cell still shows what was seen).
+async function overwriteModule(p) {
+  try {
+    const res = await call("POST", { changes: [{ type: "sheetModule", id: p.id, ack: p.was }] }), r = res.results[0], notes = [];
+    if (r.result !== "saved") { state.problems.push({ kind: "rejected", id: p.id, what: p.what, error: r.error || r.result }); }
+    else moduleResult(r, p.id, p.what, notes);
+    if (notes.length) toast(notes.join(" · "));
+  } catch (e) { state.problems.push(p); toast("Not sent: " + (e.message || e)); }
+  save(); render();
+}
 function problemsHtml() {
   if (!state.problems.length) return "";
-  return `<div class="banner bad" role="alert"><div style="flex:1"><b>${state.problems.length} ${state.problems.length === 1 ? "change was" : "changes were"} not saved to the Sheet</b>
+  const boss = state.me && (state.me.role === "admin" || state.me.role === "head"), checks = state.problems.filter(p => p.kind === "recheck").length;
+  return `<div class="banner bad" role="alert"><div style="flex:1"><b>${checks === state.problems.length ? `${checks} module${checks === 1 ? "" : "s"} to re-check against the Sheet` : `${state.problems.length} ${state.problems.length === 1 ? "change" : "changes"} need${state.problems.length === 1 ? "s" : ""} attention`}</b>
     ${state.problems.map((p, i) => `<div class="prob"><div style="flex:1;min-width:220px"><span class="mono">${esc(p.what)}</span><br><span class="muted">${esc(p.kind === "conflict" ? p.detail : p.error)}</span></div>
       ${p.kind === "conflict" && !p.module ? `<button class="btn sm" data-act="mine" data-i="${i}">Use my version</button>` : ""}
+      ${p.kind === "recheck" && boss ? `<button class="btn sm" data-act="overwrite" data-i="${i}" title="Replace ${esc(p.was)} in MODULE NO. with the desk's module">Overwrite the Sheet</button>` : ""}
       ${p.module ? "" : `<button class="btn sm" data-act="open" data-i="${i}">Open mine</button>`}
       <button class="btn sm ghost" data-act="drop" data-i="${i}">Dismiss</button></div>`).join("")}</div></div>`;
 }
@@ -1243,6 +1264,7 @@ $("main").addEventListener("click", e => {
     if (act.dataset.act === "open") return openDrawer(p.id, p.mine);
     state.problems.splice(i, 1); save();
     if (act.dataset.act === "mine") { const s = recOf(p.id); return queueSave(p.id, p.mine, s ? Number(s.version) || 0 : 0); }
+    if (act.dataset.act === "overwrite") return overwriteModule(p);
     return render();
   }
   if (t.id === "cSave") {
