@@ -192,6 +192,17 @@ td { font-family: var(--mono); }
 .kind-head h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .kind-badge { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .06em; padding: 3px 10px; border-radius: 6px; background: var(--kc); color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
 .kind-head .right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* Drag to rearrange: the grip on each kind's header. While dragging, every kind folds to its header so the list is short enough to drop anywhere. */
+.grip { border: 1px solid transparent; background: none; color: var(--muted); cursor: grab; padding: 4px 6px; border-radius: 6px; font-size: 16px; line-height: 1; touch-action: none; user-select: none; }
+.grip:hover, .grip:focus-visible { color: var(--fg); border-color: var(--line); background: var(--ctrl-bg); }
+.kinds.reordering { gap: 10px; }
+.kinds.reordering .kindp > :not(.kind-head) { display: none; }
+.kinds.reordering .kind-head { margin-bottom: 0; }
+.kinds.reordering, .kinds.reordering * { cursor: grabbing !important; user-select: none; }
+.kindp.dragging { opacity: .85; box-shadow: 0 0 0 2px var(--kc), 0 10px 30px rgba(0,0,0,.35); z-index: 2; }
+.kindp.moved { animation: kmoved .7s ease-out; }
+@keyframes kmoved { from { box-shadow: 0 0 0 3px var(--kc); } to { box-shadow: 0 0 0 0 transparent; } }
+.order-reset { margin-left: 8px; }
 .lh tbody tr[data-seq] { cursor: pointer; }
 .lh tbody tr[data-seq]:hover td { background: var(--hi); }
 .lh .open { color: var(--cyan); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
@@ -199,7 +210,7 @@ td { font-family: var(--mono); }
   :root { --bg: #fff; --surface: #fff; --surface-2: #f1f4f8; --line: #c9d1dd; --grid: #e2e8f1; --fg: #111; --muted: #444; --faint: #666; --cyan: #0a6f8a;
     --panel-bg: #fff; --ctrl-bg: #fff; --chip-bg: #fff; --sunk: #fff; --hi: transparent; --hi-2: #eef3f8; color-scheme: light; }
   body { background: #fff !important; }
-  .controls, .btn, .hint, .tip, .cat-edit, .notes, #banner, .lh .open { display: none !important; }
+  .controls, .btn, .grip, .hint, .tip, .cat-edit, .notes, #banner, .lh .open { display: none !important; }
   body.print-one .kinds > .panel:not(.print-me) { display: none !important; }
   .panel { break-inside: auto; backdrop-filter: none; box-shadow: none; }
   .pie { break-inside: avoid; } .pie .grow, .att-in { animation: none !important; }
@@ -250,7 +261,7 @@ td { font-family: var(--mono); }
       <div class="src" id="src">Loading…</div>
     </div>
     <div class="controls">
-      <div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div>
+      <div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div><button class="btn order-reset" id="order-reset" hidden title="Put the kinds of survey back in order by name">Reset order</button>
     </div>
   </header>
   <div id="banner"></div>
@@ -488,7 +499,8 @@ function openInDesk(seq) {
   if (sampleOn) return;
   try { localStorage.setItem(STORE + "-open", JSON.stringify({ seq, t: Date.now() })); } catch (e) { return; }
   let inPanel = false; try { inPanel = window.parent !== window && !!window.parent.location.href; } catch (e) { inPanel = false; }
-  if (inPanel) window.parent.location.hash = "sr"; else location.href = "sr-desk.html";
+  if (!inPanel) { location.href = "sr-desk.html"; return; }
+  window.parent.postMessage({ type: "aw-open-sr", seq: String(seq) }, location.origin); // the panel switches to the SR Desk and hands it the SeqNo
 }
 const bindRows = root => root.querySelectorAll(".lh tr[data-seq]").forEach(tr => { tr.onclick = () => openInDesk(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openInDesk(tr.dataset.seq); }; });
 let sampleOn = false;
@@ -504,13 +516,16 @@ function render() {
     : `${list.length.toLocaleString()} SRs from this PC's SR Desk copy · register pulled ${esc(raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : "—")}${raw.pending ? ` · ${raw.pending} change${raw.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
   $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Open the SR Verification Desk from this same place, connect it in Settings and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
   document.querySelectorAll("#metric button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === ui.metric)));
-  const kinds = [...new Set(list.map(s => s.kind || NOT_SET))].sort(kindSort), rcats = loadRcats();
-  $("kinds").innerHTML = kinds.map((k, i) => `<section class="panel kindp" id="kp-${i}" style="--kc:${KIND_COLORS[i % KIND_COLORS.length]}" aria-label="${esc(k)}">
-    <div class="kind-head"><h2><span class="kind-badge">${esc(k)}</span>survey statuses${AREA ? " by area (ha)" : ""}</h2><div class="right"><div class="cover" id="kc-${i}"></div><button class="btn" data-print="${i}" title="Print this kind of survey as shown: its pie, and the attachments, categories and list now open">Print</button></div></div>
+  const byName = [...new Set(list.map(s => s.kind || NOT_SET))].sort(kindSort), rcats = loadRcats();
+  const kinds = orderKinds(byName), colorOf = k => KIND_COLORS[byName.indexOf(k) % KIND_COLORS.length]; // a kind keeps its colour wherever it is dragged
+  $("kinds").innerHTML = kinds.map((k, i) => `<section class="panel kindp" id="kp-${i}" data-kind="${esc(k)}" style="--kc:${colorOf(k)}" aria-label="${esc(k)}">
+    <div class="kind-head"><h2><button class="grip" type="button" aria-label="Move ${esc(k)}: drag, or use the arrow keys" title="Drag to move this kind up or down (or focus and press ↑ / ↓)">⠿</button><span class="kind-badge">${esc(k)}</span>survey statuses${AREA ? " by area (ha)" : ""}</h2><div class="right"><div class="cover" id="kc-${i}"></div><button class="btn" data-print="${i}" title="Print this kind of survey as shown: its pie, and the attachments, categories and list now open">Print</button></div></div>
     <div class="legend big" id="kl-${i}" aria-label="Show or hide a status"></div><div class="chart" id="kpie-${i}"></div><p class="hint" id="kh-${i}"></p><div class="att" id="katt-${i}"></div></section>`).join("")
     || `<div class="panel"><p class="read">No SRs.</p></div>`;
   kinds.forEach((k, i) => renderKind(k, i, list.filter(s => (s.kind || NOT_SET) === k), SER, AREA, rcats));
   $("kinds").querySelectorAll("[data-print]").forEach(b => b.onclick = () => printKind(+b.dataset.print));
+  $("kinds").querySelectorAll(".grip").forEach(bindGrip);
+  $("order-reset").hidden = !loadOrder().length;
   bindRows($("kinds"));
   firstPaint = false;
   const noArea = list.filter(s => s.area == null).length;
@@ -631,6 +646,53 @@ function catPanel(kind, i, label, srs, rm, rcats, d) {
 }
 
 /* Print one kind of survey exactly as shown (pie, open attachments, categories and SR list), on a white page; the other kinds are left out. */
+/* Order of the kinds: dragged by the grip (mouse, pen or touch) or moved with ↑ / ↓ on a focused grip. Saved on this device ("srdash-order");
+   a kind not in the saved order (new in the register) goes after the saved ones, by name. */
+const ORDER_STORE = "srdash-order";
+const loadOrder = () => { try { const o = JSON.parse(localStorage.getItem(ORDER_STORE)); return Array.isArray(o) ? o : []; } catch (e) { return []; } };
+const saveOrder = o => { try { o ? localStorage.setItem(ORDER_STORE, JSON.stringify(o)) : localStorage.removeItem(ORDER_STORE); } catch (e) {} };
+function orderKinds(byName) {
+  const o = loadOrder().filter(k => byName.includes(k));
+  return o.concat(byName.filter(k => !o.includes(k)));
+}
+const domOrder = () => [...$("kinds").querySelectorAll(".kindp")].map(p => p.dataset.kind);
+function flashMoved(p) { p.classList.remove("moved"); void p.offsetWidth; p.classList.add("moved"); }
+function bindGrip(g) {
+  const box = $("kinds"), p = g.closest(".kindp");
+  g.onkeydown = e => {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    const sib = e.key === "ArrowUp" ? p.previousElementSibling : p.nextElementSibling;
+    if (!sib) return;
+    e.key === "ArrowUp" ? box.insertBefore(p, sib) : box.insertBefore(sib, p);
+    saveOrder(domOrder()); $("order-reset").hidden = false; g.focus(); p.scrollIntoView({ block: "nearest" }); flashMoved(p);
+  };
+  g.onpointerdown = e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); g.setPointerCapture(e.pointerId);
+    const before = domOrder().join("|");
+    box.classList.add("reordering"); p.classList.add("dragging");
+    p.scrollIntoView({ block: "center" }); // the list just folded; keep the dragged kind under the pointer's area
+    let lastY = e.clientY, raf = 0;
+    const place = () => {
+      raf = 0;
+      const others = [...box.querySelectorAll(".kindp")].filter(x => x !== p);
+      const next = others.find(x => { const r = x.getBoundingClientRect(); return lastY < r.top + r.height / 2; });
+      if (next ? p.nextElementSibling !== next : box.lastElementChild !== p) box.insertBefore(p, next || null);
+      if (lastY < 40) scrollBy(0, -12); else if (lastY > innerHeight - 40) scrollBy(0, 12); // near the edge: scroll the page
+    };
+    const move = ev => { lastY = ev.clientY; if (!raf) raf = requestAnimationFrame(place); };
+    const end = () => {
+      g.removeEventListener("pointermove", move); g.removeEventListener("pointerup", end); g.removeEventListener("pointercancel", end);
+      if (raf) { cancelAnimationFrame(raf); place(); } // apply the last move before dropping
+      box.classList.remove("reordering"); p.classList.remove("dragging");
+      if (domOrder().join("|") !== before) { saveOrder(domOrder()); $("order-reset").hidden = false; flashMoved(p); }
+      p.scrollIntoView({ block: "start", behavior: "smooth" });
+    };
+    g.addEventListener("pointermove", move); g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end);
+  };
+}
+
 function printKind(i) {
   const p = $("kp-" + i); if (!p) return;
   document.body.classList.add("print-one"); p.classList.add("print-me");
@@ -641,7 +703,8 @@ function printKind(i) {
 try { const th = localStorage.getItem("aw.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch (e) {}
 window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
 document.querySelectorAll("#metric button").forEach(b => b.onclick = () => { ui.metric = b.dataset.m; try { localStorage.setItem("srdash-metric", ui.metric); } catch (e) {} render(); });
-addEventListener("storage", e => { if (e.key === STORE || e.key === RCAT_STORE) render(); }); // the SR Desk synced, or changed categories, in another tab
+$("order-reset").onclick = () => { saveOrder(null); render(); };
+addEventListener("storage", e => { if (e.key === STORE || e.key === RCAT_STORE || e.key === ORDER_STORE) render(); }); // the SR Desk synced, or changed categories, in another tab
 render();
 </script>
 <script id="aw-tt-loader">/* Sort, filter and search on every table (fx/table-tools.js). The panel also adds it; it runs once. Skipped on the Apps Script copies, which have no fx folder. */(function(){if(/google/.test(location.hostname))return;var s=document.createElement("script");s.src="fx/table-tools.js";document.head.appendChild(s);})();</script>

@@ -2621,6 +2621,14 @@ function takeOpenRequest() {
   ui.open = null; openSR(String(q.seq));
 }
 window.addEventListener("storage", e => { if (e.key === STORE + "-open" && e.newValue) takeOpenRequest(); });
+// The panel hands the SeqNo over directly too and waits for this answer; with no answer it reloads this page (an older copy).
+window.addEventListener("message", e => {
+  const d = e.data; if (!d || d.type !== "aw-open-sr" || !d.seq || e.origin !== location.origin) return;
+  try { localStorage.removeItem(STORE + "-open"); } catch (x) {}
+  try { e.source.postMessage({ type: "aw-open-sr-ok", seq: d.seq }, e.origin); } catch (x) {}
+  if (!regBySeq[d.seq]) { toast(`SR ${d.seq} is not in this PC's register yet. Sync, then try again.`); return; }
+  if (ui.open !== String(d.seq)) { ui.open = null; openSR(String(d.seq)); }
+});
 
 /* ---------- Start ---------- */
 renderSyncbar();

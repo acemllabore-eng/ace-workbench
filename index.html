@@ -801,6 +801,22 @@ function addTableTools(f){
 function sendTheme(f){ try{ f.contentWindow.postMessage({ type:"aw-theme", theme: document.documentElement.dataset.theme || "" }, "*"); }catch(e){} }
 window.addEventListener("hashchange", () => show(location.hash.slice(1)));
 
+/* SR Flow Dashboard list row: open that SR in the SR Verification Desk (2026-11-20). The dashboard also leaves the request in
+   localStorage ("srdesk-v1-open"), which a newly opened SR Desk reads on start. An SR Desk frame already open is handed the SeqNo;
+   if it does not answer within 1.5 s it is an older copy loaded before the update, so it is reloaded and reads the request on start. */
+window.addEventListener("message", e => {
+  const d = e.data; if(!d || d.type !== "aw-open-sr" || !d.seq) return;
+  if(!Object.values(frames).some(f => f.contentWindow === e.source)) return; // only from our own app frames
+  const had = frames.sr;
+  if(location.hash !== "#sr") location.hash = "sr"; else show("sr");
+  if(!had) return;                     // a new frame takes the request from localStorage when it starts
+  let ok = false;
+  const onAck = m => { if(m.source === had.contentWindow && m.data && m.data.type === "aw-open-sr-ok" && m.data.seq === d.seq){ ok = true; removeEventListener("message", onAck); } };
+  addEventListener("message", onAck);
+  try{ had.contentWindow.postMessage({ type:"aw-open-sr", seq: d.seq }, location.origin); }catch(x){}
+  setTimeout(() => { removeEventListener("message", onAck); if(!ok && frames.sr === had){ $("load").hidden = false; had.src = APPS.find(a => a.id === "sr").url; } }, 1500);
+});
+
 const t = store("aw.theme"); if(t) document.documentElement.dataset.theme = t;
 if(store("aw.collapsed") === "1") document.body.classList.add("collapsed");
 themeIcon(); field.tone(); renderNet(); renderWaiting();
