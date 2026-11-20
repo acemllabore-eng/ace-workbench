@@ -146,6 +146,48 @@ button.hbar[aria-pressed="true"] { background: var(--surface-2); box-shadow: ins
 .cat-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .cat-row input { flex: 1 1 200px; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 10px; background: var(--surface); }
 @media (max-width: 600px) { .fdonut { grid-template-columns: 1fr; } }
+/* Dashboard layout (2026-11-20): KPI tiles, three-column chart rows, bottom figure strip. Colours are the app's own tokens. */
+.dk { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.dk-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.dk-tile { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; padding: 14px 16px; }
+.dk-tile .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+.dk-tile .v { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.dk-tile .v small { font-size: 14px; font-weight: 500; }
+.dk-tile .s { color: var(--muted); font-size: 12px; }
+.dk-ico { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-bg); color: var(--accent); }
+.dk-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tone-pass .dk-ico { background: var(--pass-bg); color: var(--pass); }
+.tone-fail .dk-ico { background: var(--fail-bg); color: var(--fail); }
+.tone-warn .dk-ico { background: var(--warn-bg); color: var(--warn); }
+.tone-na .dk-ico { background: var(--na-bg); color: var(--na); }
+.dk-up { color: var(--pass); font-weight: 600; } .dk-down { color: var(--fail); font-weight: 600; }
+.dk3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.dk3 > .panel, .dk3 > div { min-width: 0; }
+.dk3 .fdonut { grid-template-columns: minmax(110px, 150px) minmax(0, 1fr); gap: 12px 14px; }
+.dk3 .pleg .nm { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+.dk3.wide-mid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); }
+.dk-cols svg { width: 100%; height: auto; display: block; }
+.dk-cols .gl { stroke: var(--line); stroke-width: 1; }
+.dk-cols text { font-size: 10.5px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.dk-cols text.val { fill: var(--fg); font-weight: 600; }
+.dk-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+.dk-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.dk-hb { display: grid; grid-template-columns: minmax(70px, 34%) minmax(0, 1fr) 36px; gap: 8px 10px; align-items: center; font-size: 13px; }
+.dk-hb .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-hb .bar { height: 16px; background: var(--surface-2); border-radius: 4px; overflow: hidden; display: flex; }
+.dk-hb .bar i { display: block; height: 100%; }
+.dk-hb .n { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dk-alert td.days { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.dk-alert td.days.hot { color: var(--fail); } .dk-alert td.days.warm { color: var(--warn); }
+.dk-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0; }
+.dk-strip > div { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; padding: 16px; border-left: 1px solid var(--line); }
+.dk-strip > div:first-child { border-left: 0; }
+.dk-strip .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.dk-strip .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+.dk-strip .s { font-size: 12px; color: var(--muted); }
+@media (max-width: 1180px) { .dk-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dk3, .dk3.wide-mid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dk-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dk-strip > div { border-left: 0; border-top: 1px solid var(--line); } }
+@media (max-width: 860px) { .dk-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dk3, .dk3.wide-mid { grid-template-columns: minmax(0, 1fr); } .dk-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .dk3 .fdonut { grid-template-columns: 1fr; } .dk-tile, .dk-strip > div { grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; padding: 12px; } .dk-tile .dk-ico, .dk-strip .dk-ico { width: 34px; height: 34px; } .dk-ico svg { width: 18px; height: 18px; } }
 
 /* Checklist reference tab */
 .ref-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
@@ -1747,27 +1789,89 @@ function renderDashboard() {
   const buckets = [["0–7 days", 0, 7], ["8–14 days", 8, 14], ["15–30 days", 15, 30], ["Over 30 days", 31, 1e9]].map(([l, a, b]) => [l, open.filter(s => (age(s) || 0) >= a && (age(s) || 0) <= b).length]);
   const maxB = Math.max(1, ...buckets.map(b => b[1]));
   const vrows = state.verifiers.map(v => [v, list.filter(s => s.verifier === v && isOpen(s)).length, list.filter(s => s.verifier === v && !isOpen(s) && inMonth(s)).length]);
+  // --- Dashboard layout figures (2026-11-20) ---
+  const DI = {
+    files: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+    inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    back: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+    pin: '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+    trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>' };
+  const ico = n => `<span class="dk-ico"><svg viewBox="0 0 24 24" aria-hidden="true">${DI[n]}</svg></span>`;
+  const tile = (icon, tone, k, v, s) => `<div class="panel dk-tile tone-${tone}">${ico(icon)}<div><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div></div>`;
+  const pastN = list.filter(pastDarpo).length;
+  // Endorsed in the last 30 days against the 30 days before, like a period-over-period change.
+  const prevEnd = list.filter(s => pastDarpo(s) && isIso(s.decided) && daysBetween(s.decided, t0) > 30 && daysBetween(s.decided, t0) <= 60).length;
+  const delta = !prevEnd ? "" : (() => { const d = Math.round((endorsed - prevEnd) / prevEnd * 100); return `<span class="${d >= 0 ? "dk-up" : "dk-down"}">${d >= 0 ? "+" : ""}${d}%</span> vs previous 30 days`; })();
+  // Received at DARPO vs decided, by month, last 6 months.
+  const months = []; { const d = new Date(t0 + "T00:00:00"); d.setDate(1); for (let i = 5; i >= 0; i--) { const m = new Date(d.getFullYear(), d.getMonth() - i, 1); months.push([`${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`, m.toLocaleString("en-US", { month: "short" })]); } }
+  const inMo = (v, ym) => isIso(v) && v.slice(0, 7) === ym;
+  const mrows = months.map(([ym, l]) => [l, list.filter(s => inMo(s.received, ym)).length, list.filter(s => inMo(s.decided, ym)).length]);
+  const colChart = (() => {
+    const W = 360, H = 190, L = 28, B = 22, T = 16, top = Math.max(4, ...mrows.map(r => Math.max(r[1], r[2])));
+    const step = Math.pow(10, Math.floor(Math.log10(top))) / (top / Math.pow(10, Math.floor(Math.log10(top))) > 5 ? 0.5 : top / Math.pow(10, Math.floor(Math.log10(top))) > 2 ? 1 : 2);
+    const max = Math.ceil(top / step) * step, y = v => T + (H - T - B) * (1 - v / max), gw = (W - L) / mrows.length, bw = Math.min(18, gw / 3);
+    let g = ""; for (let v = 0; v <= max + 1e-9; v += step) g += `<line class="gl" x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 4}" y="${y(v) + 3}" text-anchor="end">${Math.round(v)}</text>`;
+    const bars = mrows.map(([l, a, b], i) => { const cx = L + gw * i + gw / 2;
+      return `<rect x="${cx - bw - 1}" y="${y(a)}" width="${bw}" height="${y(0) - y(a)}" rx="2" fill="var(--accent)"><title>${l}: ${a} received</title></rect>
+        <rect x="${cx + 1}" y="${y(b)}" width="${bw}" height="${y(0) - y(b)}" rx="2" fill="var(--pass)"><title>${l}: ${b} decided</title></rect>
+        ${a ? `<text class="val" x="${cx - bw / 2 - 1}" y="${y(a) - 3}" text-anchor="middle">${a}</text>` : ""}${b ? `<text class="val" x="${cx + bw / 2 + 1}" y="${y(b) - 3}" text-anchor="middle">${b}</text>` : ""}
+        <text x="${cx}" y="${H - 6}" text-anchor="middle">${l}</text>`; }).join("");
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="SRs received at DARPO and decided, by month">${g}${bars}</svg>`;
+  })();
+  // SRs by DARMO: at DARPO (open) and past DARPO, stacked.
+  const darmos = [...new Set(list.map(s => s.darmo || NOT_SET))].map(d => { const l = list.filter(s => (s.darmo || NOT_SET) === d); return [d, l.length, l.filter(isOpen).length, l.filter(pastDarpo).length]; }).sort((a, b) => b[1] - a[1]);
+  const maxD = Math.max(1, ...darmos.map(d => d[1]));
+  const darmoBars = darmos.map(([d, n, o, p]) => `<div class="nm" title="${esc(d)}">${esc(d)}</div><div class="bar" title="${esc(d)}: ${n} SRs · ${o} at DARPO · ${p} past DARPO · ${n - o - p} not yet at DARPO"><i style="width:${o / maxD * 100}%;background:var(--warn)"></i><i style="width:${p / maxD * 100}%;background:var(--pass)"></i><i style="width:${(n - o - p) / maxD * 100}%;background:var(--accent)"></i></div><div class="n">${n}</div>`).join("");
+  // Oldest at DARPO: open SRs not in compliance, longest wait first.
+  const aging = open.filter(s => s.status !== "Compliance").sort((a, b) => (age(b) || 0) - (age(a) || 0)).slice(0, 10);
+  // Items checked: share of pass among pass / fail / missing answers on each SR's current route.
+  let nPass = 0, nAns = 0, nChecked = 0, nClean = 0;
+  list.forEach(s => { const a = (s.ans || {})[s.route] || {}; let any = false, bad = false;
+    activeKeys(s.route, a).forEach(k => { const v = a[k.key]; if (v === "pass" || v === "fail" || v === "missing") { nAns++; any = true; if (v === "pass") nPass++; else bad = true; } });
+    if (any) { nChecked++; if (!bad) nClean++; } });
+  const openAges = open.filter(s => s.status !== "Compliance").map(age).filter(v => v !== null);
+  const avgAge = openAges.length ? Math.round(openAges.reduce((t, v) => t + v, 0) / openAges.length) : 0;
+  const pctTxt = (a, b) => b ? (a / b * 100).toFixed(1) + "%" : "—";
+  const strip = (icon, tone, v, k, s) => `<div class="tone-${tone}">${ico(icon)}<div><div class="v">${v}</div><div class="k">${k}</div><div class="s">${s}</div></div></div>`;
   view.innerHTML = `
     <div class="dash-kind"><div class="field"><label for="d-kind">Kind of survey</label><select id="d-kind"><option value="All" ${ui.dashKind === "All" ? "selected" : ""}>All kinds (${every.length})</option>${allKinds.map(k => `<option value="${esc(k)}" ${ui.dashKind === k ? "selected" : ""}>${esc(k)} (${every.filter(s => s.kind === k).length})</option>`).join("")}</select></div>
       <span class="sub">${ui.dashKind === "All" ? "Showing all kinds of survey" : `Showing ${list.length} SR${list.length === 1 ? "" : "s"} of ${esc(ui.dashKind)} only`}</span></div>
-    <div class="stats">
-      <div class="panel stat"><div class="k">At DARPO</div><div class="v">${open.length}</div><div class="s">${SUBS.map(x => open.filter(s => s.status === x).length + " " + x.toLowerCase()).join(" · ")} · ${unassigned} unassigned</div></div>
-      <div class="panel stat"><div class="k">Oldest at DARPO</div><div class="v" style="${oldest > 14 ? "color:var(--fail)" : ""}">${oldest}<span style="font-size:15px;font-weight:500"> days</span></div><div class="s">since received, not counting compliance</div></div>
-      <div class="panel stat"><div class="k">In compliance</div><div class="v">${compliance}</div><div class="s">returned to DARMO, waiting</div></div>
-      <div class="panel stat"><div class="k">Endorsed to RPMO</div><div class="v">${endorsed}</div><div class="s">last 30 days</div></div>
+    <div class="dk">
+    <div class="dk-tiles">
+      ${tile("files", "accent", "Total SRs", list.length, `${open.length} at DARPO · ${pastN} past DARPO`)}
+      ${tile("inbox", "warn", "At DARPO", open.length, `${SUBS.map(x => open.filter(s => s.status === x).length + " " + x.toLowerCase()).join(" · ")} · ${unassigned} unassigned`)}
+      ${tile("clock", oldest > 14 ? "fail" : "pass", "Oldest at DARPO", `<span style="${oldest > 14 ? "color:var(--fail)" : ""}">${oldest}<small> days</small></span>`, "since received, not counting compliance")}
+      ${tile("back", "na", "In compliance", compliance, "returned to DARMO, waiting")}
+      ${tile("send", "pass", "Endorsed to RPMO", endorsed, delta || "last 30 days")}
     </div>
-    <div class="grid2">
-      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start">
+    <div class="dk3 wide-mid">
+      <section class="panel"><div class="panel-head"><h2>Received vs decided</h2><span class="sub">at DARPO · last 6 months</span></div>
+        <div class="panel-body dk-cols"><div class="dk-legend"><span><span class="sw" style="background:var(--accent)"></span>Received</span><span><span class="sw" style="background:var(--pass)"></span>Decided</span></div>${colChart}</div></section>
+      ${pie || `<section class="panel"><div class="panel-head"><h2>Findings share</h2></div><div class="panel-body sub">No findings recorded yet.</div></section>`}
+      <section class="panel"><div class="panel-head"><h2>SRs by DARMO</h2><span class="sub">${darmos.length} DARMO${darmos.length === 1 ? "" : "s"}</span></div>
+        <div class="panel-body"><div class="dk-legend"><span><span class="sw" style="background:var(--warn)"></span>At DARPO</span><span><span class="sw" style="background:var(--pass)"></span>Past DARPO</span><span><span class="sw" style="background:var(--accent)"></span>Not yet at DARPO</span></div>
+        <div class="dk-hb">${darmoBars || '<div class="sub">No SRs.</div>'}</div></div></section>
+    </div>
+    <div class="dk3">
       <section class="panel"><div class="panel-head"><h2>Most frequent findings</h2><span class="sub">count of SRs, all routes · same as the pie${slices.length ? " · click one to list its LHs" : ""}</span>${slices.length ? '<button type="button" class="btn link no-print" id="find-export" title="Excel file: one column per finding, one row per LH, the remark in each cell">Export to Excel</button>' : ""}</div>
         <div class="panel-body hbars">${slices.length ? bars : '<div class="sub">No findings recorded yet.</div>'}
         ${findList}</div></section>
-      ${pie}
-      ${remPanel}
-      </div>
-      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start">
+      <section class="panel dk-alert"><div class="panel-head"><h2>Oldest at DARPO</h2><span class="sub">not counting compliance · click to open</span></div>
+        ${aging.length ? `<div class="table-scroll"><table><thead><tr><th>SeqNo</th><th>LO / Claimant</th><th class="r">Days</th><th>Status</th></tr></thead>
+        <tbody>${aging.map(s => { const d = age(s); return `<tr data-seq="${esc(s.seq)}" tabindex="0" aria-label="Open SR ${esc(s.seq)}"><td class="mono">${esc(s.seq)}</td><td class="who">${esc(s.claimant || "")}<div class="sub">${esc(s.darmo || "")}${s.verifier ? " · " + esc(s.verifier) : ""}</div></td>
+          <td class="days${d > 30 ? " hot" : d > 14 ? " warm" : ""}">${d === null ? "—" : d}</td><td><span class="pill ${STATUS_CLASS[s.status] || ""}">${esc(STATUS_LABEL[s.status] || s.status)}</span></td></tr>`; }).join("")}</tbody></table></div>`
+          : '<div class="panel-body sub">No SRs waiting at DARPO.</div>'}</section>
         <section class="panel"><div class="panel-head"><h2>By survey status</h2><span class="sub">all SRs</span></div>
           <div class="table-scroll"><table><thead><tr><th>Survey status</th><th class="r">SRs</th></tr></thead>
           <tbody>${[...SURVEYS, NOT_SET].map(k => `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${list.filter(s => (s.survey || NOT_SET) === k).length}</td></tr>`).join("")}</tbody></table></div></section>
+    </div>
+    ${remPanel}
+    <div class="dk3">
         <section class="panel"><div class="panel-head"><h2>By kind of survey</h2><span class="sub">all SRs · at DARPO · past DARPO</span></div>
           <div class="table-scroll"><table><thead><tr><th>Kind</th><th class="r">SRs</th><th class="r">At DARPO</th><th class="r">Past DARPO</th></tr></thead>
           <tbody>${allKinds.filter(k => ui.dashKind === "All" || k === ui.dashKind).map(k => { const l = list.filter(s => s.kind === k); return `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${l.length}</td><td class="r num">${l.filter(isOpen).length}</td><td class="r num">${l.filter(pastDarpo).length}</td></tr>`; }).join("")}</tbody></table></div></section>
@@ -1776,7 +1880,14 @@ function renderDashboard() {
         <section class="panel"><div class="panel-head"><h2>Verifier load</h2><span class="sub">open · closed last 30 days</span></div>
           <div class="table-scroll"><table><thead><tr><th>Verifier</th><th class="r">Open</th><th class="r">Closed</th></tr></thead>
           <tbody>${vrows.map(([v, o, c]) => `<tr style="cursor:default"><td>${esc(v)}</td><td class="r num">${o}</td><td class="r num">${c}</td></tr>`).join("")}</tbody></table></div></section>
-      </div>
+    </div>
+    <section class="panel dk-strip" aria-label="Summary figures">
+      ${strip("pin", "accent", darmos.filter(d => d[0] !== NOT_SET).length, "DARMOs", "with SRs in this view")}
+      ${strip("users", "accent", state.verifiers.length, "Verifiers", `${vrows.filter(r => r[1]).length} with open SRs`)}
+      ${strip("check", "pass", pctTxt(nPass, nAns), "Items passed", `${nPass} of ${nAns} items checked`)}
+      ${strip("trend", avgAge > 14 ? "fail" : "warn", `${avgAge}<small style="font-size:13px;font-weight:500"> days</small>`, "Average wait at DARPO", "open SRs, not counting compliance")}
+      ${strip("shield", "pass", pctTxt(nClean, nChecked), "SRs with no finding", `${nClean} of ${nChecked} SRs checked`)}
+    </section>
     </div>`;
   const redraw = () => { const y = scrollY; renderDashboard(); scrollTo(0, y); };
   const bindKey = b => { if (b.tagName === "path") b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); b.onclick(); } }; };
@@ -1790,7 +1901,7 @@ function renderDashboard() {
   const rc = view.querySelector("#rem-close"); if (rc) rc.onclick = () => { ui.remFinding = null; ui.remCat = null; redraw(); };
   const rcc = view.querySelector("#rcat-close"); if (rcc) rcc.onclick = () => { ui.remCat = null; redraw(); };
   const fx = view.querySelector("#find-export"); if (fx) fx.onclick = () => exportFindings(fails, remarks);
-  view.querySelectorAll(".find-list tr[data-seq]").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
+  view.querySelectorAll(".find-list tr[data-seq], .dk-alert tr[data-seq]").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
   // Search filters the remark list in place (no redraw), so ticks survive; ticked remarks stay in the Combine even when hidden.
   const cq = view.querySelector("#cat-q"); if (cq) cq.oninput = () => {
     const words = cq.value.toLowerCase().split(/\s+/).filter(Boolean), rows = [...view.querySelectorAll(".cat-pick label")];
