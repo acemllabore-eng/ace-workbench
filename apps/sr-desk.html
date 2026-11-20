@@ -1829,10 +1829,10 @@ function renderDashboard() {
   const darmoBars = darmos.map(([d, n, o, p]) => `<div class="nm" title="${esc(d)}">${esc(d)}</div><div class="bar" title="${esc(d)}: ${n} SRs · ${o} at DARPO · ${p} past DARPO · ${n - o - p} not yet at DARPO"><i style="width:${o / maxD * 100}%;background:var(--warn)"></i><i style="width:${p / maxD * 100}%;background:var(--pass)"></i><i style="width:${(n - o - p) / maxD * 100}%;background:var(--accent)"></i></div><div class="n">${n}</div>`).join("");
   // Oldest at DARPO: open SRs not in compliance, longest wait first.
   const aging = open.filter(s => s.status !== "Compliance").sort((a, b) => (age(b) || 0) - (age(a) || 0)).slice(0, 10);
-  // Items checked: share of pass among pass / fail / missing answers on each SR's current route.
+  // Items checked: share of pass or present among pass / present / fail / missing answers on each SR's current route.
   let nPass = 0, nAns = 0, nChecked = 0, nClean = 0;
   list.forEach(s => { const a = (s.ans || {})[s.route] || {}; let any = false, bad = false;
-    activeKeys(s.route, a).forEach(k => { const v = a[k.key]; if (v === "pass" || v === "fail" || v === "missing") { nAns++; any = true; if (v === "pass") nPass++; else bad = true; } });
+    activeKeys(s.route, a).forEach(k => { const v = a[k.key]; if (v === "pass" || v === "present" || v === "fail" || v === "missing") { nAns++; any = true; if (v === "pass" || v === "present") nPass++; else bad = true; } });
     if (any) { nChecked++; if (!bad) nClean++; } });
   const openAges = open.filter(s => s.status !== "Compliance").map(age).filter(v => v !== null);
   const avgAge = openAges.length ? Math.round(openAges.reduce((t, v) => t + v, 0) / openAges.length) : 0;

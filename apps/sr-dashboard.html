@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SR Status Dashboard</title>
 <!--
-  SR Status Dashboard: survey status of the SR Verification Desk's SRs, now and week by week.
+  SR Status Dashboard: survey status of the SR Verification Desk's SRs, one pie per kind of survey, with the attachments of the SRs at a status.
   Reads the SR Desk's own copy on this PC (localStorage "srdesk-v1": register, records, unsynced queue), so it must be
   opened from the same place as sr-desk.html (same folder on the same server, or both as files). It never writes anything.
   With no SR Desk data on this PC it shows made-up sample data, marked as such.
@@ -170,6 +170,35 @@ td { font-family: var(--mono); }
 @keyframes ping { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(3.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .draw { animation: none; stroke-dashoffset: 0; } .ping, .live, .pie .grow { animation: none; } }
 
+/* Per-kind panels (2026-11-20) */
+.kinds { display: grid; gap: 14px; }
+.kinds .panel h2 .k { color: var(--cyan); font-family: var(--mono); letter-spacing: .04em; }
+.hint { font-family: var(--mono); font-size: 11.5px; color: var(--faint); margin: 10px 0 0; }
+.pie .slice, .pie-list .pr[data-k], .pie-list .pr[data-s] { cursor: pointer; }
+.pie-list .pr.pick { background: rgba(34,195,230,.12); border-color: rgba(34,195,230,.5); }
+.att { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 14px; }
+.att:empty { display: none; }
+.att-in { animation: attIn .45s cubic-bezier(.2,.8,.2,1) both; transform-origin: top center; }
+@keyframes attIn { from { opacity: 0; transform: translateY(-10px) scale(.97); } }
+.att .pie { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); }
+.att .pie svg { max-width: 240px; }
+.att h3, .cat h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.att .chart-head .btn, .cat .btn { padding: 4px 10px; }
+.cat { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: rgba(7,11,20,.35); }
+.cat-edit { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; display: grid; gap: 10px; }
+.cat-pick { display: grid; gap: 2px; max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+.cat-pick label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+.cat-pick label:hover { background: rgba(34,195,230,.07); }
+.cat-pick label[hidden] { display: none; }
+.cat-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cat-row input { flex: 1 1 200px; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--bg); color: var(--fg); font: 13px var(--body); }
+.cat .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn.primary { color: var(--bg); background: var(--cyan); border-color: var(--cyan); font-weight: 600; }
+.rem-empty { border: 1px dashed var(--line); border-radius: 8px; padding: 22px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+.lh td { font-family: var(--body); white-space: normal; text-align: left; }
+.lh td.mono { font-family: var(--mono); }
+.lh .sub { color: var(--muted); font-size: 11.5px; }
+@media (max-width: 600px) { .att .pie { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .pie { grid-template-columns: 1fr; } .pie-list .pr { grid-template-columns: 10px minmax(0, 1fr) auto 40px 64px; gap: 8px; } .snap .row { grid-template-columns: minmax(0, 1fr) auto; } .snap .track { grid-column: 1 / -1; grid-row: 2; } }
 @media (max-width: 480px) { .filters { grid-template-columns: 1fr; } .kpi .v { font-size: 28px; } h1 { font-size: 22px; } .panel { padding: 14px; } }
@@ -185,34 +214,12 @@ td { font-family: var(--mono); }
       <div class="src" id="src">Loading…</div>
     </div>
     <div class="controls">
-      <div class="seg" role="group" aria-label="Time range" id="range">
-        <button data-w="8">8 wk</button><button data-w="12">12 wk</button><button data-w="26">26 wk</button><button data-w="0">All</button>
-      </div>
       <div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div>
-      <button class="btn" id="tbl-btn" aria-expanded="false">Show table</button>
     </div>
   </header>
   <div id="banner"></div>
-  <section class="panel filters" id="filters" aria-label="Filters"></section>
-
-  <section class="grid">
-    <div class="panel wide">
-      <div class="chart-head"><div><h2>Survey status now</h2><p class="read" id="r-now"></p></div>
-        <div class="cover" id="now-total"></div></div>
-      <div class="snap" id="snap"></div>
-    </div>
-    <div class="panel wide">
-      <div class="chart-head"><div><h2 id="h-status">Mix of survey statuses, week by week</h2><p class="read" id="r-status"></p></div>
-        <div class="cover" id="cover"></div></div>
-      <div class="legend big" id="legend" aria-label="Show or hide a status"></div>
-      <div class="chart" id="c-status"></div>
-      <div class="week" id="wk-row"><button class="btn" id="wk-prev" aria-label="Previous week">&lsaquo;</button><input type="range" id="wk" min="0" max="0" value="0" aria-label="Week shown in the pie"><button class="btn" id="wk-next" aria-label="Next week">&rsaquo;</button><b id="wk-name"></b></div>
-    </div>
-    <div class="panel wide" id="table-wrap" hidden>
-      <div class="chart-head"><h2 id="h-table">Weekly figures</h2></div>
-      <div class="table-scroll" id="table"></div>
-    </div>
-  </section>
+  <!-- One panel per kind of survey: survey status pie; a status click opens the attachments pie of its SRs; a missing document opens its remark categories. -->
+  <section class="kinds" id="kinds"></section>
   <div class="notes" id="notes"></div>
 </div>
 
@@ -254,7 +261,10 @@ function readDesk() {
     const ov = d.overrides || {}; // an Admin's field corrections in the SR Desk win over the register
     return { seq: reg.seq, kind: reg.kind || "", darmo: ov.darmo ?? reg.darmo ?? "", marpo: ov.marpo ?? reg.marpo ?? "",
       status: d.status || "", survey: d.survey || "", received: d.received || "", decided: d.decided || "", statusDate: d.statusDate || "",
-      rpmoReceived: d.rpmoReceived || "", round: d.round || 1, area: toHa(ov.area ?? reg.area) };
+      rpmoReceived: d.rpmoReceived || "", round: d.round || 1, area: toHa(ov.area ?? reg.area),
+      // Attachment marks and notes, for the attachments pie (same places sr-desk.html reads them)
+      route: d.route || (rec && rec.route) || "", ans: d.ans || (rec && rec.data && rec.data.ans) || {}, notes: d.notes || (rec && rec.data && rec.data.notes) || {},
+      claimant: ov.claimant ?? reg.claimant ?? "", title: ov.title ?? reg.title ?? "", lot: ov.lot ?? reg.lot ?? "", verifier: d.verifier || "" };
   });
   return { list, pulledAt: s.pulledAt || "", lastSync: s.lastSync || "", pending: Object.keys(queue).length, sample: false };
 }
@@ -281,52 +291,63 @@ function sampleDesk() {
     if (s.status === "Compliance") s.decided = isoOf(day + 14);
     if (rnd() < .25 && k < 2) s.statusDate = ""; // some field statuses have no date, as in the trackers
     s.area = rnd() < .04 ? null : Math.round((0.3 + rnd() * rnd() * 12) * 10000) / 10000; // a few with no area, as in the register
+    // Made-up attachment marks for SRs that reached DARPO, so the attachments pie has something to show
+    s.route = rnd() < .5 ? "DENR" : "LRA"; s.ans = {}; s.notes = {}; s.claimant = "SAMPLE CLAIMANT " + i; s.title = "T-" + (1000 + i); s.lot = String(1 + i % 90);
+    if (k >= 2 && rnd() < .85) { const a = s.ans[s.route] = {}, n = s.notes[s.route] = {};
+      docList(s.route).forEach(d => { const q = rnd(); a[d.key] = d.asNeeded ? (q < .7 ? "na" : "present") : q < .12 ? "missing" : q < .2 && k === 2 ? undefined : "present";
+        if (a[d.key] === "missing") n[d.key] = ["REPRINT", "For sign", "No copy", ""][Math.floor(rnd() * 4)]; }); }
     list.push(place(s));
   }
   return { list, pulledAt: "", lastSync: "", pending: 0, sample: true };
 }
 
-/* ---------- Weekly series (weeks run Monday to Sunday) ----------
-   The SR Desk keeps an SR's current status and a few dates, not its full history. The status at a week's end is rebuilt from the dates it has:
-   received at DARPO = SR AT DARPO; received by RPMO, or endorsed (decided and now past DARPO) = SR RECEIVED BY RPMO; status date = current status.
-   Before an SR's first dated step it is not counted. An SR with no dated step at all is in "Survey status now" only. */
-const mondayOf = n => n - ((new Date(n * 86400000).getUTCDay() + 6) % 7);
-const RPMO = "SR RECEIVED BY RPMO";
+/* ---------- Status keys ---------- */
 const HA = "\u0000ha"; // suffix of the area key next to each status's count
 const statusOf = s => s.survey || NOT_SET;
-function steps(s) {
-  const ev = [], add = (d, st) => { if (isIso(d)) ev.push([dayNum(d), st]); };
-  const past = SURVEYS.indexOf(s.survey) > SURVEYS.indexOf(AT_DARPO);
-  add(s.received, AT_DARPO);
-  if (past) add(s.rpmoReceived || (s.status !== "Compliance" ? s.decided : ""), RPMO);
-  add(s.statusDate, statusOf(s));
-  return ev.sort((a, b) => a[0] - b[0] || SURVEYS.indexOf(a[1]) - SURVEYS.indexOf(b[1]));
+/* ---------- Attachments (the SR Desk's "Attachments" tab) ----------
+   Document lists: the same as CL[route].docGroups in sr-desk.html, and keyed the same way ("d<group>.<item>"); change both together.
+   Marks: "present", "missing", "na"; notes: the verifier's remark on a document. */
+const DOC_GROUPS = {
+  DENR: [{ items: ["Plan (w/ dry seal of GE)", "CARP Survey Profile", "PARPO/MARPO/GE Joint Certification", "Certification as to Award Limit",
+    "PHILARIS/ Verified copy of Title", "Field Notes Cover & GE Cert. duly notarized", "Field Notes Inside", "Transmittal of Survey Returns (3 copies)",
+    "Assume & Traverse Computation (Original & Duplicate Copy)", "Lot Data Computation (Original & Duplicate Copy)", "Reference Data", "Validated DLSD File",
+    "Order of Cancellation (if covered by approved subd. plan)", "Order of Rejection (if covered by unapproved subd. plan)",
+    "PARPO/GE Joint Certification (DAR Contract)", "Certificate of Instrument Registration pursuant to Section 22, DMC 2007-29"] }],
+  LRA: [{ items: ["Plan (in mylar or drafting film) duly signed and sealed by GE affiliated by LRA", "Certified True Copy of Title",
+    "Duly Notarized Field Notes (signed by MARPO/CARPO & PARPO) and Notarized Field Notes Cover available at Provincial GEP Offices",
+    "Lot Data Computation Original & Duplicate Copy (manual or computerized)", "Indorsement Letter from DAR SPLIT Operations"] },
+    { asNeeded: true, items: ["Cadastral Map/LDC/LDS", "Previous Approved Plan", "If title is TCT under CLOA or E. Patent submit trace back of title to determine mode of Original Title"] },
+    { items: ["CARP Survey Profile", "PARPO/MARPO /GE Joint Certification (2 copies)", "Certification as to Award Limit (2 copies)"] }]
+};
+function docList(route) { const out = []; (DOC_GROUPS[route] || []).forEach((g, gi) => g.items.forEach((t, i) => out.push({ key: `d${gi}.${i}`, text: t, asNeeded: !!g.asNeeded }))); return out; }
+// Same label as a missing document's finding on the SR Desk dashboard, so remark categories are shared with it.
+const missLabel = text => `Missing: ${text}`;
+const COMPLETE = "Complete", PARTLY = "Partly marked", UNCHECKED = "Attachments not marked yet";
+/* Each SR in srs: every document marked Missing counts it in that document's slice (an SR lacking two documents counts in both);
+   with none missing it is Complete (every required document marked Present or N/A), Partly marked, or not marked yet. */
+function attachStats(srs) {
+  const miss = {}, rem = {}, groups = { [COMPLETE]: [], [PARTLY]: [], [UNCHECKED]: [] };
+  srs.forEach(s => {
+    const docs = docList(s.route), a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {};
+    const marked = docs.filter(d => a[d.key]), missing = docs.filter(d => a[d.key] === "missing");
+    if (!docs.length || !marked.length) { groups[UNCHECKED].push(s); return; }
+    if (missing.length) { missing.forEach(d => { const l = missLabel(d.text); (miss[l] = miss[l] || []).push(s);
+      (rem[l] = rem[l] || {})[s.seq] = String(nt[d.key] || "").trim() || "Missing (no remark)"; }); return; }
+    groups[docs.every(d => d.asNeeded || a[d.key]) ? COMPLETE : PARTLY].push(s);
+  });
+  return { miss, rem, groups };
 }
-function build(desk, keys) {
-  const t = dayNum(todayIso()), L = desk.list;
-  const withSteps = L.map(s => ({ s, ev: steps(s) })).filter(o => o.ev.length);
-  const starts = withSteps.map(o => o.ev[0][0]);
-  const first = starts.length ? mondayOf(Math.min(...starts)) : mondayOf(t) - 7 * 11;
-  const rows = [];
-  for (let m = first; m <= mondayOf(t); m += 7) {
-    const end = Math.min(m + 6, t), r = { m, label: isoOf(m), partial: m + 6 > t, total: 0, totalHa: 0 };
-    keys.forEach(k => { r[k] = 0; r[k + HA] = 0; });
-    withSteps.forEach(({ s, ev }) => { let st = null; for (const e of ev) if (e[0] <= end) st = e[1];
-      if (st) { const k = keyOf(st, keys), ha = s.area || 0; r[k]++; r.total++; r[k + HA] += ha; r.totalHa += ha; } });
-    rows.push(r);
-  }
-  return { rows, dated: withSteps.length, total: L.length };
-}
+const RCAT_STORE = STORE + "-rcat"; // the SR Desk's remark categories (this device)
+const remKey = t => String(t || "").trim().replace(/\s+/g, " ").toLowerCase(); // same as sr-desk.html
+const loadRcats = () => { try { return JSON.parse(localStorage.getItem(RCAT_STORE)) || {}; } catch (e) { return {}; } };
+const saveRcats = r => { try { localStorage.setItem(RCAT_STORE, JSON.stringify(r)); } catch (e) {} };
 
-/* ---------- Pie chart (hand-drawn SVG donut, works offline): the mix of statuses at the end of one week ---------- */
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const shortDate = iso => { const [, mo, d] = iso.split("-"); return `${MON[+mo - 1]} ${+d}`; };
-const weekName = r => r.now ? "Now · every SR" : `Week of ${shortDate(r.label)}${r.partial ? " (so far)" : ""}`;
+/* ---------- Pie chart (hand-drawn SVG donut, works offline). A click on a slice, ring part or key row calls opt.onPick. ---------- */
 function pieChart(el, r, prev, opt) {
   const C = 150, R = 124, R0 = 76, RS0 = R + 5, RS1 = R + 19, id = el.id; // RS0-RS1: outer ring of sub-categories
   const sl = opt.series.map(s => ({ s, v: r[s.key] || 0 })).filter(o => o.v > 0);
   const sum = sl.reduce((a, o) => a + o.v, 0);
-  if (!sum) { el.innerHTML = `<p class="read" style="padding:40px 0;text-align:center">No SRs at the shown statuses at the end of this week.</p>`; return; }
+  if (!sum) { el.innerHTML = `<p class="read" style="padding:40px 0;text-align:center">${esc(opt.empty || "Nothing to draw.")}</p>`; return; }
   let a = 0; sl.forEach(o => { o.a0 = a; a += o.v / sum * 2 * Math.PI; o.a1 = a; o.mid = (o.a0 + o.a1) / 2; });
   const pt = (ang, rr) => (C + rr * Math.sin(ang)).toFixed(2) + "," + (C - rr * Math.cos(ang)).toFixed(2);
   const arc = (a0, a1, ro = R, ri = R0) => { a1 = Math.min(a1, a0 + 2 * Math.PI - 1e-4); const big = a1 - a0 > Math.PI ? 1 : 0;
@@ -345,17 +366,17 @@ function pieChart(el, r, prev, opt) {
     <circle cx="${C}" cy="${C}" r="${R0 - 9}" fill="url(#${id}-core)" stroke="var(--line)"/>
     <g class="${opt.spin ? "grow" : ""}" filter="url(#${id}-glow)">${sl.map((o, k) => `<path class="slice" data-k="${k}" d="${arc(o.a0, o.a1)}" fill="${o.s.color}" fill-opacity=".9" stroke="var(--surface)" stroke-width="2"/>`).join("")}
       ${subs.map(q => `<path class="sub-arc" data-s="${q.idx}" d="${arc(q.a0, q.a1, RS1, RS0)}" fill="${sl[q.parent].s.color}" fill-opacity="${shade(q)}" stroke="var(--surface)" stroke-width="1.5"/>`).join("")}</g>
-    <text class="c-v" x="${C}" y="${C + 2}" text-anchor="middle">${opt.num(sum)}</text>
+    <text class="c-v" x="${C}" y="${C + 2}" text-anchor="middle">${opt.center ?? opt.num(sum)}</text>
     <text class="c-l" x="${C}" y="${C + 22}" text-anchor="middle">${esc(opt.unit)}</text>
-    <text class="c-w" x="${C}" y="${C + 38}" text-anchor="middle">${r.now ? "now" : esc(shortDate(r.label)) + (r.partial ? " · so far" : "")}</text>`;
-  const list = `<div class="pie-list"><div class="pr hd"><span></span><span>Status</span><span>${esc(opt.unit)}</span><span>Share</span><span>${prev ? "vs wk before" : ""}</span></div>` +
+    <text class="c-w" x="${C}" y="${C + 38}" text-anchor="middle">${esc(opt.cw ?? "now")}</text>`;
+  const list = `<div class="pie-list"><div class="pr hd"><span></span><span>${esc(opt.col || "Status")}</span><span>${esc(opt.unit)}</span><span>Share</span><span></span></div>` +
     sl.map((o, k) => { const d = prev ? o.v - (prev[o.s.key] || 0) : null;
       return `<div class="pr" data-k="${k}" title="${esc(o.s.status)}"><i class="sw" style="background:${o.s.color};color:${o.s.color}"></i><span class="nm">${esc(o.s.name)}</span>
         <span class="n">${opt.num(o.v)}</span><span class="p">${pct(o.v)}</span><span>${d == null ? "" : `<span class="delta flat">${sign(d)}</span>`}</span></div>` +
         o.parts.map(q => `<div class="pr sub" data-s="${q.idx}" title="${esc(o.s.status)}: ${esc(q.name)}"><i class="sw" style="background:${o.s.color};color:${o.s.color};opacity:${shade(q)}"></i><span class="nm">${esc(q.name)}</span>
         <span class="n">${opt.num(q.v)}</span><span class="p">${Math.round(q.of * 100)}%</span><span></span></div>`).join(""); }).join("") +
     (subs.length ? `<div class="sub-note">Outer ring and indented rows: ${esc(opt.subNote || "")}; their % is of that status</div>` : "") + `</div>`;
-  el.innerHTML = `<div class="pie"><svg viewBox="0 0 300 300" role="img" aria-label="${esc(opt.label)}, ${esc(weekName(r))}">${g}</svg>${list}</div><div class="tip"></div>`;
+  el.innerHTML = `<div class="pie"><svg viewBox="0 0 300 300" role="img" aria-label="${esc(opt.label)}">${g}</svg>${list}</div><div class="tip"></div>`;
   const tip = el.querySelector(".tip"), paths = [...el.querySelectorAll(".slice")], items = [...el.querySelectorAll(".pr[data-k]")];
   const arcs = [...el.querySelectorAll(".sub-arc")], subRows = [...el.querySelectorAll(".pr[data-s]")];
   const push = (node, mid, on) => { node.style.transform = on ? `translate(${(7 * Math.sin(mid)).toFixed(2)}px,${(-7 * Math.cos(mid)).toFixed(2)}px)` : ""; };
@@ -365,7 +386,7 @@ function pieChart(el, r, prev, opt) {
       a.style.opacity = k == null || on ? "" : ".25"; });
     items.forEach((it, j) => it.classList.toggle("on", j === k && sj == null)); subRows.forEach((it, j) => it.classList.toggle("on", j === sj)); };
   const tipAt = (k, ev, sj) => { const o = sl[k], st = o.s.status, sp = sj == null ? null : subs[sj];
-    tip.innerHTML = `<div class="t">${esc(weekName(r))}</div>` + (sp
+    tip.innerHTML = opt.tipFor && !sp ? opt.tipFor(o, pct(o.v)) : `<div class="t">${esc(opt.tipTitle || "")}</div>` + (sp
       ? `<div class="r"><span><i style="background:${o.s.color};opacity:${shade(sp)}"></i>${esc(o.s.name)} \u203a ${esc(sp.name)}</span><b>${pct(sp.v)}</b></div>
         <div class="r"><span>SRs</span><b>${sp.n.toLocaleString()}</b></div><div class="r"><span>Area</span><b>${fmtHa(sp.ha)} ha</b></div>
         <div class="r"><span>Of ${esc(o.s.name)}</span><b>${Math.round(sp.of * 100)}%</b></div>`
@@ -375,47 +396,34 @@ function pieChart(el, r, prev, opt) {
     const b = el.getBoundingClientRect(), tw = tip.offsetWidth || 170; let left = ev.clientX - b.left + 14;
     if (left + tw > el.clientWidth) left = Math.max(0, ev.clientX - b.left - tw - 14);
     tip.style.left = left + "px"; tip.style.top = Math.max(0, ev.clientY - b.top + 14) + "px"; tip.style.opacity = 1; };
+  // Picked slice (opt.pick: series key; opt.pickSub: sub-category name) stays pulled out; hovering away returns to it.
+  const pk = opt.pick == null ? null : sl.findIndex(o => o.s.status === opt.pick), pj = pk == null || pk < 0 ? null : subs.findIndex(q => q.parent === pk && q.name === opt.pickSub);
+  const rest = () => { if (pk != null && pk >= 0) focus(pk, pj >= 0 ? pj : null); else focus(null); };
+  items.forEach((it, j) => it.classList.toggle("pick", j === pk && !(pj >= 0))); subRows.forEach((it, j) => it.classList.toggle("pick", j === pj));
+  const pick = (k, sj) => { if (opt.onPick) opt.onPick(sl[k].s.status, sj == null ? null : subs[sj].name); };
   paths.forEach((p, k) => { p.addEventListener("pointermove", ev => { focus(k); tipAt(k, ev); });
-    p.addEventListener("pointerleave", () => { focus(null); tip.style.opacity = 0; }); });
-  items.forEach((it, k) => { it.addEventListener("pointerenter", () => focus(k)); it.addEventListener("pointerleave", () => focus(null)); });
+    p.addEventListener("pointerleave", () => { rest(); tip.style.opacity = 0; }); p.addEventListener("click", () => pick(k)); });
+  items.forEach((it, k) => { it.addEventListener("pointerenter", () => focus(k)); it.addEventListener("pointerleave", rest); it.addEventListener("click", () => pick(k)); });
   arcs.forEach((a, j) => { const k = subs[j].parent; a.addEventListener("pointermove", ev => { focus(k, j); tipAt(k, ev, j); });
-    a.addEventListener("pointerleave", () => { focus(null); tip.style.opacity = 0; }); });
-  subRows.forEach((it, j) => { const k = subs[j].parent; it.addEventListener("pointerenter", () => focus(k, j)); it.addEventListener("pointerleave", () => focus(null)); });
+    a.addEventListener("pointerleave", () => { rest(); tip.style.opacity = 0; }); a.addEventListener("click", () => pick(k, j)); });
+  subRows.forEach((it, j) => { const k = subs[j].parent; it.addEventListener("pointerenter", () => focus(k, j)); it.addEventListener("pointerleave", rest); it.addEventListener("click", () => pick(k, j)); });
+  rest();
 }
 
 /* ---------- Page ---------- */
-/* Filters: one value per field, "" = all. Each list shows how many SRs match the other filters. */
-const FILTERS = [["kind", "Kind of survey"], ["survey", "Survey status"], ["darmo", "DARMO"], ["marpo", "MARPO"]];
-const BLANK = "(blank)", NOT_SET = "Not set";
-const fval = (s, k) => k === "survey" ? (s.survey || NOT_SET) : (String(s[k] || "").trim() || BLANK);
-let ui = { weeks: 12, table: false, metric: "count", week: "", f: { kind: "", survey: "", darmo: "", marpo: "" } };
-try { if (localStorage.getItem("srdash-metric") === "area") ui.metric = "area"; } catch (e) {}
-const fmtHa = v => (Math.round(v * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-try { const f = JSON.parse(localStorage.getItem("srdash-filters")); if (f) FILTERS.forEach(([k]) => { if (typeof f[k] === "string") ui.f[k] = f[k]; }); } catch (e) {}
-const saveFilters = () => { try { localStorage.setItem("srdash-filters", JSON.stringify(ui.f)); } catch (e) {} };
-const matches = (s, skip) => FILTERS.every(([k]) => k === skip || !ui.f[k] || fval(s, k) === ui.f[k]);
-function renderFilters(list) {
-  const order = k => k === "survey" ? (a, b) => (SURVEYS.indexOf(a) + 1 || 99) - (SURVEYS.indexOf(b) + 1 || 99) : (a, b) => (a === BLANK) - (b === BLANK) || a.localeCompare(b);
-  const on = FILTERS.filter(([k]) => ui.f[k]);
-  $("filters").innerHTML = FILTERS.map(([k, name]) => {
-    const pool = list.filter(s => matches(s, k)), counts = {};
-    pool.forEach(s => { const v = fval(s, k); counts[v] = (counts[v] || 0) + 1; });
-    if (ui.f[k] && !counts[ui.f[k]]) counts[ui.f[k]] = 0; // keep the chosen value listed even when nothing matches now
-    const vals = Object.keys(counts).sort(order(k));
-    return `<label>${name}<select data-f="${k}" class="${ui.f[k] ? "on" : ""}"><option value="">All (${pool.length.toLocaleString()})</option>
-      ${vals.map(v => `<option value="${esc(v)}" ${v === ui.f[k] ? "selected" : ""}>${esc(v)} (${counts[v].toLocaleString()})</option>`).join("")}</select></label>`;
-  }).join("") + `<button class="btn" id="f-clear" ${on.length ? "" : "disabled"}>Clear</button>
-    <div class="chips">${on.map(([k, name]) => `<span class="chip">${name}: ${esc(ui.f[k])}<button data-x="${k}" aria-label="Remove ${name} filter">×</button></span>`).join("")}</div>`;
-  $("filters").querySelectorAll("select").forEach(el => el.onchange = () => { ui.f[el.dataset.f] = el.value; saveFilters(); render(); });
-  $("filters").querySelectorAll("[data-x]").forEach(b => b.onclick = () => { ui.f[b.dataset.x] = ""; saveFilters(); render(); });
-  $("f-clear").onclick = () => { FILTERS.forEach(([k]) => ui.f[k] = ""); saveFilters(); render(); };
-}
-try { const w = localStorage.getItem("srdash-range"); if (w !== null) ui.weeks = +w; } catch (e) {}
+/* One panel per kind of survey (2026-11-20, user asked): its survey status pie (now). A click on a status (or a DARPO status in the outer ring)
+   opens the attachments pie of that kind's SRs at that status; a click on a missing document opens its remark categories, shared with the SR Desk dashboard. */
+const NOT_SET = "Not set";
 const $ = id => document.getElementById(id);
-function sayTrend(a, b, upWord, downWord) { return b > a ? upWord : b < a ? downWord : "held steady"; }
+let ui = { metric: "count", pick: {}, att: {}, cat: {}, anim: null };
+try { if (localStorage.getItem("srdash-metric") === "area") ui.metric = "area"; } catch (e) {}
+try { const p = JSON.parse(localStorage.getItem("srdash-pick")); if (p && typeof p === "object") ui.pick = p; } catch (e) {}
+const savePick = () => { try { localStorage.setItem("srdash-pick", JSON.stringify(ui.pick)); } catch (e) {} };
+const fmtHa = v => (Math.round(v * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /* Colour follows the status, never its rank: the first seven statuses found in all of this PC's SRs (in survey order) get the seven
-   series colours, checked with the dataviz palette validator on this surface; any further statuses share "Other statuses" in grey. */
+   series colours, checked with the dataviz palette validator on this surface; any further statuses share "Other statuses" in grey.
+   Every kind's pie uses the same colours. */
 const PALETTE = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#0ca30c", "#9085e9"], OTHER = "Other statuses", OTHER_COLOR = "#8b9bb8";
 const short = st => st.replace("CONDUCTED INITIAL PULONG PULONG", "INITIAL PULONG-PULONG").replace(" FOR LRA APPROVAL", "").replace(" FOR APPROVAL", "");
 const sortStatus = (a, b) => (SURVEYS.indexOf(a) + 1 || 99) - (SURVEYS.indexOf(b) + 1 || 99);
@@ -429,102 +437,150 @@ function seriesFor(rawList) {
 const hidden = new Set();
 try { (JSON.parse(localStorage.getItem("srdash-hidden")) || []).forEach(k => hidden.add(k)); } catch (e) {}
 
+// Attachments pie: up to 7 missing documents by colour, the rest folded into one grey slice, then the SRs with nothing missing.
+const ATT_COLORS = ["#d95926", "#d55181", "#c98500", "#9085e9", "#3987e5", "#e66767", "#22c3e6"], ATT_MAX = 7, OTHER_MISS = "Other missing documents";
+const GROUP_COLOR = { [COMPLETE]: "#0ca30c", [PARTLY]: "#5d6c88", [UNCHECKED]: "#2c3a56" };
+const kindSort = (a, b) => a.localeCompare(b, undefined, { numeric: true });
+const bySeq = (a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq));
+const uniq = arrs => [...new Set([].concat(...arrs))];
+const lhTable = (srs, remOf) => `<div class="table-scroll"><table class="lh"><thead><tr><th>SeqNo</th><th>LO / Claimant</th>${remOf ? "<th>Remark</th>" : ""}<th>DARMO</th><th>Status</th></tr></thead><tbody>
+  ${srs.slice().sort(bySeq).map(s => `<tr><td class="mono">${esc(s.seq)}<div class="sub">${esc(s.title)}</div></td><td>${esc(s.claimant)}<div class="sub">Lot ${esc(s.lot)}</div></td>
+    ${remOf ? `<td>${esc(remOf(s))}</td>` : ""}<td>${esc(s.darmo)}</td><td>${esc(s.survey || NOT_SET)}${s.status ? `<div class="sub">${esc(s.status)}</div>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+let firstPaint = true;
+
 function render() {
-  const raw = readDesk() || sampleDesk(), desk = Object.assign({}, raw, { list: raw.list.filter(s => matches(s)) });
-  renderFilters(raw.list);
-  const filtered = FILTERS.some(([k]) => ui.f[k]);
-  const SER = seriesFor(raw.list), keys = SER.map(x => x.key);
-  const B = build(desk, keys);
-  const all = B.rows, rows = ui.weeks ? all.slice(-ui.weeks) : all;
-
-  $("live").classList.toggle("off", desk.sample);
-  $("src").innerHTML = desk.sample ? `Sample data · no SR Desk copy found on this PC${filtered ? ` · ${B.total} of ${raw.list.length} sample SRs match` : ""}`
-    : `${filtered ? `${B.total.toLocaleString()} of ${raw.list.length.toLocaleString()}` : B.total.toLocaleString()} SRs from this PC's SR Desk copy · register pulled ${esc(desk.pulledAt ? desk.pulledAt.replace("T", " ").slice(0, 16) : "—")}${desk.pending ? ` · ${desk.pending} change${desk.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
-  $("banner").innerHTML = desk.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Open the SR Verification Desk from this same place, connect it in Settings and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
-  if (filtered && !B.total) $("banner").innerHTML += `<div class="banner"><b>No SRs match these filters.</b> Change one or press Clear.</div>`;
-  document.querySelectorAll("#range button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.w === ui.weeks)));
-
-  // Now: every SR, every status (no folding: this is a list, not lines)
-  const AREA = ui.metric === "area";
+  const raw = readDesk() || sampleDesk(), list = raw.list, AREA = ui.metric === "area";
+  const SER = seriesFor(list);
+  $("live").classList.toggle("off", raw.sample);
+  $("src").innerHTML = raw.sample ? "Sample data · no SR Desk copy found on this PC"
+    : `${list.length.toLocaleString()} SRs from this PC's SR Desk copy · register pulled ${esc(raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : "—")}${raw.pending ? ` · ${raw.pending} change${raw.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
+  $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Open the SR Verification Desk from this same place, connect it in Settings and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
   document.querySelectorAll("#metric button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === ui.metric)));
-  const now = {}, nowHa = {}; desk.list.forEach(s => { const st = statusOf(s); now[st] = (now[st] || 0) + 1; nowHa[st] = (nowHa[st] || 0) + (s.area || 0); });
-  const totalHa = Object.values(nowHa).reduce((a, b) => a + b, 0), noArea = desk.list.filter(s => s.area == null).length;
-  const val = st => AREA ? nowHa[st] : now[st], sum = AREA ? totalHa : B.total;
-  const order = Object.keys(now).sort(sortStatus), max = Math.max(1e-9, ...order.map(val));
-  const colorOf = st => (SER.find(x => x.key === keyOf(st)) || {}).color || OTHER_COLOR;
-  $("now-total").innerHTML = `<b>${B.total.toLocaleString()}</b> SRs · <b>${fmtHa(totalHa)}</b> ha`;
-  $("r-now").innerHTML = (AREA ? "Total area (hectares, Area Validated) of the SRs at each survey status today." : "How many SRs are at each survey status today.") +
-    ` Every SR is counted here.${noArea ? ` ${noArea.toLocaleString()} SR${noArea === 1 ? " has" : "s have"} no area in the register and add 0 ha.` : ""}`;
-  $("snap").innerHTML = order.length ? order.map(st => `<div class="row" title="${esc(st)}"><div class="name"><i class="sw" style="background:${colorOf(st)};color:${colorOf(st)}"></i><span>${esc(st)}</span></div>
-      <div class="track"><i style="width:${val(st) / max * 100}%;background:${colorOf(st)};color:${colorOf(st)}"></i></div>
-      <div class="n">${AREA ? `${fmtHa(nowHa[st])} ha <span class="alt">· ${now[st].toLocaleString()} SRs</span>` : `${now[st].toLocaleString()} SRs <span class="alt">· ${fmtHa(nowHa[st])} ha</span>`}<small>${sum ? Math.round(val(st) / sum * 100) : 0}%</small></div></div>`).join("") : `<p class="read">No SRs.</p>`;
-
-  // Pie stops: each finished week (rebuilt from dates), then Now = exactly "Survey status now" (every SR, same grouping as the key)
-  const nowRow = { label: todayIso(), now: true, total: B.total, totalHa }; keys.forEach(k => { nowRow[k] = 0; nowRow[k + HA] = 0; });
-  Object.keys(now).forEach(st => { const k = keyOf(st); nowRow[k] += now[st]; nowRow[k + HA] += nowHa[st]; });
-  const stops = rows.filter(r => !r.partial).concat(nowRow);
-  // DARPO status of the SRs now at SR AT DARPO: the sub-categories on the Now pie (the SR Desk keeps no history of it, so not on past weeks)
-  const DARPO_SUBS = ["Pending", "Ongoing Verification", "Compliance"], darpo = {};
-  desk.list.forEach(s => { if (statusOf(s) !== AT_DARPO) return; const k = s.status || NOT_SET, o = darpo[k] || (darpo[k] = { n: 0, ha: 0 }); o.n++; o.ha += s.area || 0; });
-  const subRank = k => DARPO_SUBS.includes(k) ? DARPO_SUBS.indexOf(k) : 3;
-  const darpoParts = Object.keys(darpo).sort((p, q) => subRank(p) - subRank(q))
-    .map(k => ({ name: k, rank: subRank(k), n: darpo[k].n, ha: darpo[k].ha, v: AREA ? darpo[k].ha : darpo[k].n }));
-  // Week by week
-  const SK = x => AREA ? x.key + HA : x.key; // the value this chart draws for a status
-  const show = SER.filter(x => !hidden.has(x.key) && stops.some(r => r[x.key])).map(x => Object.assign({}, x, { key: SK(x), status: x.key }));
-  $("h-status").textContent = AREA ? "Mix of survey statuses by area, week by week (ha)" : "Mix of survey statuses, week by week";
-  let wi = stops.findIndex(r => !r.now && r.label === ui.week); if (wi < 0) wi = stops.length - 1; // "" = Now
-  curRows = stops;
-  $("legend").innerHTML = SER.filter(x => nowRow[x.key] || all.some(r => r[x.key])).map(x => `<button aria-pressed="${!hidden.has(x.key)}" data-k="${esc(x.key)}" title="${esc(x.members ? x.members.join(", ") : x.key)}">
-      <i style="background:${x.color};color:${x.color}"></i>${esc(x.name)}</button>`).join("");
-  $("legend").querySelectorAll("button").forEach(b => b.onclick = () => { const k = b.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
-    try { localStorage.setItem("srdash-hidden", JSON.stringify([...hidden])); } catch (e) {} render(); });
-  $("cover").innerHTML = stops[wi].now ? `pie shows all <b>${B.total.toLocaleString()}</b> SRs, as in Survey status now` : `past weeks cover <b>${B.dated.toLocaleString()}</b> of ${B.total.toLocaleString()} SRs`;
-  const z = stops[wi], a = z.now ? null : stops[wi - 1], f = v => AREA ? fmtHa(v) + " ha" : v, zSum = show.reduce((t, x) => t + (z[x.key] || 0), 0);
-  const top = show.slice().sort((p, q) => z[q.key] - z[p.key]).filter(x => z[x.key])[0];
-  $("r-status").innerHTML = !B.total ? "No SRs, so there is nothing to draw." :
-    `Each slice is ${AREA ? "the share of area (ha) of the SRs" : "the share of SRs"} at that status; slices add up to the shown statuses. The pie opens on <b>Now</b>, the same figures as Survey status now; there the outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance). Move the slider back to see the mix at the end of past weeks: a slice that <b>grows</b> week to week means SRs are piling up at that step.` +
-    (top ? ` ${z.now ? "Now" : `At the end of the ${esc(weekName(z).replace("Week", "week"))}`} the biggest is <b>${esc(top.name)}</b> with <b>${f(z[top.key])}</b> (${zSum ? Math.round(z[top.key] / zSum * 100) : 0}%)${a ? `, ${sayTrend(a[top.key], z[top.key], "up", "down")} from ${f(a[top.key])} the week before` : ""}.` : "") +
-    ` Click a status in the key to hide or show it.`;
-  $("wk-row").hidden = !show.length || stops.length < 2;
-  $("wk").max = stops.length - 1; $("wk").value = wi; $("wk-name").textContent = weekName(z);
-  $("wk-prev").disabled = wi <= 0; $("wk-next").disabled = wi >= stops.length - 1;
-  if (show.length) pieChart($("c-status"), z, a, { label: AREA ? "Share of area at each survey status, hectares" : "Share of SRs at each survey status",
-    spin: !weekStep, series: show, subNote: "DARPO status of the SRs at DARPO",
-    subs: z.now && keyOf(AT_DARPO) === AT_DARPO ? { [AREA ? AT_DARPO + HA : AT_DARPO]: darpoParts } : null, num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs",
-    extra: r => `<div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>${r.now ? "All SRs" : "All dated SRs"}</span><b>${r.total} · ${fmtHa(r.totalHa)} ha</b></div>` });
-  else $("c-status").innerHTML = `<p class="read" style="padding:40px 0;text-align:center">${B.total ? "Every status is hidden. Click one in the key to show it." : "Nothing to draw."}</p>`;
-
-  $("table-wrap").hidden = !ui.table; $("tbl-btn").textContent = ui.table ? "Hide table" : "Show table"; $("tbl-btn").setAttribute("aria-expanded", String(ui.table));
-  const cols = SER.filter(x => all.some(r => r[x.key]));
-  $("h-table").textContent = "Weekly figures: SRs and area (ha) at each status, end of week";
-  if (ui.table) $("table").innerHTML = `<table><thead><tr><th>Week of</th>${cols.map(x => `<th title="${esc(x.key)}" colspan="2">${esc(x.name)}</th>`).join("")}<th colspan="2">All dated</th></tr>
-    <tr><th></th>${cols.map(() => "<th>SRs</th><th>ha</th>").join("")}<th>SRs</th><th>ha</th></tr></thead><tbody>
-    ${rows.slice().reverse().map(r => `<tr><td>${r.label}${r.partial ? " (so far)" : ""}</td>${cols.map(x => `<td>${r[x.key]}</td><td>${fmtHa(r[x.key + HA])}</td>`).join("")}<td>${r.total}</td><td>${fmtHa(r.totalHa)}</td></tr>`).join("")}</tbody></table>`;
-
-  const undated = B.total - B.dated;
+  const kinds = [...new Set(list.map(s => s.kind || NOT_SET))].sort(kindSort), rcats = loadRcats();
+  $("kinds").innerHTML = kinds.map((k, i) => `<section class="panel" id="kp-${i}"><div class="chart-head"><div><h2><span class="k">${esc(k)}</span> · survey statuses${AREA ? " by area (ha)" : ""}</h2></div><div class="cover" id="kc-${i}"></div></div>
+    <div class="legend big" id="kl-${i}" aria-label="Show or hide a status"></div><div class="chart" id="kpie-${i}"></div><p class="hint" id="kh-${i}"></p><div class="att" id="katt-${i}"></div></section>`).join("")
+    || `<div class="panel"><p class="read">No SRs.</p></div>`;
+  kinds.forEach((k, i) => renderKind(k, i, list.filter(s => (s.kind || NOT_SET) === k), SER, AREA, rcats));
+  firstPaint = false;
+  const noArea = list.filter(s => s.area == null).length;
   $("notes").innerHTML = `<b>How these are counted</b><ul>
-    <li><b>Survey status now</b> counts every SR at its current survey status, from this PC's SR Desk copy.</li>
+    <li>One pie per <b>kind of survey</b>: every SR of that kind at its current survey status, from this PC's SR Desk copy. The outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance).</li>
     <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. Switch between <b>SRs</b> and <b>Area (ha)</b> at the top.</li>
-    <li>The SR Desk keeps each SR's current status and a few dates, not a full history. The week-by-week pie is rebuilt from those dates: the date received at DARPO, the date received by RPMO (or the date endorsed to RPMO), and the date of the current status. Before an SR's first dated step it is not counted.</li>
-    <li>${undated.toLocaleString()} SR${undated === 1 ? " has" : "s have"} no dated step at all, so ${undated === 1 ? "it is" : "they are"} in "Survey status now" but not in the pie's past weeks (they are in its Now). A step with no recorded date does not show: the SR stays counted at its last dated step until its next dated one. For example, an SR now at "ASP FROM LMS RECEIVED BY RPMO" counts as "SR RECEIVED BY RPMO" until that ASP date, even though it was transmitted to LMS in between.</li>
-    <li>The pie opens on <b>Now</b>: every SR at its current survey status, the same figures as Survey status now. Earlier stops on the slider are finished weeks (Monday to Sunday), rebuilt from dates; the week in progress is covered by Now. The table still lists the week in progress.</li>
-    <li>The outer ring on <b>Now</b> splits SR AT DARPO by its <b>DARPO status</b> (Pending, Ongoing Verification, Compliance; "Not set" if blank). Past weeks have no ring: the SR Desk keeps only each SR's current DARPO status. No other survey status has a sub-status in the SR Desk.</li>
-    <li>Filters use each SR's <b>current</b> kind, survey status, DARMO and MARPO. So "Survey status: SR RECEIVED BY RPMO" shows the past weeks of the SRs now at RPMO, including the weeks they were still at DARPO. An Admin's corrections in the SR Desk are used.</li>
-    <li>Read-only. Nothing on this page is written to the SR Desk or the Sheet.</li></ul>`;
+    <li>Click a status (or a DARPO status in the outer ring) to open the <b>attachments</b> of those SRs, from the SR Desk's Attachments tab. Each missing document counts every SR that lacks it, so an SR lacking two documents is in both slices. An SR with nothing missing is <b>Complete</b> (every required document marked Present or N/A), <b>Partly marked</b>, or <b>not marked yet</b>.</li>
+    <li>Click a missing document to sort its remarks into <b>categories</b>. They are the same categories as on the SR Desk dashboard (saved on this device only); reopen the SR Desk to see changes made here.</li>
+    <li>Read-only for SRs: nothing on this page is written to the SR Desk or the Sheet.</li></ul>`;
 }
 
-document.querySelectorAll("#range button").forEach(b => b.onclick = () => { ui.weeks = +b.dataset.w; try { localStorage.setItem("srdash-range", ui.weeks); } catch (e) {} render(); });
-let curRows = [];
-let weekStep = false; // stepping through weeks redraws without the opening spin
-const pickWeek = i => { i = Math.max(0, Math.min(curRows.length - 1, i)); ui.week = i === curRows.length - 1 ? "" : curRows[i].label; weekStep = true; render(); weekStep = false; };
-$("wk").oninput = () => pickWeek(+$("wk").value);
-$("wk-prev").onclick = () => pickWeek(+$("wk").value - 1);
-$("wk-next").onclick = () => pickWeek(+$("wk").value + 1);
-$("tbl-btn").onclick = () => { ui.table = !ui.table; render(); };
+function renderKind(kind, i, srs, SER, AREA, rcats) {
+  const r = { now: true, total: srs.length, totalHa: 0 }; SER.forEach(x => { r[x.key] = 0; r[x.key + HA] = 0; });
+  srs.forEach(s => { const k = keyOf(statusOf(s)); r[k]++; r[k + HA] += s.area || 0; r.totalHa += s.area || 0; });
+  $("kc-" + i).innerHTML = `pie shows all <b>${srs.length.toLocaleString()}</b> SRs · <b>${fmtHa(r.totalHa)}</b> ha`;
+  const present = SER.filter(x => r[x.key]);
+  $("kl-" + i).innerHTML = present.map(x => `<button aria-pressed="${!hidden.has(x.key)}" data-k="${esc(x.key)}" title="${esc(x.members ? x.members.join(", ") : x.key)}"><i style="background:${x.color};color:${x.color}"></i>${esc(x.name)}</button>`).join("");
+  $("kl-" + i).querySelectorAll("button").forEach(b => b.onclick = () => { const k = b.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+    try { localStorage.setItem("srdash-hidden", JSON.stringify([...hidden])); } catch (e) {} render(); });
+  const show = present.filter(x => !hidden.has(x.key)).map(x => Object.assign({}, x, { key: AREA ? x.key + HA : x.key, status: x.key }));
+  const DARPO_SUBS = ["Pending", "Ongoing Verification", "Compliance"], darpo = {};
+  srs.forEach(s => { if (statusOf(s) !== AT_DARPO) return; const k = s.status || NOT_SET, o = darpo[k] || (darpo[k] = { n: 0, ha: 0 }); o.n++; o.ha += s.area || 0; });
+  const subRank = k => DARPO_SUBS.includes(k) ? DARPO_SUBS.indexOf(k) : 3;
+  const parts = Object.keys(darpo).sort((p, q) => subRank(p) - subRank(q)).map(k => ({ name: k, rank: subRank(k), n: darpo[k].n, ha: darpo[k].ha, v: AREA ? darpo[k].ha : darpo[k].n }));
+  let pick = ui.pick[kind];
+  if (pick && !show.some(x => x.status === pick.st)) pick = null;
+  const el = $("kpie-" + i);
+  if (!show.length) el.innerHTML = `<p class="read" style="padding:40px 0;text-align:center">Every status is hidden. Click one in the key to show it.</p>`;
+  else pieChart(el, r, null, { label: `${kind}: ${AREA ? "share of area at each survey status, hectares" : "share of SRs at each survey status"}`, spin: firstPaint, series: show,
+    subNote: "DARPO status of the SRs at DARPO", subs: keyOf(AT_DARPO) === AT_DARPO ? { [AREA ? AT_DARPO + HA : AT_DARPO]: parts } : null,
+    num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs", cw: kind, tipTitle: kind, pick: pick && pick.st, pickSub: pick && pick.sub,
+    onPick: (st, sub) => { const cur = ui.pick[kind]; ui.pick[kind] = cur && cur.st === st && (cur.sub || null) === (sub || null) ? null : { st, sub: sub || null };
+      delete ui.att[kind]; delete ui.cat[kind]; savePick(); ui.anim = ui.pick[kind] ? kind : null; render(); ui.anim = null;
+      const a = $("katt-" + i); if (a && ui.pick[kind]) a.scrollIntoView({ block: "nearest", behavior: "smooth" }); },
+    extra: z => `<div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>All ${esc(kind)} SRs</span><b>${z.total} · ${fmtHa(z.totalHa)} ha</b></div>` });
+  $("kh-" + i).textContent = pick ? "" : "Click a status to see the attachments of its SRs: what each one lacks and which are complete.";
+  if (!pick) { $("katt-" + i).innerHTML = ""; return; }
+  renderAtt(kind, i, srs, pick, rcats);
+}
+
+function renderAtt(kind, i, srs, pick, rcats) {
+  const set = srs.filter(s => keyOf(statusOf(s)) === pick.st && (!pick.sub || (s.status || NOT_SET) === pick.sub));
+  const name = (pick.st === OTHER ? "Other statuses" : pick.st) + (pick.sub ? " › " + pick.sub : "");
+  const { miss, rem, groups } = attachStats(set);
+  const docs = Object.keys(miss).sort((a, b) => miss[b].length - miss[a].length || a.localeCompare(b));
+  const top = docs.length > ATT_MAX + 1 ? docs.slice(0, ATT_MAX) : docs, folded = docs.slice(top.length);
+  const series = top.map((l, j) => ({ key: l, status: l, name: l.replace(/^Missing: /, ""), color: ATT_COLORS[j % ATT_COLORS.length], srs: miss[l] }))
+    .concat(folded.length ? [{ key: OTHER_MISS, status: OTHER_MISS, name: `${OTHER_MISS} (${folded.length})`, color: OTHER_COLOR, srs: uniq(folded.map(l => miss[l])) }] : [])
+    .concat([COMPLETE, PARTLY, UNCHECKED].map(g => ({ key: g, status: g, name: g, color: GROUP_COLOR[g], srs: groups[g] })));
+  const row = {}; series.forEach(x => { row[x.key] = x.srs.length; });
+  const lacking = uniq(Object.values(miss)).length;
+  let a = ui.att[kind]; if (a && !docs.includes(a) && !series.some(x => x.key === a)) a = ui.att[kind] = null;
+  const box = $("katt-" + i);
+  box.innerHTML = `<div class="${ui.anim === kind ? "att-in" : ""}"><div class="chart-head"><div><h3>Attachments · ${esc(kind)} · ${esc(name)}</h3>
+      <p class="read"><b>${set.length}</b> SR${set.length === 1 ? "" : "s"}: <b>${lacking}</b> lacking at least one document, <b>${groups[COMPLETE].length}</b> complete, ${groups[PARTLY].length} partly marked, ${groups[UNCHECKED].length} not marked yet. Share is of the slice totals: an SR lacking two documents counts in both. Click a missing document to sort its remarks into categories; click Complete or another group to list its SRs.</p></div>
+      <button class="btn" id="kx-${i}">Close</button></div>
+    <div class="chart" id="kap-${i}"></div><div id="kd-${i}"></div></div>`;
+  $("kx-" + i).onclick = () => { delete ui.pick[kind]; delete ui.att[kind]; delete ui.cat[kind]; savePick(); render(); };
+  pieChart($("kap-" + i), row, null, { label: `Attachments of ${kind} SRs at ${name}`, spin: ui.anim === kind, series, num: v => v.toLocaleString(), unit: "SRs", col: "Attachment", center: set.length,
+    cw: "at this status", empty: "No SRs at this status.", pick: a ? (folded.includes(a) ? OTHER_MISS : a) : null,
+    tipFor: (o, p) => `<div class="t">${esc(name)}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${p}</b></div><div class="r"><span>SRs</span><b>${o.v}</b></div>`,
+    onPick: st => { ui.att[kind] = ui.att[kind] === st ? null : st; delete ui.cat[kind]; render(); } });
+  const d = $("kd-" + i);
+  if (!a) return;
+  if (a === OTHER_MISS) {
+    d.innerHTML = `<div class="cat att-in"><h3>${OTHER_MISS}</h3><p class="read">Pick one to sort its remarks.</p><div class="legend">${folded.map(l => `<button data-doc="${esc(l)}"><i style="background:${OTHER_COLOR}"></i>${esc(l.replace(/^Missing: /, ""))} · ${miss[l].length}</button>`).join("")}</div></div>`;
+    d.querySelectorAll("[data-doc]").forEach(b => b.onclick = () => { ui.att[kind] = b.dataset.doc; delete ui.cat[kind]; render(); });
+    return;
+  }
+  if (!miss[a]) { // Complete, Partly marked or not marked yet: list the SRs
+    const g = series.find(x => x.key === a);
+    d.innerHTML = `<div class="cat att-in"><div class="chart-head"><h3>${esc(a)} · ${g.srs.length} SR${g.srs.length === 1 ? "" : "s"}</h3></div>${g.srs.length ? lhTable(g.srs) : `<p class="read">None.</p>`}</div>`;
+    return;
+  }
+  catPanel(kind, i, a, miss[a], rem[a] || {}, rcats, d);
+}
+
+/* Remark categories for one missing document: same storage and keys as the SR Desk dashboard (rcats[label][category] = [remark keys]). */
+function catPanel(kind, i, label, srs, rm, rcats, d) {
+  const distinct = new Map(); // remark key -> {text, srs}
+  srs.forEach(s => { const t = rm[s.seq] || "", k = remKey(t); const o = distinct.get(k) || { text: t, srs: [] }; o.srs.push(s); distinct.set(k, o); });
+  const cats = rcats[label] || {}, catNames = Object.keys(cats), catOf = {};
+  catNames.forEach(c => cats[c].forEach(k => { catOf[k] = c; }));
+  const cs = catNames.map((c, j) => ({ key: c, status: c, name: c, color: PALETTE[j % PALETTE.length], n: cats[c].filter(k => distinct.has(k)).length,
+    srs: uniq(cats[c].filter(k => distinct.has(k)).map(k => distinct.get(k).srs)) })).filter(x => x.srs.length);
+  const inCat = uniq(cs.map(x => x.srs)).length, row = {}; cs.forEach(x => { row[x.key] = x.srs.length; });
+  const remList = [...distinct.entries()].filter(([k]) => !catOf[k]).sort((p, q) => q[1].srs.length - p[1].srs.length || p[1].text.localeCompare(q[1].text));
+  let pc = ui.cat[kind]; if (pc && !cs.some(x => x.key === pc)) pc = ui.cat[kind] = null;
+  const picked = pc ? cs.find(x => x.key === pc).srs : [];
+  d.innerHTML = `<div class="cat att-in"><div class="chart-head"><div><h3>Remark categories</h3><p class="read">${esc(label)} · ${srs.length} SR${srs.length === 1 ? "" : "s"}</p></div><button class="btn" id="kcx-${i}">Close</button></div>
+    ${cs.length ? `<div class="chart" id="kcp-${i}"></div><p class="read">${srs.length - inCat} of ${srs.length} SRs not in a category yet. Click a category to list its SRs.</p>`
+      : `<div class="rem-empty">No categories yet for this document. Tick the remarks that mean the same thing, name the category, then press Combine. The pie starts with your first category.</div>`}
+    ${picked.length ? `<h3 style="margin-top:10px">${picked.length} SR${picked.length === 1 ? "" : "s"} in ${esc(pc)}</h3>${lhTable(picked, s => rm[s.seq] || "")}` : ""}
+    <div class="cat-edit">
+      ${catNames.length ? `<div class="chips">${catNames.map((c, j) => `<span class="chip">${esc(c)} <b>${cats[c].length}</b><button data-uncat="${j}" title="Delete this category; its remarks go back to the list">Ungroup</button></span>`).join("")}</div>` : ""}
+      <div class="cat-row"><input id="kq-${i}" type="search" placeholder="Search remarks" aria-label="Search remarks" autocomplete="off"><span class="cover" id="kqn-${i}">${remList.length} distinct remark${remList.length === 1 ? "" : "s"}</span></div>
+      <div class="cat-pick">${remList.length ? "" : `<div class="read" style="padding:8px">Every remark is in a category. Ungroup one to edit it.</div>`}${remList.map(([k, o], j) => `<label><input type="checkbox" data-j="${j}"><span>${esc(o.text || "(blank)")}</span><span class="cover">${o.srs.length}</span></label>`).join("")}</div>
+      <div class="cat-row"><input id="kn-${i}" list="kns-${i}" maxlength="60" placeholder="Category name, e.g. Not notarized" aria-label="Category name"><datalist id="kns-${i}">${catNames.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+        <button class="btn primary" id="kadd-${i}">Combine</button></div>
+      <p class="read" style="margin:0">Typing an existing name adds to it. Categories are saved on this device only, shared with the SR Desk dashboard.</p></div></div>`;
+  $("kcx-" + i).onclick = () => { ui.att[kind] = null; delete ui.cat[kind]; render(); };
+  if (cs.length) pieChart($("kcp-" + i), row, null, { label: `Remark categories of ${label}`, spin: true, series: cs, num: v => v.toLocaleString(), unit: "SRs", col: "Category", center: inCat, cw: "in a category",
+    pick: pc, tipFor: (o, p) => `<div class="t">${esc(label)}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${p}</b></div><div class="r"><span>SRs</span><b>${o.v}</b></div><div class="r"><span>Remarks</span><b>${o.s.n}</b></div>`,
+    onPick: st => { ui.cat[kind] = ui.cat[kind] === st ? null : st; render(); } });
+  d.querySelectorAll("[data-uncat]").forEach(b => b.onclick = () => { const r = loadRcats(), c = catNames[+b.dataset.uncat]; if (r[label]) { delete r[label][c]; if (!Object.keys(r[label]).length) delete r[label]; } saveRcats(r); render(); });
+  const q = $("kq-" + i); q.oninput = () => { const words = q.value.toLowerCase().split(/\s+/).filter(Boolean), rows = [...d.querySelectorAll(".cat-pick label")];
+    let n = 0; rows.forEach(x => { const hit = words.every(w => x.textContent.toLowerCase().includes(w)); x.hidden = !hit; n += hit; });
+    const ticked = rows.filter(x => x.querySelector("input").checked).length;
+    $("kqn-" + i).textContent = (words.length ? `${n} of ${rows.length} shown` : `${rows.length} distinct remark${rows.length === 1 ? "" : "s"}`) + (ticked ? ` · ${ticked} ticked` : ""); };
+  $("kadd-" + i).onclick = () => {
+    const nm = $("kn-" + i).value.trim().replace(/\s+/g, " "), picks = [...d.querySelectorAll(".cat-pick input:checked")].map(c => remList[+c.dataset.j][0]);
+    if (!picks.length) { $("kqn-" + i).textContent = "Tick at least one remark"; return; }
+    if (!nm) { $("kn-" + i).focus(); $("kn-" + i).placeholder = "Type a name for the category"; return; }
+    const r = loadRcats(), c = r[label] = r[label] || {}; // read fresh, so a category made in the SR Desk meanwhile is kept
+    Object.keys(c).forEach(x => { c[x] = c[x].filter(k => !picks.includes(k)); if (!c[x].length) delete c[x]; });
+    c[nm] = (c[nm] || []).concat(picks); saveRcats(r); render();
+  };
+}
+
 document.querySelectorAll("#metric button").forEach(b => b.onclick = () => { ui.metric = b.dataset.m; try { localStorage.setItem("srdash-metric", ui.metric); } catch (e) {} render(); });
-let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
-addEventListener("storage", e => { if (e.key === STORE) render(); }); // the SR Desk synced in another tab
+addEventListener("storage", e => { if (e.key === STORE || e.key === RCAT_STORE) render(); }); // the SR Desk synced, or changed categories, in another tab
 render();
 </script>
 <script id="aw-tt-loader">/* Sort, filter and search on every table (fx/table-tools.js). The panel also adds it; it runs once. Skipped on the Apps Script copies, which have no fx folder. */(function(){if(/google/.test(location.hostname))return;var s=document.createElement("script");s.src="fx/table-tools.js";document.head.appendChild(s);})();</script>
