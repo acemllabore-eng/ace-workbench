@@ -46,6 +46,7 @@ button, input, select { font: inherit; color: inherit; }
 .notice .wrap { padding-block: 6px; }
 
 main .wrap { padding-block: var(--gap-l) 48px; display: grid; gap: var(--gap-l); }
+#reg-results { display: grid; gap: var(--gap-l); min-width: 0; }
 
 /* Controls */
 .btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 14px; border-radius: var(--radius); cursor: pointer; font-weight: 500; white-space: nowrap; }
@@ -1448,12 +1449,28 @@ async function syncNow(opts = {}) {
     state.lastError = String(e.message || e); save();
   } finally {
     syncing = false; renderSyncbar();
-    if (!ui.open) { if (ui.view !== "settings") render(); }
-    else if (state.conflicts[ui.open] || !state.queue[ui.open]) { const el = document.querySelector(".dw-body"), y = el ? el.scrollTop : 0;
-      if (!document.activeElement || !document.activeElement.matches("[data-note]")) { openSR(ui.open); const n = document.querySelector(".dw-body"); if (n) n.scrollTop = y; } else refreshOpenDrawerMeta(); }
-    else refreshOpenDrawerMeta();
+    redrawAfterSync();
     if (Object.keys(state.queue).length && state.lastError) scheduleSync(60000);
   }
+}
+/* A redraw replaces the text box being typed in: the cursor goes and a phone closes its keyboard.
+   So while someone types, the redraw waits until they leave the box (or every box), then runs once. */
+function isTyping() {
+  const a = document.activeElement;
+  return !!a && a !== document.body && (a.isContentEditable || a.matches("textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=file])"));
+}
+let redrawWaiting = false;
+function redrawAfterSync() {
+  if (isTyping()) {
+    if (ui.open) refreshOpenDrawerMeta(); // counts and the next-step line only; no box is touched
+    if (!redrawWaiting) { redrawWaiting = true; // checked each second: a focusout does not fire in every case (window switch, box removed)
+      const wait = () => { if (isTyping()) { setTimeout(wait, 1000); return; } redrawWaiting = false; redrawAfterSync(); };
+      setTimeout(wait, 1000); }
+    return;
+  }
+  if (!ui.open) { if (ui.view !== "settings") render(); }
+  else if (state.conflicts[ui.open] || !state.queue[ui.open]) rerender(ui.open);
+  else refreshOpenDrawerMeta();
 }
 window.addEventListener("online", () => scheduleSync(500));
 window.addEventListener("beforeunload", e => { if (HOSTED && Object.keys(state.queue).length) { e.preventDefault(); e.returnValue = ""; } });
@@ -1472,7 +1489,7 @@ function renderSyncbar() {
     <span><span class="dot ${dot}"></span>${esc(msg)}</span>
     ${HOSTED && n && !syncing && state.lastError ? `<span style="color:var(--fail)"><b>${n} change${n > 1 ? "s" : ""} NOT saved to the Sheet.</b> Keep this page open: it retries every minute, or press Sync now.</span>`
       : `<span>${n ? `<b>${n}</b> change${n > 1 ? "s" : ""} waiting to sync` : "All changes synced"}</span>`}
-    ${c ? `<span style="color:var(--warn)"><b>${c}</b> need${c > 1 ? "" : "s"} attention</span>` : ""}
+    ${c ? `<button type="button" class="btn small no-print" id="go-attention" style="color:var(--warn)" title="${c > 1 ? "List the SRs that need attention" : "Open the SR that needs attention"}"><b>${c}</b> need${c > 1 ? "" : "s"} attention &rarr;</button>` : ""}
     <span class="sub">Last sync ${fmtTime(state.lastSync)}</span>
     ${storageOk ? "" : `<span style="color:var(--fail)"><b>This browser is not saving data. Do not use it for verification.</b></span>`}
     ${state.registerBuilt && Date.now() - Date.parse(state.registerBuilt) > 45 * 60e3 ? `<span style="color:var(--fail)"><b>Register not refreshed since ${esc(fmtTime(state.registerBuilt))}.</b> The trackers may have changed since; ask the Admin to run runSheetChecks.</span>` : ""}
@@ -1482,7 +1499,15 @@ function renderSyncbar() {
     <button class="btn small no-print" id="sync-now" ${syncing || !state.cfg.url ? "disabled" : ""}>Sync now</button>
     ${HOSTED ? "" : `<button class="btn small no-print" id="backup-now" ${state.register.length ? "" : "disabled"}>Excel backup</button>`}`;
   document.getElementById("sync-now").onclick = () => syncNow();
-  const bk = document.getElementById("backup-now"); if (bk) bk.onclick = () => downloadBackup(false);
+  const ga = document.getElementById("go-attention");
+  if (ga) ga.onclick = () => {
+    const seqs = Object.keys(state.conflicts);
+    // Show the "Needs attention" list with every other filter cleared, so the SR cannot hide behind a filter.
+    Object.assign(ui, { status: "Attention", q: "", kind: "All", survey: "All", vstat: "All", route: "All", verifier: "All", limit: PAGE });
+    setView("register");
+    if (seqs.length === 1) openSR(seqs[0]);
+  };
+  const bk =document.getElementById("backup-now"); if (bk) bk.onclick = () => downloadBackup(false);
 }
 
 /* ---------- Views ---------- */
@@ -1503,7 +1528,7 @@ function render() {
   else renderRegister();
 }
 
-function renderRegister() {
+function renderRegister(opts = {}) {
   const list = allSRs();
   if (!list.length) { view.innerHTML = `<div class="panel empty">No SRs on this PC yet. Connect in Settings, then press Sync now while online.</div>`; return; }
   const counts = { Open: list.filter(isOpen).length, All: list.length, Mine: state.me ? list.filter(s => s.verifier === state.me.name).length : 0, Attention: list.filter(s => s.conflict).length };
@@ -1525,7 +1550,7 @@ function renderRegister() {
     .sort((a, b) => (isOpen(b) - isOpen(a)) || String(a.received || "9").localeCompare(String(b.received || "9")) || (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)));
   const shown = rows.slice(0, ui.limit);
   const filtered = q || ui.kind !== "All" || ui.survey !== "All" || ui.vstat !== "All" || ui.route !== "All" || ui.verifier !== "All";
-  view.innerHTML = `
+  const html = `
     <div class="list-head">
       <div class="chips" role="group" aria-label="Filter by status">
         ${chips.map(s => `<button class="chip" data-status="${s}" aria-pressed="${ui.status === s}">${chipLabel(s)} <b>${counts[s]}</b></button>`).join("")}
@@ -1540,6 +1565,7 @@ function renderRegister() {
       <div class="field"><label for="f-route">For approval by</label><select id="f-route">${["All", ...ROUTES, "Unassigned"].map(o => `<option ${ui.route === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>
       <div class="field"><label for="f-ver">Verifier</label><select id="f-ver">${["All", ...state.verifiers, "Unassigned"].map(o => `<option ${ui.verifier === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>
     </div>
+    <div id="reg-results">
     <div class="panel table-scroll">
       ${rows.length ? `<table>
         <thead><tr><th>SeqNo</th><th>Kind</th><th>LO / Claimant</th><th>DARMO</th><th>For</th><th class="r">Area (has.)</th><th>Received</th><th>Verifier</th><th>Checklist</th><th>Status</th></tr></thead>
@@ -1560,7 +1586,14 @@ function renderRegister() {
       : `<div class="empty">No SRs match these filters. Clear the search or pick another status.</div>`}
     </div>
     ${rows.length > shown.length ? `<div class="no-print" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn" id="more">Show ${Math.min(PAGE, rows.length - shown.length)} more</button><span class="sub num">${shown.length} of ${rows.length} shown. Search or filter to narrow the list.</span></div>` : ""}
-    <div class="foot-note"><span>Register read from the sheets ${fmtTime(state.registerBuilt || state.pulledAt)}, re-read every 15 minutes. Days are counted from the date received; red when an SR at DARPO is past 14 days. Where the columns come from: Guide › The register.</span></div>`;
+    <div class="foot-note"><span>Register read from the sheets ${fmtTime(state.registerBuilt || state.pulledAt)}, re-read every 15 minutes. Days are counted from the date received; red when an SR at DARPO is past 14 days. Where the columns come from: Guide › The register.</span></div>
+    </div>`;
+  // While typing in Search, keep the filter row (and the box being typed in) and swap only the counts and the list.
+  if (opts.keepFilters && view.querySelector(".filters") && view.querySelector("#reg-results")) {
+    const t = document.createElement("template"); t.innerHTML = html;
+    view.querySelector(".list-head").replaceWith(t.content.querySelector(".list-head"));
+    view.querySelector("#reg-results").replaceWith(t.content.querySelector("#reg-results"));
+  } else view.innerHTML = html;
   const fc = view.querySelector("#f-clear");
   if (fc) fc.onclick = () => { ui.q = ""; ui.kind = ui.survey = ui.vstat = ui.route = ui.verifier = "All"; ui.limit = PAGE; renderRegister(); };
   const more = view.querySelector("#more");
@@ -1571,7 +1604,7 @@ function renderRegister() {
   view.querySelector("#f-vstat").onchange = setF(v => ui.vstat = v);
   view.querySelectorAll(".chip").forEach(c => c.onclick = () => { ui.status = c.dataset.status; ui.limit = PAGE; renderRegister(); });
   const qi = view.querySelector("#f-q");
-  qi.oninput = () => { ui.q = qi.value; ui.limit = PAGE; const pos = qi.selectionStart; renderRegister(); const n = view.querySelector("#f-q"); n.focus(); n.setSelectionRange(pos, pos); };
+  qi.oninput = () => { ui.q = qi.value; ui.limit = PAGE; renderRegister({ keepFilters: true }); };
   view.querySelector("#f-route").onchange = setF(v => ui.route = v);
   view.querySelector("#f-ver").onchange = setF(v => ui.verifier = v);
   view.querySelectorAll("tbody tr").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
