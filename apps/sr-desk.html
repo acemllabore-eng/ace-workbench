@@ -2607,9 +2607,25 @@ async function adoptSignin() {
   return true; // newly connected from the panel's sign-in
 }
 
+/* ---------- Light / dark: follows the Survey Unit panel (2026-11-20). The panel sends "aw-theme" when the app loads and when the theme changes. ---------- */
+try { const th = localStorage.getItem("aw.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch (e) {}
+window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
+
+/* ---------- Open an SR asked for by another page (SR Flow Dashboard list rows), 2026-11-20 ----------
+   That page writes {seq, t} to STORE + "-open" and switches the panel to this app; a request older than 2 minutes is ignored. */
+function takeOpenRequest() {
+  let q = null; try { q = JSON.parse(localStorage.getItem(STORE + "-open")); } catch (e) { q = null; }
+  if (!q || !q.seq) return;
+  try { localStorage.removeItem(STORE + "-open"); } catch (e) {}
+  if (Date.now() - (q.t || 0) > 120000 || !regBySeq[q.seq]) return;
+  ui.open = null; openSR(String(q.seq));
+}
+window.addEventListener("storage", e => { if (e.key === STORE + "-open" && e.newValue) takeOpenRequest(); });
+
 /* ---------- Start ---------- */
 renderSyncbar();
 render();
+takeOpenRequest();
 adoptSignin().catch(() => false).then(fresh => { if (fresh && ui.view === "settings") ui.view = "register"; // the first draw sent an unconnected page to Settings
   renderSyncbar(); render(); if (state.cfg.url && state.cfg.key) syncNow(); });
 </script>

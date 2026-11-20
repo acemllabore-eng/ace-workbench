@@ -19,16 +19,28 @@
   --good: #0ca30c; --warn: #fab219; --crit: #e66767;
   --mono: "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
   --body: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --panel-bg: linear-gradient(180deg, rgba(18,27,48,.85), rgba(13,20,36,.85)); --ctrl-bg: rgba(13,20,36,.7); --chip-bg: rgba(7,11,20,.6);
+  --tip-bg: rgba(7,11,20,.94); --sunk: rgba(7,11,20,.35); --banner-fg: #f6d58a; --hi: rgba(34,195,230,.07); --hi-2: rgba(34,195,230,.12);
+  --grid-line: rgba(34,195,230,.035); --glow-a: rgba(34,195,230,.13); --glow-b: rgba(144,133,233,.10);
   color-scheme: dark;
 }
+/* Light theme (2026-11-20): follows the Survey Unit panel's choice (message "aw-theme", or aw.theme on this device), else the system setting. */
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f3f6fb; --surface: #ffffff; --surface-2: #eef2f8; --line: #d3dbe8; --grid: #e2e8f1; --fg: #142033; --muted: #52627c; --faint: #7d8ca5; --cyan: #0a87a8;
+  --panel-bg: #ffffff; --ctrl-bg: #ffffff; --chip-bg: #f6f8fc; --tip-bg: rgba(255,255,255,.97); --sunk: #f7f9fc; --banner-fg: #6b4a00; --hi: rgba(10,135,168,.07); --hi-2: rgba(10,135,168,.12);
+  --grid-line: rgba(10,135,168,.05); --glow-a: rgba(10,135,168,.08); --glow-b: rgba(144,133,233,.07); color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #f3f6fb; --surface: #ffffff; --surface-2: #eef2f8; --line: #d3dbe8; --grid: #e2e8f1; --fg: #142033; --muted: #52627c; --faint: #7d8ca5; --cyan: #0a87a8;
+  --panel-bg: #ffffff; --ctrl-bg: #ffffff; --chip-bg: #f6f8fc; --tip-bg: rgba(255,255,255,.97); --sunk: #f7f9fc; --banner-fg: #6b4a00; --hi: rgba(10,135,168,.07); --hi-2: rgba(10,135,168,.12);
+  --grid-line: rgba(10,135,168,.05); --glow-a: rgba(10,135,168,.08); --glow-b: rgba(144,133,233,.07); color-scheme: light; }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.45; min-height: 100vh;
   background-image:
-    radial-gradient(900px 500px at 85% -10%, rgba(34,195,230,.13), transparent 60%),
-    radial-gradient(700px 500px at -10% 110%, rgba(144,133,233,.10), transparent 60%),
-    linear-gradient(rgba(34,195,230,.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34,195,230,.035) 1px, transparent 1px);
+    radial-gradient(900px 500px at 85% -10%, var(--glow-a), transparent 60%),
+    radial-gradient(700px 500px at -10% 110%, var(--glow-b), transparent 60%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: auto, auto, 32px 32px, 32px 32px; background-attachment: fixed; }
 .mono, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
@@ -43,13 +55,13 @@ header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content:
 h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em; }
 .src { color: var(--muted); font-size: 12.5px; }
 .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: rgba(13,20,36,.7); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--ctrl-bg); }
 .seg button { border: 0; background: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 12px; }
 .seg button[aria-pressed="true"] { background: rgba(34,195,230,.14); color: var(--fg); box-shadow: inset 0 0 0 1px rgba(34,195,230,.45); }
-.btn { border: 1px solid var(--line); background: rgba(13,20,36,.7); padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.btn { border: 1px solid var(--line); background: var(--ctrl-bg); padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
 .btn:hover, .seg button:hover { color: var(--fg); }
 
-.banner { border: 1px solid rgba(250,178,25,.45); background: rgba(250,178,25,.08); color: #f6d58a; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 13px; }
+.banner { border: 1px solid rgba(250,178,25,.45); background: rgba(250,178,25,.08); color: var(--banner-fg); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 13px; }
 .banner b { color: var(--warn); }
 .filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 10px 12px; align-items: end; margin-bottom: 12px; padding: 12px 16px; }
 .filters label { display: grid; gap: 4px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); min-width: 0; }
@@ -76,7 +88,7 @@ h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em
 .snap .n small { color: var(--muted); margin-left: 6px; }
 .snap .n .alt { color: var(--muted); }
 @keyframes grow { from { transform: scaleX(0); } }
-.legend button { border: 1px solid var(--line); background: rgba(7,11,20,.6); border-radius: 999px; padding: 3px 10px 3px 8px; font-size: 12px; color: var(--fg); cursor: pointer;
+.legend button { border: 1px solid var(--line); background: var(--chip-bg); border-radius: 999px; padding: 3px 10px 3px 8px; font-size: 12px; color: var(--fg); cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px; }
 .legend button[aria-pressed="false"] { color: var(--faint); }
 .legend button[aria-pressed="false"] i { opacity: .25; box-shadow: none; }
@@ -85,7 +97,7 @@ h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em
 .cover b { color: var(--cyan); }
 
 /* Panels */
-.panel { position: relative; background: linear-gradient(180deg, rgba(18,27,48,.85), rgba(13,20,36,.85)); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px); }
+.panel { position: relative; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px); }
 .panel::before, .panel::after { content: ""; position: absolute; width: 14px; height: 14px; border-color: rgba(34,195,230,.6); border-style: solid; pointer-events: none; }
 .panel::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; border-top-left-radius: 12px; }
 .panel::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; border-bottom-right-radius: 12px; }
@@ -114,7 +126,7 @@ h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em
 .chart svg { display: block; width: 100%; overflow: visible; }
 .chart text { fill: var(--faint); font-family: var(--mono); font-size: 11px; }
 .chart .end-label { fill: var(--fg); font-size: 12px; font-weight: 600; }
-.tip { position: absolute; pointer-events: none; background: rgba(7,11,20,.94); border: 1px solid rgba(34,195,230,.5); border-radius: 8px; padding: 8px 10px;
+.tip { position: absolute; pointer-events: none; background: var(--tip-bg); border: 1px solid rgba(34,195,230,.5); border-radius: 8px; padding: 8px 10px;
   font-size: 12px; min-width: 150px; box-shadow: 0 0 24px rgba(34,195,230,.18); opacity: 0; transition: opacity .12s; z-index: 5; }
 .tip .t { font-family: var(--mono); color: var(--cyan); font-size: 11px; letter-spacing: .08em; margin-bottom: 4px; }
 .tip .r { display: flex; justify-content: space-between; gap: 14px; color: var(--muted); }
@@ -142,7 +154,7 @@ td { font-family: var(--mono); }
 .chart .c-w { fill: var(--cyan); font-size: 11px; }
 .pie-list { display: grid; gap: 4px; min-width: 0; }
 .pie-list .pr { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 44px 78px; gap: 10px; align-items: center; font-size: 12.5px; padding: 5px 8px; border-radius: 6px; border: 1px solid transparent; }
-.pie-list .pr.on { background: rgba(34,195,230,.07); border-color: var(--line); }
+.pie-list .pr.on { background: var(--hi); border-color: var(--line); }
 .pie-list .pr.hd { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); padding-top: 0; }
 .pie-list .pr.hd span:nth-child(n+3) { text-align: right; }
 .pie-list .sw { width: 10px; height: 10px; border-radius: 3px; box-shadow: 0 0 8px currentColor; }
@@ -171,11 +183,35 @@ td { font-family: var(--mono); }
 @media (prefers-reduced-motion: reduce) { .draw { animation: none; stroke-dashoffset: 0; } .ping, .live, .pie .grow { animation: none; } }
 
 /* Per-kind panels (2026-11-20) */
-.kinds { display: grid; gap: 14px; }
-.kinds .panel h2 .k { color: var(--cyan); font-family: var(--mono); letter-spacing: .04em; }
+.kinds { display: grid; gap: 22px; }
+/* Each kind of survey is its own island: a colour band down the left, a tinted header strip and the kind's name on a badge (--kc set per panel). */
+.kindp { border-left: 5px solid var(--kc); padding-top: 0; overflow: hidden; }
+.kindp::before { border-color: var(--kc); }
+.kind-head { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; margin: 0 -18px 12px -18px; padding: 12px 18px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--kc) 22%, transparent), color-mix(in srgb, var(--kc) 4%, transparent)); border-bottom: 1px solid color-mix(in srgb, var(--kc) 45%, transparent); }
+.kind-head h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kind-badge { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .06em; padding: 3px 10px; border-radius: 6px; background: var(--kc); color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
+.kind-head .right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.lh tbody tr[data-seq] { cursor: pointer; }
+.lh tbody tr[data-seq]:hover td { background: var(--hi); }
+.lh .open { color: var(--cyan); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+@media print {
+  :root { --bg: #fff; --surface: #fff; --surface-2: #f1f4f8; --line: #c9d1dd; --grid: #e2e8f1; --fg: #111; --muted: #444; --faint: #666; --cyan: #0a6f8a;
+    --panel-bg: #fff; --ctrl-bg: #fff; --chip-bg: #fff; --sunk: #fff; --hi: transparent; --hi-2: #eef3f8; color-scheme: light; }
+  body { background: #fff !important; }
+  .controls, .btn, .hint, .tip, .cat-edit, .notes, #banner, .lh .open { display: none !important; }
+  body.print-one .kinds > .panel:not(.print-me) { display: none !important; }
+  .panel { break-inside: auto; backdrop-filter: none; box-shadow: none; }
+  .pie { break-inside: avoid; } .pie .grow, .att-in { animation: none !important; }
+  .kind-head { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .kind-badge, .sw, .pie svg, .legend i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pie-list .nm { white-space: normal; }
+  .table-scroll { overflow: visible; } .lh tbody tr[data-seq]:hover td { background: none; }
+  .tt-bar, .tt-filter, .tt-note { display: none !important; }
+}
 .hint { font-family: var(--mono); font-size: 11.5px; color: var(--faint); margin: 10px 0 0; }
 .pie .slice, .pie-list .pr[data-k], .pie-list .pr[data-s] { cursor: pointer; }
-.pie-list .pr.pick { background: rgba(34,195,230,.12); border-color: rgba(34,195,230,.5); }
+.pie-list .pr.pick { background: var(--hi-2); border-color: rgba(34,195,230,.5); }
 .att { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 14px; }
 .att:empty { display: none; }
 .att-in { animation: attIn .45s cubic-bezier(.2,.8,.2,1) both; transform-origin: top center; }
@@ -184,11 +220,11 @@ td { font-family: var(--mono); }
 .att .pie svg { max-width: 240px; }
 .att h3, .cat h3 { margin: 0; font-size: 14px; font-weight: 600; }
 .att .chart-head .btn, .cat .btn { padding: 4px 10px; }
-.cat { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: rgba(7,11,20,.35); }
+.cat { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--sunk); }
 .cat-edit { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; display: grid; gap: 10px; }
 .cat-pick { display: grid; gap: 2px; max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
 .cat-pick label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; }
-.cat-pick label:hover { background: rgba(34,195,230,.07); }
+.cat-pick label:hover { background: var(--hi); }
 .cat-pick label[hidden] { display: none; }
 .cat-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .cat-row input { flex: 1 1 200px; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--bg); color: var(--fg); font: 13px var(--body); }
@@ -443,13 +479,25 @@ const GROUP_COLOR = { [COMPLETE]: "#0ca30c", [PARTLY]: "#5d6c88", [UNCHECKED]: "
 const kindSort = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 const bySeq = (a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq));
 const uniq = arrs => [...new Set([].concat(...arrs))];
-const lhTable = (srs, remOf) => `<div class="table-scroll"><table class="lh"><thead><tr><th>SeqNo</th><th>LO / Claimant</th>${remOf ? "<th>Remark</th>" : ""}<th>DARMO</th><th>Status</th></tr></thead><tbody>
-  ${srs.slice().sort(bySeq).map(s => `<tr><td class="mono">${esc(s.seq)}<div class="sub">${esc(s.title)}</div></td><td>${esc(s.claimant)}<div class="sub">Lot ${esc(s.lot)}</div></td>
-    ${remOf ? `<td>${esc(remOf(s))}</td>` : ""}<td>${esc(s.darmo)}</td><td>${esc(s.survey || NOT_SET)}${s.status ? `<div class="sub">${esc(s.status)}</div>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+const lhTable = (srs, remOf) => `<div class="table-scroll"><table class="lh"><thead><tr><th>SeqNo</th><th>LO / Claimant</th>${remOf ? "<th>Remark</th>" : ""}<th>DARMO</th><th>Status</th><th></th></tr></thead><tbody>
+  ${srs.slice().sort(bySeq).map(s => `<tr data-seq="${esc(s.seq)}" tabindex="0" title="Open SR ${esc(s.seq)} in the SR Verification Desk"><td class="mono">${esc(s.seq)}<div class="sub">${esc(s.title)}</div></td><td>${esc(s.claimant)}<div class="sub">Lot ${esc(s.lot)}</div></td>
+    ${remOf ? `<td>${esc(remOf(s))}</td>` : ""}<td>${esc(s.darmo)}</td><td>${esc(s.survey || NOT_SET)}${s.status ? `<div class="sub">${esc(s.status)}</div>` : ""}</td><td class="open">Open ›</td></tr>`).join("")}</tbody></table></div>`;
+/* A list row opens that SR in the SR Verification Desk, as a click on its register row does: the request goes through this device's storage
+   (the SR Desk reads STORE + "-open"), then the panel switches to the SR Desk; opened on its own, this page goes to sr-desk.html. Sample SRs do not open. */
+function openInDesk(seq) {
+  if (sampleOn) return;
+  try { localStorage.setItem(STORE + "-open", JSON.stringify({ seq, t: Date.now() })); } catch (e) { return; }
+  let inPanel = false; try { inPanel = window.parent !== window && !!window.parent.location.href; } catch (e) { inPanel = false; }
+  if (inPanel) window.parent.location.hash = "sr"; else location.href = "sr-desk.html";
+}
+const bindRows = root => root.querySelectorAll(".lh tr[data-seq]").forEach(tr => { tr.onclick = () => openInDesk(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openInDesk(tr.dataset.seq); }; });
+let sampleOn = false;
+// One colour per kind of survey, in the order the kinds are listed (a band and badge only; status colours stay the same in every pie).
+const KIND_COLORS = ["#1f9fc4", "#8a63e8", "#d9821a", "#24a274", "#d9487a", "#6b8e23", "#3f6fd8", "#b5651d"];
 let firstPaint = true;
 
 function render() {
-  const raw = readDesk() || sampleDesk(), list = raw.list, AREA = ui.metric === "area";
+  const raw = readDesk() || sampleDesk(), list = raw.list, AREA = ui.metric === "area"; sampleOn = !!raw.sample;
   const SER = seriesFor(list);
   $("live").classList.toggle("off", raw.sample);
   $("src").innerHTML = raw.sample ? "Sample data · no SR Desk copy found on this PC"
@@ -457,10 +505,13 @@ function render() {
   $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Open the SR Verification Desk from this same place, connect it in Settings and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
   document.querySelectorAll("#metric button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === ui.metric)));
   const kinds = [...new Set(list.map(s => s.kind || NOT_SET))].sort(kindSort), rcats = loadRcats();
-  $("kinds").innerHTML = kinds.map((k, i) => `<section class="panel" id="kp-${i}"><div class="chart-head"><div><h2><span class="k">${esc(k)}</span> · survey statuses${AREA ? " by area (ha)" : ""}</h2></div><div class="cover" id="kc-${i}"></div></div>
+  $("kinds").innerHTML = kinds.map((k, i) => `<section class="panel kindp" id="kp-${i}" style="--kc:${KIND_COLORS[i % KIND_COLORS.length]}" aria-label="${esc(k)}">
+    <div class="kind-head"><h2><span class="kind-badge">${esc(k)}</span>survey statuses${AREA ? " by area (ha)" : ""}</h2><div class="right"><div class="cover" id="kc-${i}"></div><button class="btn" data-print="${i}" title="Print this kind of survey as shown: its pie, and the attachments, categories and list now open">Print</button></div></div>
     <div class="legend big" id="kl-${i}" aria-label="Show or hide a status"></div><div class="chart" id="kpie-${i}"></div><p class="hint" id="kh-${i}"></p><div class="att" id="katt-${i}"></div></section>`).join("")
     || `<div class="panel"><p class="read">No SRs.</p></div>`;
   kinds.forEach((k, i) => renderKind(k, i, list.filter(s => (s.kind || NOT_SET) === k), SER, AREA, rcats));
+  $("kinds").querySelectorAll("[data-print]").forEach(b => b.onclick = () => printKind(+b.dataset.print));
+  bindRows($("kinds"));
   firstPaint = false;
   const noArea = list.filter(s => s.area == null).length;
   $("notes").innerHTML = `<b>How these are counted</b><ul>
@@ -579,6 +630,16 @@ function catPanel(kind, i, label, srs, rm, rcats, d) {
   };
 }
 
+/* Print one kind of survey exactly as shown (pie, open attachments, categories and SR list), on a white page; the other kinds are left out. */
+function printKind(i) {
+  const p = $("kp-" + i); if (!p) return;
+  document.body.classList.add("print-one"); p.classList.add("print-me");
+  const done = () => { document.body.classList.remove("print-one"); p.classList.remove("print-me"); removeEventListener("afterprint", done); };
+  addEventListener("afterprint", done); window.print(); setTimeout(done, 1000); // afterprint is not sent by every browser
+}
+/* Light / dark: follows the Survey Unit panel ("aw-theme" message, sent when the page loads and when the theme changes; aw.theme on this device). */
+try { const th = localStorage.getItem("aw.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch (e) {}
+window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
 document.querySelectorAll("#metric button").forEach(b => b.onclick = () => { ui.metric = b.dataset.m; try { localStorage.setItem("srdash-metric", ui.metric); } catch (e) {} render(); });
 addEventListener("storage", e => { if (e.key === STORE || e.key === RCAT_STORE) render(); }); // the SR Desk synced, or changed categories, in another tab
 render();
