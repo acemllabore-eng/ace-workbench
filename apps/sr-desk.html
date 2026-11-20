@@ -1369,6 +1369,8 @@ function tally(s) {
 function age(s) { return isIso(s.received) ? daysBetween(s.received, s.decided || today()) : null; }
 const isOpen = s => s.survey === AT_DARPO; // "In queue": on the desk at DARPO
 const canCheck = s => s.survey === AT_DARPO && s.status !== "Compliance"; // the checklist is used only at DARPO
+// Attachments (Present / Missing / N/A) can also be marked at SR RECEIVED BY RPMO (user, 2026-11-20); document checks stay DARPO only.
+const canAttach = s => canCheck(s) || s.survey === AT_RPMO;
 function canEdit(s) {
   if (isPractice(s.seq)) return true;
   if (!state.me) return false;
@@ -1604,7 +1606,7 @@ function renderGuide() {
       <section class="panel" id="g-path"><h2>The path of an SR</h2>
         <p class="lead">The survey status says where the SR is. Each status has one date: the day it happened, not the day you typed it.</p>
         <div class="table-scroll"><table class="gtable"><thead><tr><th class="r">No.</th><th>Survey status</th><th>Date to enter</th></tr></thead>
-          <tbody>${SURVEYS.map((sv, i) => `<tr><td class="r num">${i + 1}</td><td>${sv === AT_DARPO ? `<b>${esc(sv)}</b><span class="how">The only status where the checklist is used.</span>` : esc(sv)}</td><td>${esc(DATE_LABEL[sv])}</td></tr>`).join("")}</tbody></table></div>
+          <tbody>${SURVEYS.map((sv, i) => `<tr><td class="r num">${i + 1}</td><td>${sv === AT_DARPO ? `<b>${esc(sv)}</b><span class="how">The status where the checklist is used.</span>` : sv === AT_RPMO ? `<b>${esc(sv)}</b><span class="how">Attachments can be marked here too; document checks cannot.</span>` : esc(sv)}</td><td>${esc(DATE_LABEL[sv])}</td></tr>`).join("")}</tbody></table></div>
         <h3>While the SR is at DARPO</h3>
         <div class="table-scroll"><table class="gtable"><tbody>
           <tr><td><span class="pill st-received">Pending</span></td><td>Received, checking not yet started.</td></tr>
@@ -2049,6 +2051,12 @@ function nextStep(s) {
     return { step: "details", focus: "dw-track-ack", text: "The tracker was changed by hand. Check with whoever changed it, then write over it or leave it." };
   if (!s.survey) return { step: "details", focus: "dw-survey", text: "Set the survey status: where is this SR now?" };
   if (!statusDateOf(s)) return { step: "details", focus: "dw-sdate", text: `Enter the ${dl}.` };
+  if (s.survey === AT_RPMO) { // attachments only at RPMO
+    if (!c) return { step: "details", focus: "dw-route", text: `Choose who approves this SR, DENR or LRA, to mark its attachments at ${AT_RPMO}.` };
+    const ds = activeKeys(s.route, a).filter(k => k.kind === "doc"), f = ds.find(k => !a[k.key]), left = ds.filter(k => !a[k.key]).length;
+    return f ? { step: "attach", row: f.key, text: `Attachments at ${AT_RPMO}: ${left} of ${ds.length} left to mark. Continue with: ${cut(f.text)}.` }
+      : { step: "attach", text: `All ${ds.length} attachments marked at ${AT_RPMO}. Document checks are used at ${AT_DARPO}.` };
+  }
   if (!isOpen(s)) return { step: "details", text: `Nothing to verify now. The checklist is used while the survey status is ${AT_DARPO}.` };
   if (s.status === "Compliance") return { step: "details", focus: "dw-resub", text: 'Waiting for the DARMO. When the corrected SR comes back, press "Compliance submitted by DARMO".' };
   if (!c) return { step: "details", focus: "dw-route", text: "Choose who approves this SR, DENR or LRA. Its checklist opens next." };
@@ -2086,19 +2094,19 @@ function openSR(seq) {
   if (ui.open !== seq) { ui.step = null; lastFocus = document.activeElement; }
   ui.open = seq;
   if (!ui.step || (ui.step === "xc" && !isOpen(s))) ui.step = nextStep(s).step;
-  const c = CL[s.route], editable = canEdit(s) && canCheck(s), admin = !!(state.me && state.me.role === "admin");
+  const c = CL[s.route], editable = canEdit(s) && canCheck(s), attachEditable = canEdit(s) && canAttach(s), admin = !!(state.me && state.me.role === "admin");
   const FXD = fxDocs(s.seq), FXE = c ? fxEngine(s) : {}; // loaded JSON and engine results, for the Auto items' data boxes
   const a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {}, ovs = s.overrides || {};
-  const dis = editable && c ? "" : "disabled";
+  const dis = editable && c ? "" : "disabled", disA = attachEditable && c ? "" : "disabled", disOf = kind => kind === "doc" ? disA : dis;
   const sIdx = SURVEYS.indexOf(s.survey);
   const seg = (key, kind, val, off) => {
     const opts = kind === "doc" ? [["present", "Present"], ["missing", "Missing"], ["na", "N/A"]] : [["pass", "Pass"], ["fail", "Fail"], ["na", "N/A"]];
-    return `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" ${dis || off ? "disabled" : ""} data-key="${key}" data-v="${v}" aria-pressed="${val === v}">${l}</button>`).join("")}</div>`;
+    return `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" ${disOf(kind) || off ? "disabled" : ""} data-key="${key}" data-v="${v}" aria-pressed="${val === v}">${l}</button>`).join("")}</div>`;
   };
   const row = (key, no, text, kind, off, doc, ty) => { const v = a[key], bad = !off && (v === "fail" || v === "missing");
     const h = howOf(text, kind, doc);
     return `<div class="row ${bad ? "is-fail" : ""}" data-row="${key}"><span class="no">${no}</span><span class="tx">${esc(text)}${typeTag(ty)}${h ? `<span class="how">${esc(h[0])}${h[1] ? ' <span class="tbc">To confirm</span>' : ""}</span>` : ""}</span>${seg(key, kind, v, off)}
-      <div class="note" ${bad ? "" : "hidden"}><input ${dis} data-note="${key}" placeholder="What is wrong, with the figure or page (required for the notice)" value="${esc(nt[key] || "")}"></div></div>`; };
+      <div class="note" ${bad ? "" : "hidden"}><input ${disOf(kind)} data-note="${key}" placeholder="What is wrong, with the figure or page (required for the notice)" value="${esc(nt[key] || "")}"></div></div>`; };
   // Attachments tab: one Present/Missing/N/A row per document. Document checks tab: one block per document that has checks.
   const guideOf = (gi, i) => { const di = (DOC_GUIDE[s.route] || {})[`${gi}.${i}`]; return di === undefined ? null : di; };
   const attachRow = (gi, i, text) => `<div class="doc-card">${row(`d${gi}.${i}`, i + 1, text, "doc")}</div>`;
@@ -2112,7 +2120,7 @@ function openSR(seq) {
         return au.length ? `<div class="grp-label">From the documents (Auto) · ${au.length}</div>${au.map(r).join("")}${hand.length ? `<div class="grp-label">Check by hand · ${hand.length}</div>${hand.map(r).join("")}` : ""}` : ord.map(r).join(""); })()}
       ${dis ? "" : `<div class="tools">${d.checks.some(t => checkType(s.route, di, t) === "auto") ? `<button class="btn small" data-fxmark="${di}">Mark the Auto items from the data</button>` : ""}<button class="btn small" data-passall="${di}">Pass the unchecked items</button></div>`}`}</div></div>`; };
   const lockNote = !c || canCheck(s) ? "" : `<p class="readonly-note">${s.status === "Compliance" ? "Locked while the SR is with the DARMO for compliance." : `Read only: the checklist is used while the survey status is ${AT_DARPO}.`}</p>`;
-  const noRoute = `<div class="banner"><div>${isOpen(s) ? "Choose <b>For approval by</b> (DENR or LRA) in Details to open its checklist. Leave it Unassigned for SRs that go to neither." : `The checklist is used while the survey status is ${AT_DARPO}.`}</div></div>`;
+  const noRoute = `<div class="banner"><div>${s.survey === AT_RPMO ? `Choose <b>For approval by</b> (DENR or LRA) in Details to open its attachments. At ${AT_RPMO} only the attachments can be marked.` : isOpen(s) ? "Choose <b>For approval by</b> (DENR or LRA) in Details to open its checklist. Leave it Unassigned for SRs that go to neither." : `The checklist is used while the survey status is ${AT_DARPO}.`}</div></div>`;
   const guideToggle = `<label class="toggle"><input type="checkbox" data-guide-toggle ${ui.guide ? "checked" : ""}> Show how-to notes</label>`;
   const area = typeof s.area === "number" ? s.area.toFixed(4) : s.area;
   const inTracker = s.kind !== "No batch tracker";
@@ -2182,7 +2190,7 @@ function openSR(seq) {
         <section class="sect"><h3>Attachments <span id="dw-doc-count"></span></h3>
           <div class="list-head" style="margin-bottom:8px"><p class="hint" style="margin:0">Go through the envelope first: is each document there? Do not read inside yet. A document marked Missing or N/A skips its checks in the next tab.</p>
             ${guideToggle}</div>
-          ${lockNote}
+          ${s.survey === AT_RPMO ? `<p class="readonly-note">At ${AT_RPMO}: attachments can be marked here. Document checks stay read only; they are used at ${AT_DARPO}.</p>` : lockNote}
           ${c.docGroups.map((g, gi) => `<div class="group-label">${g.label}${g.asNeeded ? " (mark N/A when not needed)" : ""}</div><div class="doc-list">${g.items.map((t, i) => attachRow(gi, i, t)).join("")}</div>`).join("")}
         </section>`}
         </div>
@@ -2363,7 +2371,7 @@ function refresh(seq) {
   const vsel = document.getElementById("dw-ver");
   if (vsel && s.verifier && ![...vsel.options].some(o => o.value === s.verifier)) vsel.add(new Option(s.verifier, s.verifier));
   if (vsel) vsel.value = s.verifier || "";
-  if (!isOpen(s)) { document.getElementById("dw-sum").textContent = `Checklist not in use: the survey status is ${s.survey || "not set"}, not ${AT_DARPO}` + (s.pending ? (HOSTED ? " · sending to the Sheet…" : " · saved on this PC, not yet synced") : ""); document.getElementById("dw-bar").innerHTML = ""; }
+  if (!isOpen(s)) { document.getElementById("dw-sum").textContent = (s.survey === AT_RPMO ? `Attachments only at ${AT_RPMO}; document checks are used at ${AT_DARPO}` : `Checklist not in use: the survey status is ${s.survey || "not set"}, not ${AT_DARPO}`) + (s.pending ? (HOSTED ? " · sending to the Sheet…" : " · saved on this PC, not yet synced") : ""); document.getElementById("dw-bar").innerHTML = ""; }
   if (!c) return;
   const docs = keys.filter(k => k.kind === "doc"), checks = keys.filter(k => k.kind === "check");
   const cnt = list => { const done = list.filter(k => a[k.key]).length, bad = list.filter(k => ["fail", "missing"].includes(a[k.key])).length; return { done, bad, n: list.length }; };
