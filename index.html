@@ -120,6 +120,8 @@ main{display:flex;flex-direction:column;min-width:0;min-height:0}
 #field{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:var(--field)}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
 iframe[hidden]{display:none}
+/* An SR Desk drawer laid over the app on screen (SR Flow Dashboard list rows): the SR Desk page is see-through but for its drawer. */
+iframe.peek{z-index:5;background:transparent !important;animation:none}
 
 /* Home */
 .home{position:absolute;inset:0;overflow:auto;padding:32px var(--gap-l) 40px}
@@ -637,8 +639,15 @@ function crumbs(app){
 }
 
 async function show(id){ try{ await openView(id); } finally{ field.sync(); } }
+function makeFrame(app){
+  const f = document.createElement("iframe");
+  f.title = app.name; f.src = app.url; f.setAttribute("allow", "clipboard-read; clipboard-write; fullscreen; geolocation");
+  f.addEventListener("load", () => { sendTheme(f); addFx(f); addTableTools(f); $("load").hidden = true; });
+  document.querySelector(".stage").appendChild(f); frames[app.id] = f; return f;
+}
 async function openView(id){
   const app = APPS.find(a => a.id === id);
+  if(frames.sr && frames.sr.classList.contains("peek")){ frames.sr.classList.remove("peek"); try{ frames.sr.contentWindow.postMessage({ type:"aw-peek", on:false }, location.origin); }catch(e){} }
   current = app ? id : "";
   document.querySelectorAll(".item[data-app]").forEach(el => el.dataset.app === current ? el.setAttribute("aria-current", "page") : el.removeAttribute("aria-current"));
   Object.values(frames).forEach(f => f.hidden = true);
@@ -659,13 +668,7 @@ async function openView(id){
     $("downCmd").textContent = app.start; $("down").hidden = false; $("reload").hidden = true;
     $("retry").onclick = () => show(id); return;
   }
-  if(!frames[id]){
-    const f = document.createElement("iframe");
-    f.title = app.name; f.src = app.url; f.setAttribute("allow", "clipboard-read; clipboard-write; fullscreen; geolocation");
-    f.addEventListener("load", () => { sendTheme(f); addFx(f); addTableTools(f); $("load").hidden = true; });
-    $("load").hidden = false;
-    document.querySelector(".stage").appendChild(f); frames[id] = f;
-  }
+  if(!frames[id]){ makeFrame(app); $("load").hidden = false; }
   frames[id].hidden = false; $("reload").hidden = false;
   $("reload").onclick = () => { $("load").hidden = false; frames[id].src = app.url; };
 }
@@ -801,20 +804,42 @@ function addTableTools(f){
 function sendTheme(f){ try{ f.contentWindow.postMessage({ type:"aw-theme", theme: document.documentElement.dataset.theme || "" }, "*"); }catch(e){} }
 window.addEventListener("hashchange", () => show(location.hash.slice(1)));
 
-/* SR Flow Dashboard list row: open that SR in the SR Verification Desk (2026-11-20). The dashboard also leaves the request in
-   localStorage ("srdesk-v1-open"), which a newly opened SR Desk reads on start. An SR Desk frame already open is handed the SeqNo;
-   if it does not answer within 1.5 s it is an older copy loaded before the update, so it is reloaded and reads the request on start. */
+/* SR Flow Dashboard list row: that SR's drawer from the SR Verification Desk, laid over the dashboard ("peek", 2026-11-20).
+   The SR Desk frame (made hidden if not open yet) is handed the SeqNo and answers "aw-open-sr-ok"; only its drawer shows, over
+   the app on screen. Closing the drawer ("aw-peek-closed") leaves the user where they were. An SR Desk page loaded before this
+   update does not answer: it is reloaded once and asked again; if it still does not answer, the panel switches to the SR Desk. */
+function endPeek(){
+  const f = frames.sr; if(!f || !f.classList.contains("peek")) return;
+  f.classList.remove("peek"); if(current !== "sr") f.hidden = true;
+  try{ f.contentWindow.postMessage({ type:"aw-peek", on:false }, location.origin); }catch(e){}
+  const back = frames[current]; if(back) try{ back.contentWindow.focus(); }catch(e){}
+}
+function peekSR(seq){
+  const app = APPS.find(a => a.id === "sr");
+  let f = frames.sr, reloaded = false;
+  const ask = () => {
+    let ok = false;
+    const onAck = m => { if(m.source === f.contentWindow && m.data && m.data.type === "aw-open-sr-ok" && m.data.seq === seq){
+      ok = true; removeEventListener("message", onAck);
+      if(current === "sr") return;                       // the SR Desk is on screen anyway
+      if(m.data.found){ f.classList.add("peek"); f.hidden = false; } } };
+    addEventListener("message", onAck);
+    try{ f.contentWindow.postMessage({ type:"aw-open-sr", seq, peek: current !== "sr" }, location.origin); }catch(e){}
+    setTimeout(() => {
+      removeEventListener("message", onAck); if(ok || frames.sr !== f) return;
+      if(!reloaded){ reloaded = true; f.addEventListener("load", ask, { once:true }); f.src = app.url; }
+      else { try{ localStorage.setItem("srdesk-v1-open", JSON.stringify({ seq, t: Date.now() })); }catch(e){} location.hash = "sr"; }
+    }, 1500);
+  };
+  if(f){ ask(); return; }
+  f = makeFrame(app); f.hidden = true; f.addEventListener("load", ask, { once:true });
+}
 window.addEventListener("message", e => {
-  const d = e.data; if(!d || d.type !== "aw-open-sr" || !d.seq) return;
+  const d = e.data; if(!d || e.origin !== location.origin) return;
+  if(d.type === "aw-peek-closed" && frames.sr && e.source === frames.sr.contentWindow){ endPeek(); return; }
+  if(d.type !== "aw-open-sr" || !d.seq) return;
   if(!Object.values(frames).some(f => f.contentWindow === e.source)) return; // only from our own app frames
-  const had = frames.sr;
-  if(location.hash !== "#sr") location.hash = "sr"; else show("sr");
-  if(!had) return;                     // a new frame takes the request from localStorage when it starts
-  let ok = false;
-  const onAck = m => { if(m.source === had.contentWindow && m.data && m.data.type === "aw-open-sr-ok" && m.data.seq === d.seq){ ok = true; removeEventListener("message", onAck); } };
-  addEventListener("message", onAck);
-  try{ had.contentWindow.postMessage({ type:"aw-open-sr", seq: d.seq }, location.origin); }catch(x){}
-  setTimeout(() => { removeEventListener("message", onAck); if(!ok && frames.sr === had){ $("load").hidden = false; had.src = APPS.find(a => a.id === "sr").url; } }, 1500);
+  peekSR(String(d.seq));
 });
 
 const t = store("aw.theme"); if(t) document.documentElement.dataset.theme = t;

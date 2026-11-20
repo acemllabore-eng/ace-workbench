@@ -199,6 +199,10 @@ button.hbar[aria-pressed="true"] { background: var(--surface-2); box-shadow: ins
 h3.eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin: 12px 0 6px; }
 
 /* Checklist panel (drawer) */
+/* Peek (opened from the SR Flow Dashboard in the panel): only the drawer shows; the rest of the page is see-through. */
+html.peek, html.peek body { background: transparent !important; }
+html.peek body > :not(#drawer-root):not(.toast) { display: none !important; }
+html.peek body::before, html.peek body::after { display: none !important; }
 .scrim { position: fixed; inset: 0; background: rgba(10, 16, 12, .45); z-index: 20; }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(780px, 100%); background: var(--bg); z-index: 21; display: flex; flex-direction: column; box-shadow: var(--shadow); padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .dw-head { background: var(--surface); border-bottom: 1px solid var(--line); padding: 14px 20px; display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; }
@@ -2507,7 +2511,8 @@ function decide(seq) {
   if (t.fail) { toast(`SR ${seq} returned to DARMO for compliance, ${t.fail} finding${t.fail > 1 ? "s" : ""}`); closeSR(); }
   else { toast(`SR ${seq} moved to ${AT_RPMO}. Enter the date RPMO received the transmittal.`); ui.step = "details"; openSR(seq); const el = document.getElementById("dw-sdate"); if (el) el.focus(); }
 }
-function closeSR() { document.getElementById("drawer-root").innerHTML = ""; ui.open = null; ui.step = null; render(); if (lastFocus && lastFocus.isConnected) lastFocus.focus(); }
+function closeSR() { document.getElementById("drawer-root").innerHTML = ""; ui.open = null; ui.step = null; render(); if (lastFocus && lastFocus.isConnected) lastFocus.focus();
+  if (document.documentElement.classList.contains("peek") && window.parent !== window) window.parent.postMessage({ type: "aw-peek-closed" }, location.origin); } // back to the panel's app
 document.addEventListener("keydown", e => { if (e.key === "Escape" && ui.open) closeSR(); });
 
 function copyText(txt) {
@@ -2621,13 +2626,18 @@ function takeOpenRequest() {
   ui.open = null; openSR(String(q.seq));
 }
 window.addEventListener("storage", e => { if (e.key === STORE + "-open" && e.newValue) takeOpenRequest(); });
-// The panel hands the SeqNo over directly too and waits for this answer; with no answer it reloads this page (an older copy).
+/* The panel hands over a SeqNo ("aw-open-sr") and waits for this answer; with no answer it reloads this page (an older copy).
+   With peek, only the drawer shows, laid over the panel's app on screen (SR Flow Dashboard); closing it tells the panel. */
 window.addEventListener("message", e => {
-  const d = e.data; if (!d || d.type !== "aw-open-sr" || !d.seq || e.origin !== location.origin) return;
+  const d = e.data; if (!d || e.origin !== location.origin) return;
+  if (d.type === "aw-peek") { document.documentElement.classList.toggle("peek", !!d.on); return; }
+  if (d.type !== "aw-open-sr" || !d.seq) return;
+  const seq = String(d.seq), found = !!regBySeq[seq];
   try { localStorage.removeItem(STORE + "-open"); } catch (x) {}
-  try { e.source.postMessage({ type: "aw-open-sr-ok", seq: d.seq }, e.origin); } catch (x) {}
-  if (!regBySeq[d.seq]) { toast(`SR ${d.seq} is not in this PC's register yet. Sync, then try again.`); return; }
-  if (ui.open !== String(d.seq)) { ui.open = null; openSR(String(d.seq)); }
+  try { e.source.postMessage({ type: "aw-open-sr-ok", seq, found }, e.origin); } catch (x) {}
+  if (!found) { toast(`SR ${seq} is not in this PC's register yet. Sync, then try again.`); return; }
+  document.documentElement.classList.toggle("peek", !!d.peek);
+  ui.open = null; openSR(seq);
 });
 
 /* ---------- Start ---------- */

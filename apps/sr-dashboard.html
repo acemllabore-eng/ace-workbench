@@ -497,10 +497,11 @@ const lhTable = (srs, remOf) => `<div class="table-scroll"><table class="lh"><th
    (the SR Desk reads STORE + "-open"), then the panel switches to the SR Desk; opened on its own, this page goes to sr-desk.html. Sample SRs do not open. */
 function openInDesk(seq) {
   if (sampleOn) return;
-  try { localStorage.setItem(STORE + "-open", JSON.stringify({ seq, t: Date.now() })); } catch (e) { return; }
   let inPanel = false; try { inPanel = window.parent !== window && !!window.parent.location.href; } catch (e) { inPanel = false; }
-  if (!inPanel) { location.href = "sr-desk.html"; return; }
-  window.parent.postMessage({ type: "aw-open-sr", seq: String(seq) }, location.origin); // the panel switches to the SR Desk and hands it the SeqNo
+  // In the panel: the SR Desk's drawer opens over this page and closing it comes back here. On its own: go to the SR Desk.
+  if (inPanel) { window.parent.postMessage({ type: "aw-open-sr", seq: String(seq) }, location.origin); return; }
+  try { localStorage.setItem(STORE + "-open", JSON.stringify({ seq, t: Date.now() })); } catch (e) { return; }
+  location.href = "sr-desk.html";
 }
 const bindRows = root => root.querySelectorAll(".lh tr[data-seq]").forEach(tr => { tr.onclick = () => openInDesk(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openInDesk(tr.dataset.seq); }; });
 let sampleOn = false;
