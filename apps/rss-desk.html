@@ -361,8 +361,9 @@ function indexReg() {
 }
 indexReg();
 // ASP database match (register fields asp_by, asp; backend rssAspMatch_): label, pill class, matched records.
-const ASP_TXT = { survey: "In ASP database", title_lot: "In ASP (title + lot)", not_found: "ASP no. not in database" };
-const ASP_CLS = { survey: "s-Complete", title_lot: "s-Ongoing", not_found: "s-Returned" };
+const ASP_TXT = { survey: "In ASP database", title_lot: "In ASP (title + lot)", project_lot: "In ASP (project + lot)", not_found: "ASP no. not in database" };
+const ASP_CLS = { survey: "s-Complete", title_lot: "s-Ongoing", project_lot: "s-Ongoing", not_found: "s-Returned" };
+const aspFound = r => r.asp_by === "survey" || r.asp_by === "title_lot" || r.asp_by === "project_lot";
 const hasAsp = () => !!(reg && reg.fields && reg.fields.includes("asp_by"));
 const aspLabel = r => !hasAsp() ? "" : ASP_TXT[r.asp_by] || "No ASP record";
 const aspRecs = r => { try { return r.asp ? JSON.parse(r.asp) : []; } catch (e) { return []; } };
@@ -672,7 +673,7 @@ function regHtml() {
       <button class="btn sm ghost" id="fClear">Clear filters</button>
       <button class="btn sm" id="xpOpen" title="Excel list of the LHs of one or more modules, in the survey module layout">Export module</button>
     </div>
-    <p class="count">${rows.length.toLocaleString()} of ${regRows.length.toLocaleString()} LHs${nCol ? " · " + nCol + " column filter" + (nCol > 1 ? "s" : "") : ""}${reg && reg.stamp ? " · register read " + fmtTime(reg.stamp) : ""}${hasAsp() ? " · in ASP database: " + base.filter(r => r.asp_by === "survey" || r.asp_by === "title_lot").length.toLocaleString() : ""}</p>
+    <p class="count">${rows.length.toLocaleString()} of ${regRows.length.toLocaleString()} LHs${nCol ? " · " + nCol + " column filter" + (nCol > 1 ? "s" : "") : ""}${reg && reg.stamp ? " · register read " + fmtTime(reg.stamp) : ""}${hasAsp() ? " · in ASP database: " + base.filter(aspFound).length.toLocaleString() : ""}</p>
     ${reg && reg.asp_error ? `<div class="banner warn"><div><b>ASP database not read</b>${esc(reg.asp_error)}. The ASP column is blank until the next register refresh reads it.</div></div>` : ""}
     ${top.length ? `<div class="tblwrap"><table class="tbl" data-tt="off">${headHtml(top)}<tbody>
       ${list.map(r => { const rec = recOf(r.id), st = statusOf(r.id); return `<tr data-id="${esc(r.id)}">
@@ -863,11 +864,12 @@ function aspBox(g) {
   const rs = aspRecs(g), src = reg.asp ? `${esc(reg.asp.tab)}, ${Number(reg.asp.n).toLocaleString()} records, read with the register ${fmtTime(reg.stamp)}` : "";
   const why = { survey: `Found by survey no.: ASP NO. in LAD BAL (${esc(g.asp_no)}) is the NewSurveyNumber below.`,
     title_lot: "Found by Title no. and Lot no. together; LAD BAL has no ASP NO. that matches. Check that it is the same lot.",
+    project_lot: `Found by project no., lot and area: Survey no. in LAD BAL (${esc(g.survey_no)}) is the ProjectNumber, Lot no. ${esc(g.lot)} holds the LotNumber, and the areas agree. The ASP record has no title no. Check that it is the same lot.`,
     not_found: `LAD BAL shows ASP NO. ${esc(g.asp_no)}, but no record of the ASP database has that survey no. Check the number or the database.` }[g.asp_by]
     || "No ASP NO. in LAD BAL and no record with this Title no. and Lot no.";
   return `<div class="aspbox"><h4>ASP database <span class="pill ${ASP_CLS[g.asp_by] || ""}">${esc(aspLabel(g))}</span></h4>
     ${rs.length ? `<div class="tblwrap"><table class="tbl" data-tt="off"><thead><tr><th>ASP record</th><th>Survey no.</th><th>Approved</th><th class="num">Area (ha)</th><th>Title · Lot</th><th>Module</th></tr></thead><tbody>
-      ${rs.map(a => `<tr><td class="mono">${esc(a[0])}</td><td class="mono">${esc(a[1])}</td><td>${esc(a[2])}<small>${a[7] ? "surveyed " + esc(a[7]) : ""}</small></td><td class="num">${esc(a[3])}</td><td>${esc(a[4])}<small>${esc(a[5])}</small></td><td>${esc(a[6])}</td></tr>`).join("")}
+      ${rs.map(a => `<tr><td class="mono">${esc(a[0])}</td><td class="mono">${esc(a[1])}${a[8] ? `<small>${esc(a[8])}</small>` : ""}</td><td>${esc(a[2])}<small>${a[7] ? "surveyed " + esc(a[7]) : ""}</small></td><td class="num">${esc(a[3])}</td><td>${esc(a[4])}<small>${esc(a[5])}</small></td><td>${esc(a[6])}</td></tr>`).join("")}
       </tbody></table></div>` : ""}
     <p>${why}</p>${src ? `<p>Source: ${src}.</p>` : ""}</div>`;
 }
