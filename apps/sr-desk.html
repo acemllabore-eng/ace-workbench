@@ -1380,7 +1380,10 @@ function canEdit(s) {
 /* Every change goes through edit(): saved on this PC at once, queued, then synced. */
 function edit(seq, mutate) {
   const cur = JSON.parse(JSON.stringify(srData(seq)));
+  const verBefore = cur.verifier || "";
   mutate(cur);
+  // Verifier = whoever edited last (user, 2026-11-21). A change made in the Verifier box itself is kept as chosen.
+  if (state.me && state.me.name && (cur.verifier || "") === verBefore) cur.verifier = state.me.name;
   if (isPractice(seq)) { practice = cur; try { localStorage.setItem(STORE + "-practice", JSON.stringify(cur)); } catch (e) {} return; }
   if (HOSTED && (!navigator.onLine || netDown)) { // the phone version keeps nothing for later
     toast("No connection: this change was not saved. Check the signal, then press Sync now.");
@@ -1650,7 +1653,7 @@ function renderGuide() {
         <p class="lead">The SR panel has one tab for each part of the work.</p>
         <h3>1. Details</h3>
         <ul class="tips"><li>Set <b>Survey status</b> to SR AT DARPO and enter the <b>date received at DARPO</b>. The day count starts from that date.</li>
-          <li>Choose yourself as <b>Verifier</b>. An SR has one verifier; others can read it but only you or the Admin can change it.</li>
+          <li>Your name goes in <b>Verifier</b> by itself when you change anything on the SR: it shows whoever edited last. An SR has one verifier; others can read it but only you or the Admin can change it.</li>
           <li>Choose <b>For approval by</b>: DENR or LRA. This decides which checklist opens. <span class="tbc">To confirm</span> how to tell which office approves an SR is not written here yet.</li>
           <li>Compare the SR details on screen with the envelope. If the title number, lot or claimant is wrong, tell the Admin; only the Admin can correct those fields.</li></ul>
         <h3>2. Cross-check (optional)</h3>
@@ -2117,7 +2120,7 @@ function openSR(seq) {
           ${!isOpen(s) ? `<p class="readonly-note">The checklist is used while the survey status is ${AT_DARPO}.</p>` : s.status === "Compliance" ? `<p class="readonly-note">Returned to DARMO for compliance. Press "Compliance submitted by DARMO" when the SR comes back.</p>` : ""}
         </section>
         <section class="sect"><h3>Who checks it, and for whom</h3>
-          <p class="hint">One verifier holds an SR. "For approval by" decides which checklist opens.</p>
+          <p class="hint">One verifier holds an SR: whoever edited it last is filled in by itself. "For approval by" decides which checklist opens.</p>
           <div class="assign" style="margin-top:0">
             <div class="field"><label for="dw-ver">Verifier</label><select id="dw-ver" ${canEdit(s) ? "" : "disabled"}><option value="">Unassigned</option>${verOpts.map(v => `<option ${s.verifier === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></div>
             <div class="field"><label for="dw-route">For approval by</label><select id="dw-route" ${canEdit(s) ? "" : "disabled"}><option value="" ${s.route ? "" : "selected"}>Unassigned</option>${ROUTES.map(r => `<option ${s.route === r ? "selected" : ""}>${r}</option>`).join("")}</select></div>
