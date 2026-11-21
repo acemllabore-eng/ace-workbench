@@ -128,7 +128,9 @@ dialog.xp form{display:flex;flex-direction:column;max-height:calc(100vh - 34px)}
 h3.sec{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
 /* Survey modules (Dashboard) */
 .modyear{margin-bottom:24px}
-.modtitle{margin:0 0 10px;padding:8px 12px;text-align:center;font-size:17px;letter-spacing:.02em;background:var(--accent-soft);border-radius:8px}
+.modtitle{margin:0 0 10px;padding:8px 12px;text-align:center;font-size:17px;letter-spacing:.02em;background:var(--accent-soft);border-radius:8px;position:relative}
+.modtitle .modprint{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;gap:6px}
+@media (max-width:720px){.modtitle{padding-bottom:44px}.modtitle .modprint{top:auto;bottom:6px;transform:none;left:8px;right:8px;justify-content:center}}
 .modsec{font-size:13.5px;font-weight:700;margin:14px 0 6px}
 .modtbl tr.modrow{cursor:pointer}
 .modtbl tr.modrow:hover td,.modtbl tr.modrow.open td{background:var(--hover)}
@@ -153,6 +155,10 @@ h3.sec{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--
 .info div{min-width:0}
 .info span{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .info b{font-weight:500;overflow-wrap:anywhere}
+.aspbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:14px}
+.aspbox h4{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
+.aspbox p{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
+.aspbox .tbl td,.aspbox .tbl th{font-size:12.5px}
 .fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;min-width:0}
 label.f input,label.f select,label.f textarea{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:7px 10px;font-size:14px;font-weight:400;width:100%}
@@ -210,6 +216,16 @@ input:disabled,select:disabled,textarea:disabled{background:var(--hover);opacity
   #print h2{font-size:11pt;margin:4mm 0 2mm}
   #print .foot{text-align:right;font-size:9pt;margin-top:6mm}
   #print .sig{margin-top:10mm;display:flex;justify-content:space-between;font-size:10pt}
+  #print.mods h1{font-size:14pt;margin-bottom:1mm}
+  #print.mods h2{font-size:11pt;margin:5mm 0 2mm}
+  #print.mods td,#print.mods th{padding:1.5mm 2mm;font-size:10pt}
+  #print.mods .n{text-align:right;white-space:nowrap}
+  #print.mods tr.tot td{font-weight:bold;background:#eee}
+  #print.mods tr.grand td{font-weight:bold;background:#ddd}
+  #print.mods table.lhs{margin:1mm 0 2mm 6mm;width:calc(100% - 6mm)}
+  #print.mods table.lhs td,#print.mods table.lhs th{font-size:9pt;padding:1mm 1.5mm}
+  #print.mods .signs{display:grid;grid-template-columns:repeat(3,1fr);gap:8mm;margin-top:12mm;font-size:10pt;break-inside:avoid}
+  #print.mods .signs b{display:block;margin-top:9mm;border-top:1px solid #000;padding-top:1mm;text-transform:uppercase}
 }
 
 @media (max-width:720px){
@@ -344,6 +360,19 @@ function indexReg() {
   reg.rows.forEach(a => { const o = {}; F.forEach((f, i) => { o[f] = a[i]; }); o.inside = a[1] === 1; regRows.push(o); regById[o.id] = o; });
 }
 indexReg();
+// ASP database match (register fields asp_by, asp; backend rssAspMatch_): label, pill class, matched records.
+const ASP_TXT = { survey: "In ASP database", title_lot: "In ASP (title + lot)", not_found: "ASP no. not in database" };
+const ASP_CLS = { survey: "s-Complete", title_lot: "s-Ongoing", not_found: "s-Returned" };
+const hasAsp = () => !!(reg && reg.fields && reg.fields.includes("asp_by"));
+const aspLabel = r => !hasAsp() ? "" : ASP_TXT[r.asp_by] || "No ASP record";
+const aspRecs = r => { try { return r.asp ? JSON.parse(r.asp) : []; } catch (e) { return []; } };
+function aspCell(r) {
+  if (!hasAsp()) return '<span class="muted">—</span>';
+  const rs = aspRecs(r), a = rs[0];
+  return `<span class="pill ${ASP_CLS[r.asp_by] || ""}">${esc(aspLabel(r))}</span>` +
+    (a ? `<small>${esc(a[1] || "")}${a[2] ? " · approved " + esc(a[2]) : ""}${rs.length > 1 ? " · +" + (rs.length - 1) + " more" : ""}</small>`
+       : r.asp_no ? `<small>LAD BAL: ${esc(r.asp_no)}</small>` : "");
+}
 const isAdmin = () => !!state.me && state.me.role === "admin";
 const pending = id => state.outbox.some(o => o.id === id);
 const recOf = id => state.items[id] || null;
@@ -429,7 +458,7 @@ async function sync(quiet) {
     if (!reg || reg.stamp !== p.stamp) {
       const g = await call("GET", { action: "register", stamp: reg ? reg.stamp : "" });
       sourceError = g.source_error || "";
-      if (!g.same) { reg = { stamp: g.stamp, fields: g.fields, rows: g.rows, flags: g.flags || [], missing: g.missing || [] }; saveReg(); indexReg(); }
+      if (!g.same) { reg = { stamp: g.stamp, fields: g.fields, rows: g.rows, flags: g.flags || [], missing: g.missing || [], asp: g.asp || null, asp_error: g.asp_error || "" }; saveReg(); indexReg(); }
     }
   } catch (e) {
     lastError = e.server ? e.message : "";
@@ -557,6 +586,7 @@ const fundYears = () => [...new Set(regRows.map(r => r.fund_year).concat(Object.
 // v: the value sorted and filtered on; x: the grey second line, also searched by a text filter.
 const COLS = [
   { k: "lhid", t: "LHID", f: "text", v: r => r.lhid || r.id },
+  { k: "asp", t: "ASP database", f: "list", v: r => aspLabel(r), x: r => r.asp_no },
   { k: "owner", t: "Landowner", f: "text", v: r => r.landowner, x: r => r.survey_status },
   { k: "status", t: "Status", f: "list", v: r => lhStatusOf(r.id) },
   { k: "module", t: "Module", f: "list", v: r => moduleOf(r.id) },
@@ -642,10 +672,12 @@ function regHtml() {
       <button class="btn sm ghost" id="fClear">Clear filters</button>
       <button class="btn sm" id="xpOpen" title="Excel list of the LHs of one or more modules, in the survey module layout">Export module</button>
     </div>
-    <p class="count">${rows.length.toLocaleString()} of ${regRows.length.toLocaleString()} LHs${nCol ? " · " + nCol + " column filter" + (nCol > 1 ? "s" : "") : ""}${reg && reg.stamp ? " · register read " + fmtTime(reg.stamp) : ""}</p>
+    <p class="count">${rows.length.toLocaleString()} of ${regRows.length.toLocaleString()} LHs${nCol ? " · " + nCol + " column filter" + (nCol > 1 ? "s" : "") : ""}${reg && reg.stamp ? " · register read " + fmtTime(reg.stamp) : ""}${hasAsp() ? " · in ASP database: " + base.filter(r => r.asp_by === "survey" || r.asp_by === "title_lot").length.toLocaleString() : ""}</p>
+    ${reg && reg.asp_error ? `<div class="banner warn"><div><b>ASP database not read</b>${esc(reg.asp_error)}. The ASP column is blank until the next register refresh reads it.</div></div>` : ""}
     ${top.length ? `<div class="tblwrap"><table class="tbl" data-tt="off">${headHtml(top)}<tbody>
       ${list.map(r => { const rec = recOf(r.id), st = statusOf(r.id); return `<tr data-id="${esc(r.id)}">
         <td class="mono">${esc(r.lhid)}${r.id.includes(" / ") ? `<small>lot ${esc(r.lot)}</small>` : ""}</td>
+        <td>${aspCell(r)}</td>
         <td class="own">${esc(r.landowner)}<small>${esc(r.survey_status)}</small></td>
         <td>${lhStatusCell(r.id)}</td>
         <td>${moduleCell(r)}</td>
@@ -670,17 +702,49 @@ let openMod = "", modDraft = {};
 const canModule = () => !!state.me && (state.me.role === "admin" || state.me.role === "head");
 const modInfo = name => state.modules[name] || {};
 const peso = v => v === "" || v == null || isNaN(+v) ? "" : (+v).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Modules by year (from the module name) and stage: [{ y, secs: [[stage, letter, groups]] }], newest year first.
+function modYears() {
+  const groups = moduleGroups(), stages = (state.moduleStages || MOD_STAGES).slice(), years = {};
+  groups.forEach(g => { const st = modInfo(g.name).stage; if (st && !stages.includes(st)) stages.push(st); const y = (/-(\d{4})\b/.exec(g.name) || [])[1] || ""; (years[y] = years[y] || []).push(g); });
+  const fallback = stages[stages.length - 1] === "For bidding" || !stages.includes("For bidding") ? stages[stages.length - 1] : "For bidding";
+  return Object.keys(years).sort((a, b) => (b || "0").localeCompare(a || "0")).map(y => ({ y,
+    secs: stages.map(st => [st, "ABCDEFGH"[stages.indexOf(st)], years[y].filter(g => (modInfo(g.name).stage || fallback) === st)]).filter(x => x[2].length) }));
+}
 function modulesHtml() {
   const groups = moduleGroups();
   if (!groups.length) return `<div class="empty" style="margin-bottom:20px"><b>No survey module yet</b>Set the Module of the LHs in the register (column Module); each module then shows here with its contractor, number of LHs, area and ABC.</div>`;
-  const stages = (state.moduleStages || MOD_STAGES).slice(), years = {};
-  groups.forEach(g => { const st = modInfo(g.name).stage; if (st && !stages.includes(st)) stages.push(st); const y = (/-(\d{4})\b/.exec(g.name) || [])[1] || ""; (years[y] = years[y] || []).push(g); });
-  const fallback = stages[stages.length - 1] === "For bidding" || !stages.includes("For bidding") ? stages[stages.length - 1] : "For bidding";
-  return Object.keys(years).sort((a, b) => (b || "0").localeCompare(a || "0")).map(y => {
-    const secs = stages.map(st => [st, years[y].filter(g => (modInfo(g.name).stage || fallback) === st)]).filter(x => x[1].length);
-    return `<section class="modyear"><h2 class="modtitle">${y ? y + " " : ""}SURVEY MODULES</h2>` +
-      secs.map(([st, gs]) => `<h3 class="modsec">${"ABCDEFGH"[stages.indexOf(st)]}. ${esc(st.toUpperCase())}</h3>${modTable(gs)}`).join("") + `</section>`;
-  }).join("");
+  return modYears().map(({ y, secs }) =>
+    `<section class="modyear"><h2 class="modtitle">${y ? y + " " : ""}SURVEY MODULES<span class="modprint"><button class="btn sm" data-modprint="${esc(y)}" title="Print this table">Print</button>` +
+    `<button class="btn sm" data-modprint="${esc(y)}" data-withlhs="1" title="Print this table with the LHs of each module under it">Print with LHs</button></span></h2>` +
+    secs.map(([st, L, gs]) => `<h3 class="modsec">${L}. ${esc(st.toUpperCase())}</h3>${modTable(gs)}`).join("") + `</section>`).join("");
+}
+// Prints one year's survey modules: the same sections and totals as the Dashboard, then the signatories of the module
+// export (web app defaults, or the names last typed in Export module on this device). withLhs: each module's LHs under it.
+function printModules(y, withLhs) {
+  const yr = modYears().find(x => x.y === y);
+  if (!yr) return toast("No survey module for " + (y || "that year") + ".");
+  const sign = Object.assign({}, state.sign || {}, (state.xp || {}).sign || {});
+  let gn = 0, garea = 0, gabc = 0, gAny = false;
+  const sec = ([st, L, gs]) => {
+    let n = 0, area = 0, abc = 0, any = false;
+    const body = gs.map(g => {
+      const m = modInfo(g.name);
+      n += g.rows.length; area += g.area; if (m.abc !== "" && m.abc != null && !isNaN(+m.abc)) { abc += +m.abc; any = true; }
+      const lhs = !withLhs ? "" : `<tr><td colspan="5" style="border:0;padding:0"><table class="lhs"><thead><tr><th>LHID</th><th>Landowner</th><th>Location</th><th>Title / Lot</th><th>Area (ha)</th></tr></thead><tbody>` +
+        g.rows.map(({ rec, r }) => `<tr><td>${esc(r.lhid || rec.id)}</td><td>${esc(r.landowner || "")}</td><td>${esc([r.barangay, r.municipality].filter(Boolean).join(", "))}</td><td>${esc([r.title, r.lot].filter(Boolean).join(" / "))}</td><td class="n">${esc(r.area || "")}</td></tr>`).join("") + `</tbody></table></td></tr>`;
+      return `<tr><td>${esc(g.name)}</td><td>${esc(m.contractor || "")}</td><td class="n">${g.rows.length}</td><td class="n">${g.area.toFixed(4)}</td><td class="n">${peso(m.abc)}</td></tr>` + lhs;
+    }).join("");
+    gn += n; garea += area; gabc += abc; gAny = gAny || any;
+    return `<h2>${L}. ${esc(st.toUpperCase())}</h2><table><thead><tr><th>Module</th><th>Contractor</th><th>No. of LH</th><th>Area (has.)</th><th>ABC (PHP)</th></tr></thead><tbody>${body}` +
+      `<tr class="tot"><td></td><td class="n">TOTAL:</td><td class="n">${n}</td><td class="n">${area.toFixed(4)}</td><td class="n">${any ? peso(abc) : ""}</td></tr></tbody></table>`;
+  };
+  const secs = yr.secs.map(sec).join("");
+  const grand = yr.secs.length < 2 ? "" : `<table><tbody><tr class="grand"><td>ALL ${esc(y)} SURVEY MODULES</td><td class="n">GRAND TOTAL:</td><td class="n">${gn}</td><td class="n">${garea.toFixed(4)}</td><td class="n">${gAny ? peso(gabc) : ""}</td></tr></tbody></table>`;
+  const signs = SIG_KEYS.filter(([k]) => k !== "earmarked").map(([k, l]) => { const s = sign[k] || {}; return `<div>${l}<b>${esc(s.name || "")}&nbsp;</b>${esc(s.pos || "")}</div>`; }).join("");
+  $("print").className = "mods";
+  $("print").innerHTML = `<h1>${y ? esc(y) + " " : ""}SURVEY MODULES</h1><p class="sub">PROVINCE OF MASBATE · Survey Unit, DARPO Masbate</p>${secs}${grand}
+    <div class="signs">${signs}</div><p class="foot">Printed ${new Date().toLocaleString("en-PH")} from RSS Verification Desk</p>`;
+  window.print();
 }
 function modTable(gs) {
   let n = 0, area = 0, abc = 0, anyAbc = false;
@@ -790,15 +854,29 @@ function refreshDrawerHead() {
   $("dTitle").textContent = "LHID " + (g.lhid || editing) + (editing.includes(" / ") ? " · lot " + (g.lot || "") : "");
   $("dSub").textContent = [g.landowner, [g.barangay, g.municipality].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
   $("dBadges").innerHTML = (g.inside ? '<span class="pill in">Inside balance</span>' : '<span class="pill">Outside balance</span>') +
+    (hasAsp() ? `<span class="pill ${ASP_CLS[g.asp_by] || ""}">${esc(aspLabel(g))}</span>` : "") +
     `<span class="pill s-${sKey(st)}">${esc(st)}${draft.round > 1 ? " · round " + draft.round : ""}</span>` + (pending(editing) ? '<span class="pill wait">not sent</span>' : "") +
     (rec && rec.version ? `<span class="pill">v${rec.version}</span>` : "");
+}
+function aspBox(g) {
+  if (!hasAsp()) return "";
+  const rs = aspRecs(g), src = reg.asp ? `${esc(reg.asp.tab)}, ${Number(reg.asp.n).toLocaleString()} records, read with the register ${fmtTime(reg.stamp)}` : "";
+  const why = { survey: `Found by survey no.: ASP NO. in LAD BAL (${esc(g.asp_no)}) is the NewSurveyNumber below.`,
+    title_lot: "Found by Title no. and Lot no. together; LAD BAL has no ASP NO. that matches. Check that it is the same lot.",
+    not_found: `LAD BAL shows ASP NO. ${esc(g.asp_no)}, but no record of the ASP database has that survey no. Check the number or the database.` }[g.asp_by]
+    || "No ASP NO. in LAD BAL and no record with this Title no. and Lot no.";
+  return `<div class="aspbox"><h4>ASP database <span class="pill ${ASP_CLS[g.asp_by] || ""}">${esc(aspLabel(g))}</span></h4>
+    ${rs.length ? `<div class="tblwrap"><table class="tbl" data-tt="off"><thead><tr><th>ASP record</th><th>Survey no.</th><th>Approved</th><th class="num">Area (ha)</th><th>Title · Lot</th><th>Module</th></tr></thead><tbody>
+      ${rs.map(a => `<tr><td class="mono">${esc(a[0])}</td><td class="mono">${esc(a[1])}</td><td>${esc(a[2])}<small>${a[7] ? "surveyed " + esc(a[7]) : ""}</small></td><td class="num">${esc(a[3])}</td><td>${esc(a[4])}<small>${esc(a[5])}</small></td><td>${esc(a[6])}</td></tr>`).join("")}
+      </tbody></table></div>` : ""}
+    <p>${why}</p>${src ? `<p>Source: ${src}.</p>` : ""}</div>`;
 }
 function drawDrawer() {
   const g = regById[editing] || {}, can = canEdit(editing), rec = recOf(editing), dis = can ? "" : "disabled";
   refreshDrawerHead();
   const info = [["Title no.", g.title], ["Lot no.", g.lot], ["Survey no.", g.survey_no], ["Area (ha)", g.area], ["MOA", g.moa], ["Phase", g.phase],
     ["DARMO", g.darmo], ["MARPO", g.marpo], ["Land class", g.land_class], ["RSS no.", g.rss_no], ["RSS date", g.rss_date], ["Submitted RSS doc.", g.rss_doc],
-    ["Module no.", g.module_no], ["Fund year", g.fund_year], ["Survey status", g.survey_status], ["Workability", g.workability], ["Remarks (LAD BAL)", g.remarks]]
+    ["ASP no. (LAD BAL)", g.asp_no], ["Date of ASP (LAD BAL)", g.asp_date], ["Module no.", g.module_no], ["Fund year", g.fund_year], ["Survey status", g.survey_status], ["Workability", g.workability], ["Remarks (LAD BAL)", g.remarks]]
     .filter(x => x[1]);
   const people = state.people.length ? state.people : (state.me ? [state.me] : []);
   const nLack = lackIds().length;
@@ -806,6 +884,7 @@ function drawDrawer() {
     ${!can && state.me ? `<div class="banner warn"><div><b>Held by ${esc(rec.holder)}</b>Only they or the Admin can change this RSS. You can read and print it.</div></div>` : ""}
     ${!state.me ? `<div class="banner warn"><div><b>Not signed in</b>Sign in to verify; you can still read and print.</div></div>` : ""}
     <div class="info">${info.map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join("") || '<div class="muted">No register details for this LHID.</div>'}</div>
+    ${aspBox(g)}
     <div class="fgrid">
       <label class="f"><span>Date RSS documents received</span><input type="date" id="dRec" value="${esc(draft.date_received)}" ${dis}></label>
       <label class="f"><span>Holder (verifier)</span><select id="dHolder" ${isAdmin() ? "" : "disabled"}><option value="">${draft.holder ? "" : "Unassigned (first to mark holds it)"}</option>
@@ -896,6 +975,7 @@ function printForm(id) {
   const mods = d.prev_modules.filter(m => m.no || m.remarks);
   while (mods.length < 3) mods.push({ no: "", remarks: "" });
   const line = (k, v) => `<tr><td style="width:38%">${k}</td><td>${esc(v || "")}</td></tr>`;
+  $("print").className = "";
   $("print").innerHTML = `<h1>RSS VERIFICATION CHECKLIST</h1><p class="sub">Requisition for Survey Services · DARPO Masbate</p>
     <table class="head">${line("LHID", g.lhid)}${line("Landowner", g.landowner)}${line("Location", [g.barangay, g.municipality].filter(Boolean).join(", "))}${line("Title no. / Lot no.", [g.title, g.lot].filter(Boolean).join(" / "))}${line("Area (ha)", g.area)}${line("RSS no. / date", [g.rss_no, g.rss_date].filter(Boolean).join(" / "))}${line("Status of landholding", id ? (g.inside ? "Inside balance" : "Outside balance") : "")}</table>
     <h2>DOCUMENTARY REQUIREMENTS:</h2>
@@ -1261,6 +1341,8 @@ $("dBody").addEventListener("click", e => {
 
 $("main").addEventListener("click", e => {
   const t = e.target;
+  const mp = t.closest("[data-modprint]");
+  if (mp) return printModules(mp.dataset.modprint, !!mp.dataset.withlhs);
   if (t.closest("[data-lhs]") || t.closest("tr.cf")) return;
   if (t.closest(".modedit")) {
     if (t.id === "mSave") return saveModule(t.dataset.name);
