@@ -155,6 +155,8 @@ td { font-family: var(--mono); }
 .pie-list { display: grid; gap: 4px; min-width: 0; }
 .pie-list .pr { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 44px 78px; gap: 10px; align-items: center; font-size: 12.5px; padding: 5px 8px; border-radius: 6px; border: 1px solid transparent; }
 .pie-list .pr.on { background: var(--hi); border-color: var(--line); }
+.pie-list.both .pr { grid-template-columns: 10px minmax(0, 1fr) 52px 84px 44px 60px; }
+.pie-list.both .n.alt { color: var(--muted); }
 .pie-list .pr.hd { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); padding-top: 0; }
 .pie-list .pr.hd span:nth-child(n+3) { text-align: right; }
 .pie-list .sw { width: 10px; height: 10px; border-radius: 3px; box-shadow: 0 0 8px currentColor; }
@@ -416,12 +418,16 @@ function pieChart(el, r, prev, opt) {
     <text class="c-v" x="${C}" y="${C + 2}" text-anchor="middle">${opt.center ?? opt.num(sum)}</text>
     <text class="c-l" x="${C}" y="${C + 22}" text-anchor="middle">${esc(opt.unit)}</text>
     <text class="c-w" x="${C}" y="${C + 38}" text-anchor="middle">${esc(opt.cw ?? "now")}</text>`;
-  const list = `<div class="pie-list"><div class="pr hd"><span></span><span>${esc(opt.col || "Status")}</span><span>${esc(opt.unit)}</span><span>Share</span><span></span></div>` +
+  // opt.both (Survey Status panels, 2026-11-21, user: "make the area and SRs here appear not on toggle only"): an SRs column and an
+  // Area (ha) column side by side; Share stays the share of what the pie measures (the SRs / Area toggle).
+  const B = opt.both, isHa = opt.unit === "hectares";
+  const cols = (n, ha, v) => B ? `<span class="n${isHa ? " alt" : ""}">${n.toLocaleString()}</span><span class="n${isHa ? "" : " alt"}">${fmtHa(ha)}</span>` : `<span class="n">${opt.num(v)}</span>`;
+  const list = `<div class="pie-list${B ? " both" : ""}"><div class="pr hd"><span></span><span>${esc(opt.col || "Status")}</span>${B ? "<span>SRs</span><span>Area (ha)</span>" : `<span>${esc(opt.unit)}</span>`}<span title="${B ? "Share of " + (isHa ? "the area" : "the SRs") + ", as the pie shows" : ""}">Share</span><span></span></div>` +
     sl.map((o, k) => { const d = prev ? o.v - (prev[o.s.key] || 0) : null;
       return `<div class="pr" data-k="${k}" title="${esc(o.s.status)}"><i class="sw" style="background:${o.s.color};color:${o.s.color}"></i><span class="nm">${esc(o.s.name)}</span>
-        <span class="n">${opt.num(o.v)}</span><span class="p">${pct(o.v)}</span><span>${d == null ? "" : `<span class="delta flat">${sign(d)}</span>`}</span></div>` +
+        ${cols(B ? B.n(o.s) : 0, B ? B.ha(o.s) : 0, o.v)}<span class="p">${pct(o.v)}</span><span>${d == null ? "" : `<span class="delta flat">${sign(d)}</span>`}</span></div>` +
         o.parts.map(q => `<div class="pr sub" data-s="${q.idx}" title="${esc(o.s.status)}: ${esc(q.name)}"><i class="sw" style="background:${o.s.color};color:${o.s.color};opacity:${shade(q)}"></i><span class="nm">${esc(q.name)}</span>
-        <span class="n">${opt.num(q.v)}</span><span class="p">${Math.round(q.of * 100)}%</span><span></span></div>`).join(""); }).join("") +
+        ${cols(q.n || 0, q.ha || 0, q.v)}<span class="p">${Math.round(q.of * 100)}%</span><span></span></div>`).join(""); }).join("") +
     (subs.length ? `<div class="sub-note">Outer ring and indented rows: ${esc(opt.subNote || "")}; their % is of that status</div>` : "") + `</div>`;
   el.innerHTML = `<div class="pie"><svg viewBox="0 0 300 300" role="img" aria-label="${esc(opt.label)}">${g}</svg>${list}</div><div class="tip"></div>`;
   const tip = el.querySelector(".tip"), paths = [...el.querySelectorAll(".slice")], items = [...el.querySelectorAll(".pr[data-k]")];
@@ -532,7 +538,7 @@ function render() {
   const noArea = list.filter(s => s.area == null).length;
   $("notes").innerHTML = `<b>How these are counted</b><ul>
     <li>One pie per <b>kind of survey</b>: every SR of that kind at its current survey status, from this PC's SR Desk copy. The outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance).</li>
-    <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. Switch between <b>SRs</b> and <b>Area (ha)</b> at the top.</li>
+    <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. The status tables show both. <b>SRs</b> / <b>Area (ha)</b> at the top picks what the pie and the Share column measure.</li>
     <li>Click a status (or a DARPO status in the outer ring) to open the <b>attachments</b> of those SRs, from the SR Desk's Attachments tab. Each missing document counts every SR that lacks it, so an SR lacking two documents is in both slices. An SR with nothing missing is <b>Complete</b> (every required document marked Present or N/A), <b>Partly marked</b>, or <b>not marked yet</b>.</li>
     <li>Click a missing document to sort its remarks into <b>categories</b>. They are the same categories as on the SR Desk dashboard (saved on this device only); reopen the SR Desk to see changes made here.</li>
     <li>Read-only for SRs: nothing on this page is written to the SR Desk or the Sheet.</li></ul>`;
@@ -558,6 +564,7 @@ function renderKind(kind, i, srs, SER, AREA, rcats) {
   else pieChart(el, r, null, { label: `${kind}: ${AREA ? "share of area at each survey status, hectares" : "share of SRs at each survey status"}`, spin: firstPaint, series: show,
     subNote: "DARPO status of the SRs at DARPO", subs: keyOf(AT_DARPO) === AT_DARPO ? { [AREA ? AT_DARPO + HA : AT_DARPO]: parts } : null,
     num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs", cw: kind, tipTitle: kind, pick: pick && pick.st, pickSub: pick && pick.sub,
+    both: { n: s => r[s.status] || 0, ha: s => r[s.status + HA] || 0 },
     onPick: (st, sub) => { const cur = ui.pick[kind]; ui.pick[kind] = cur && cur.st === st && (cur.sub || null) === (sub || null) ? null : { st, sub: sub || null };
       delete ui.att[kind]; delete ui.cat[kind]; savePick(); ui.anim = ui.pick[kind] ? kind : null; render(); ui.anim = null;
       const a = $("katt-" + i); if (a && ui.pick[kind]) a.scrollIntoView({ block: "nearest", behavior: "smooth" }); },
