@@ -91,52 +91,9 @@ td.who { min-width: 160px; }
 .bar .p { background: var(--pass); } .bar .f { background: var(--fail); } .bar .n { background: var(--na); }
 .age-old { color: var(--fail); font-weight: 600; }
 
-/* Dashboard */
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.stat { padding: 14px 16px; }
-.stat .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
-.stat .v { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; }
-.stat .s { color: var(--muted); font-size: 12.5px; }
-.grid2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; }
 .panel h2 { font-size: 15px; margin: 0; font-weight: 600; }
 .panel-head { padding: 14px 16px 10px; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .panel-body { padding: 0 16px 16px; }
-.hbars { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; } /* minmax: a wide LH list scrolls inside the panel instead of widening it */
-.hbar { display: grid; grid-template-columns: minmax(0, 1fr) 40px; gap: 4px 10px; align-items: center; }
-.hbar .lbl { font-size: 13px; grid-column: 1 / -1; }
-.hbar .lbl span { color: var(--muted); }
-.hbar .track { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
-.hbar .track i { display: block; height: 100%; background: var(--fail); border-radius: 4px; }
-.hbar .track.blue i { background: var(--accent); }
-.hbar .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-button.hbar { width: 100%; background: none; border: 0; padding: 6px 8px; margin: 0; border-radius: 8px; color: inherit; font: inherit; text-align: left; cursor: pointer; box-sizing: border-box; }
-button.hbar:hover, button.hbar:focus-visible { background: var(--surface-2); }
-.hbar .lbl .sw { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; vertical-align: 1px; }
-button.hbar.sub { padding-left: 26px; }
-button.hbar.sub .lbl { font-size: 12.5px; }
-button.hbar[aria-pressed="true"] { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--fail); }
-.find-list { margin-top: 4px; }
-.find-list .head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
-.find-list tr[data-seq] { cursor: pointer; }
-.find-list .fr { font-size: 12.5px; } .find-list .fr + .fr { margin-top: 3px; } .find-list .fr b { font-weight: 600; }
-/* Findings pie (2026-11-19): categorical slots from the validated dataviz default palette, stepped for each mode; "Other" uses --na. */
-:root { --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; } }
-:root[data-theme="dark"] { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; }
-.fdonut { display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); gap: 16px 24px; align-items: center; }
-.fdonut svg { width: 100%; max-width: 210px; height: auto; display: block; margin: 0 auto; }
-.fdonut .slice { stroke: var(--surface); stroke-width: 2; cursor: pointer; transition: opacity .15s; }
-.fdonut.has-pick .slice:not(.on), .fdonut svg:hover .slice:not(:hover) { opacity: .4; }
-.fdonut .c-n { font-size: 30px; font-weight: 600; fill: var(--fg); font-variant-numeric: tabular-nums; }
-.fdonut .c-l { font-size: 11px; fill: var(--muted); }
-.pleg { display: grid; gap: 2px; min-width: 0; }
-.pleg button { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 40px; gap: 8px; align-items: center; width: 100%; background: none; border: 0; padding: 5px 6px; border-radius: 6px; text-align: left; cursor: pointer; font-size: 12.5px; }
-.pleg button:hover, .pleg button:focus-visible, .pleg button[aria-pressed="true"] { background: var(--surface-2); }
-.pleg .sw { width: 10px; height: 10px; border-radius: 3px; }
-.pleg .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pleg .nm small { color: var(--muted); margin-left: 4px; }
-.pleg .n { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
-.pleg .p { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
 .cat-edit { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; display: grid; gap: 10px; }
 .cat-pick { display: grid; gap: 2px; max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px; }
 .cat-pick label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; }
@@ -146,49 +103,85 @@ button.hbar[aria-pressed="true"] { background: var(--surface-2); box-shadow: ins
 .cat-pick .sub { font-size: 12px; }
 .cat-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .cat-row input { flex: 1 1 200px; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 10px; background: var(--surface); }
-@media (max-width: 600px) { .fdonut { grid-template-columns: 1fr; } }
-/* Dashboard layout (2026-11-20): KPI tiles, three-column chart rows, bottom figure strip. Colours are the app's own tokens. */
-.dk { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.dk-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-.dk-tile { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; padding: 14px 16px; }
-.dk-tile .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
-.dk-tile .v { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.dk-tile .v small { font-size: 14px; font-weight: 500; }
-.dk-tile .s { color: var(--muted); font-size: 12px; }
-.dk-ico { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-bg); color: var(--accent); }
-.dk-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.tone-pass .dk-ico { background: var(--pass-bg); color: var(--pass); }
-.tone-fail .dk-ico { background: var(--fail-bg); color: var(--fail); }
-.tone-warn .dk-ico { background: var(--warn-bg); color: var(--warn); }
-.tone-na .dk-ico { background: var(--na-bg); color: var(--na); }
-.dk-up { color: var(--pass); font-weight: 600; } .dk-down { color: var(--fail); font-weight: 600; }
-.dk3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
-.dk3 > .panel, .dk3 > div { min-width: 0; }
-.dk3 .fdonut { grid-template-columns: minmax(110px, 150px) minmax(0, 1fr); gap: 12px 14px; }
-.dk3 .pleg .nm { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
-.dk3.wide-mid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); }
-.dk-cols svg { width: 100%; height: auto; display: block; }
-.dk-cols .gl { stroke: var(--line); stroke-width: 1; }
-.dk-cols text { font-size: 10.5px; fill: var(--muted); font-variant-numeric: tabular-nums; }
-.dk-cols text.val { fill: var(--fg); font-weight: 600; }
-.dk-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
-.dk-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
-.dk-hb { display: grid; grid-template-columns: minmax(70px, 34%) minmax(0, 1fr) 36px; gap: 8px 10px; align-items: center; font-size: 13px; }
-.dk-hb .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dk-hb .bar { height: 16px; background: var(--surface-2); border-radius: 4px; overflow: hidden; display: flex; }
-.dk-hb .bar i { display: block; height: 100%; }
-.dk-hb .n { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-.dk-alert td.days { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
-.dk-alert td.days.hot { color: var(--fail); } .dk-alert td.days.warm { color: var(--warn); }
-.dk-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0; }
-.dk-strip > div { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; padding: 16px; border-left: 1px solid var(--line); }
-.dk-strip > div:first-child { border-left: 0; }
-.dk-strip .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.dk-strip .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
-.dk-strip .s { font-size: 12px; color: var(--muted); }
-@media (max-width: 1180px) { .dk-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dk3, .dk3.wide-mid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dk-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dk-strip > div { border-left: 0; border-top: 1px solid var(--line); } }
-@media (max-width: 860px) { .dk-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dk3, .dk3.wide-mid { grid-template-columns: minmax(0, 1fr); } .dk-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .dk3 .fdonut { grid-template-columns: 1fr; } .dk-tile, .dk-strip > div { grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; padding: 12px; } .dk-tile .dk-ico, .dk-strip .dk-ico { width: 34px; height: 34px; } .dk-ico svg { width: 18px; height: 18px; } }
+/* Series colours (2026-11-19): categorical slots from the validated dataviz default palette, stepped for each mode. */
+:root { --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; } }
+:root[data-theme="dark"] { --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; }
+/* Dashboard (2026-11-21): survey status pies of SBA 4 and 2025-A, the same mechanics as the SR Flow Dashboard (sr-dashboard.html),
+   in the app's own tokens. Scoped to .sdk so nothing else on the page changes. */
+.sdk { display: grid; gap: 16px; }
+.sdk-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px 16px; flex-wrap: wrap; }
+.sdk-top h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.sdk .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--surface); }
+.sdk .seg button { border: 0; background: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 12.5px; font-weight: 500; }
+.sdk .seg button[aria-pressed="true"] { background: var(--accent-bg); color: var(--fg); box-shadow: inset 0 0 0 1px var(--accent); }
+.sdk-kind { border-left: 5px solid var(--kc); overflow: hidden; }
+.sdk .kind-head { display: flex; justify-content: space-between; align-items: center; gap: 8px 16px; flex-wrap: wrap; padding: 12px 16px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--kc) 18%, transparent), color-mix(in srgb, var(--kc) 3%, transparent)); border-bottom: 1px solid color-mix(in srgb, var(--kc) 40%, transparent); }
+.sdk .kind-head h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sdk .kind-badge { font-size: 13px; font-weight: 700; letter-spacing: .04em; padding: 3px 10px; border-radius: 6px; background: var(--kc); color: #fff; }
+.sdk .cover { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sdk .cover b { color: var(--fg); }
+.sdk-body { padding: 12px 16px 16px; }
+.sdk .legend { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.sdk .legend button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px 3px 8px; font-size: 12px; color: var(--fg); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.sdk .legend button i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.sdk .legend button[aria-pressed="false"] { color: var(--muted); }
+.sdk .legend button[aria-pressed="false"] i { opacity: .25; }
+.sdk .chart { position: relative; width: 100%; }
+.sdk .chart svg { display: block; width: 100%; overflow: visible; }
+.sdk .pie { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 16px 28px; align-items: center; }
+.sdk .pie svg { max-width: 300px; height: auto; margin: 0 auto; }
+.sdk .pie .grow { transform-origin: 150px 150px; animation: sdk-spin .9s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes sdk-spin { from { transform: rotate(-120deg) scale(.6); opacity: 0; } }
+.sdk .pie .slice, .sdk .pie .sub-arc { stroke: var(--surface); transition: transform .18s ease-out, opacity .18s; cursor: pointer; }
+.sdk .pie .slice { stroke-width: 2; } .sdk .pie .sub-arc { stroke-width: 1.5; }
+.sdk .c-v { fill: var(--fg); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sdk .c-l { fill: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.sdk .c-w { fill: var(--accent); font-size: 11px; }
+.sdk .pie-list { display: grid; gap: 3px; min-width: 0; }
+.sdk .pie-list .pr { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 44px; gap: 10px; align-items: center; font-size: 12.5px; padding: 5px 8px; border-radius: 6px; border: 1px solid transparent; }
+.sdk .pie-list.both .pr { grid-template-columns: 10px minmax(0, 1fr) 52px 84px 44px; }
+.sdk .pie-list .pr.on { background: var(--surface-2); border-color: var(--line); }
+.sdk .pie-list .pr.pick { background: var(--accent-bg); border-color: var(--accent); }
+.sdk .pie-list .pr[data-k], .sdk .pie-list .pr[data-s] { cursor: pointer; }
+.sdk .pie-list .pr.hd { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding-top: 0; }
+.sdk .pie-list .pr.hd span:nth-child(n+3) { text-align: right; }
+.sdk .pie-list .sw { width: 10px; height: 10px; border-radius: 3px; }
+.sdk .pie-list .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sdk .pie-list .n, .sdk .pie-list .p { font-variant-numeric: tabular-nums; text-align: right; }
+.sdk .pie-list .n { color: var(--fg); font-weight: 500; } .sdk .pie-list .p, .sdk .pie-list .n.alt { color: var(--muted); }
+.sdk .pie-list .pr.sub { padding-top: 2px; padding-bottom: 2px; font-size: 12px; color: var(--muted); }
+.sdk .pie-list .pr.sub .nm { padding-left: 14px; position: relative; }
+.sdk .pie-list .pr.sub .nm::before { content: ""; position: absolute; left: 2px; top: -6px; width: 7px; height: 12px; border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); border-bottom-left-radius: 3px; }
+.sdk .pie-list .pr.sub .sw { width: 8px; height: 8px; justify-self: center; }
+.sdk .pie-list .sub-note { font-size: 11px; color: var(--muted); padding: 4px 8px 0; }
+.sdk .tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 150px; box-shadow: var(--shadow); opacity: 0; transition: opacity .12s; z-index: 5; }
+.sdk .tip .t { color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: .04em; margin-bottom: 4px; }
+.sdk .tip .r { display: flex; justify-content: space-between; gap: 14px; color: var(--muted); }
+.sdk .tip .r b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sdk .tip .r i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.sdk .hint { margin: 10px 0 0; }
+.sdk .att { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 14px; }
+.sdk .att:empty { display: none; }
+.sdk .att-in { animation: sdk-in .4s cubic-bezier(.2,.8,.2,1) both; transform-origin: top center; }
+@keyframes sdk-in { from { opacity: 0; transform: translateY(-10px) scale(.97); } }
+.sdk .att .pie { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); }
+.sdk .att .pie svg { max-width: 240px; }
+.sdk .att h3, .sdk .cat h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.sdk .chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.sdk .chart-head .sub { margin: 2px 0 8px; }
+.sdk .cat { margin-top: 14px; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; background: var(--surface-2); }
+.sdk .cat .legend button { background: var(--surface); }
+.sdk .chips .chip { cursor: default; }
+.sdk .chips .chip button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 2px; font-size: 12px; text-decoration: underline; }
+.sdk .lh tbody tr[data-seq] { cursor: pointer; }
+.sdk .lh tbody tr[data-seq]:hover td { background: var(--surface-2); }
+.sdk .lh .open { color: var(--accent); font-size: 12px; white-space: nowrap; }
+.sdk-notes { color: var(--muted); font-size: 12.5px; }
+.sdk-notes ul { margin: 6px 0 0; padding-left: 18px; } .sdk-notes li { margin: 2px 0; }
+@media (prefers-reduced-motion: reduce) { .sdk .pie .grow, .sdk .att-in { animation: none; } }
+@media (max-width: 600px) { .sdk .pie, .sdk .att .pie { grid-template-columns: 1fr; } .sdk .pie-list.both .pr { grid-template-columns: 10px minmax(0, 1fr) 40px 70px 40px; gap: 6px; } }
 
 /* Checklist reference tab */
 .ref-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
@@ -1281,7 +1274,7 @@ let state = load();
 let netDown = false; // phone version: the last request could not reach the web app
 if (HOSTED) { state.cfg.url = HOSTED.url; state.queue = {}; }
 try { localStorage.setItem(STORE + "-probe", "1"); localStorage.removeItem(STORE + "-probe"); } catch (e) { storageOk = false; }
-let ui = { view: "register", status: "Open", route: "All", verifier: "All", kind: "All", dashKind: "All", survey: "All", vstat: "All", q: "", open: null, limit: PAGE, editFields: false,
+let ui = { view: "register", status: "Open", route: "All", verifier: "All", kind: "All", survey: "All", vstat: "All", q: "", open: null, limit: PAGE, editFields: false,
   step: null, guide: true, guideRoute: "DENR" };
 try { const v = localStorage.getItem(STORE + "-view"); if (v) ui.view = v; ui.guide = localStorage.getItem(STORE + "-guide") !== "0"; } catch (e) {}
 /* Remark categories (2026-11-19): {finding label: {category name: [remark keys]}}. On the Dashboard, a click on a finding in the
@@ -1735,278 +1728,251 @@ function renderGuide() {
   view.querySelectorAll(".guide-nav a").forEach(a => a.onclick = e => { e.preventDefault(); const el = document.getElementById(a.getAttribute("href").slice(1)); if (el) el.scrollIntoView({ block: "start" }); });
 }
 
+/* Dashboard (2026-11-21, user: "delete all the data here in the dashboard ... a pie chart here of survey matrix for SBA B4 2026 and 2025-A,
+   same mechanics with the SR Flow Dashboard pie charts"). The old tiles, charts and tables are gone. One panel per kind (SBA 4, then 2025-A):
+   its survey status pie, the outer ring splitting SR AT DARPO by DARPO status, SRs / Area (ha) toggle, a key that hides a status, and a click
+   on a status opening the attachments pie of those SRs, then a missing document opening its remark categories (the same rcats as before).
+   Ported from sr-dashboard.html (pieChart, attachStats, renderKind, renderAtt, catPanel); change both together. */
+const SD_KINDS = ["SBA 4", "2025-A"];
+const SD_KIND_COLOR = { "2025-A": "#1f9fc4", "SBA 4": "#24a274" }; // the colours these kinds have on the SR Flow Dashboard
+const SD_HA = "\u0000ha"; // suffix of the area key next to each status's count
+const SD_PALETTE = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)", "var(--s6)", "var(--s7)"], SD_OTHER = "Other statuses", SD_OTHER_COLOR = "var(--na)";
+const SD_ATT_COLORS = ["var(--s2)", "var(--s5)", "var(--s4)", "var(--s7)", "var(--s1)", "var(--fail)", "var(--s3)"], SD_ATT_MAX = 7, SD_OTHER_MISS = "Other missing documents";
+const SD_COMPLETE = "Complete", SD_PARTLY = "Partly marked", SD_UNCHECKED = "Attachments not marked yet";
+const SD_GROUP_COLOR = { [SD_COMPLETE]: "var(--pass)", [SD_PARTLY]: "var(--muted)", [SD_UNCHECKED]: "var(--line)" };
+const sdStatusOf = s => s.survey || NOT_SET;
+const sdHa = v => { if (typeof v === "number") return isFinite(v) ? v : null; const n = parseFloat(String(v ?? "").replace(/,/g, "").trim()); return isFinite(n) ? n : null; };
+const sdFmtHa = v => (Math.round(v * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const sdShort = st => st.replace("CONDUCTED INITIAL PULONG PULONG", "INITIAL PULONG-PULONG").replace(" FOR LRA APPROVAL", "").replace(" FOR APPROVAL", "");
+const sdSortStatus = (a, b) => (SURVEYS.indexOf(a) + 1 || 99) - (SURVEYS.indexOf(b) + 1 || 99);
+const sdUniq = arrs => [...new Set([].concat(...arrs))];
+const sdBySeq = (a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq));
+const sdLoad = (k, d) => { try { const v = JSON.parse(localStorage.getItem(STORE + k)); return v == null ? d : v; } catch (e) { return d; } };
+const sdSave = (k, v) => { try { localStorage.setItem(STORE + k, JSON.stringify(v)); } catch (e) {} };
+const sd = { metric: sdLoad("-dash-metric", "count") === "area" ? "area" : "count", pick: sdLoad("-dash-pick", {}) || {}, att: {}, cat: {}, anim: null, first: true,
+  hidden: new Set(sdLoad("-dash-hidden", []) || []) };
+let sdKeyOf = st => st;
+
+/* Colour follows the status, never its rank: the first seven statuses found in all the Desk's SRs (in survey order) get the seven series
+   colours; any further statuses share "Other statuses" in grey. Both kinds use the same colours. */
+function sdSeries(list) {
+  const present = [...new Set(list.map(sdStatusOf))].sort(sdSortStatus);
+  const own = present.slice(0, present.length > 8 ? 7 : 8), rest = present.slice(own.length);
+  sdKeyOf = st => own.includes(st) ? st : SD_OTHER;
+  return own.map((st, i) => ({ key: st, name: sdShort(st), color: SD_PALETTE[i] || SD_OTHER_COLOR }))
+    .concat(rest.length ? [{ key: SD_OTHER, name: `${SD_OTHER} (${rest.length})`, color: SD_OTHER_COLOR, members: rest }] : []);
+}
+
+/* Attachments of a set of SRs: every document marked Missing counts the SR in that document's slice (an SR lacking two counts in both);
+   with none missing it is Complete (every required document Present or N/A), Partly marked, or not marked yet. */
+function sdAttach(srs) {
+  const miss = {}, rem = {}, groups = { [SD_COMPLETE]: [], [SD_PARTLY]: [], [SD_UNCHECKED]: [] };
+  srs.forEach(s => {
+    const docs = allKeys(s.route).filter(k => k.kind === "doc"), a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {};
+    const marked = docs.filter(d => a[d.key]), missing = docs.filter(d => a[d.key] === "missing");
+    if (!docs.length || !marked.length) { groups[SD_UNCHECKED].push(s); return; }
+    if (missing.length) { missing.forEach(d => { const l = `Missing: ${d.text}`; (miss[l] = miss[l] || []).push(s);
+      (rem[l] = rem[l] || {})[s.seq] = String(nt[d.key] || "").trim() || "Missing (no remark)"; }); return; }
+    groups[docs.every(d => d.asNeeded || a[d.key]) ? SD_COMPLETE : SD_PARTLY].push(s);
+  });
+  return { miss, rem, groups };
+}
+
+/* Donut (hand-drawn SVG, works offline). A click on a slice, an outer-ring part or a key row calls opt.onPick(status, sub). */
+function sdPie(el, r, opt) {
+  const C = 150, R = 124, R0 = 76, RS0 = R + 5, RS1 = R + 19;
+  const sl = opt.series.map(s => ({ s, v: r[s.key] || 0 })).filter(o => o.v > 0);
+  const sum = sl.reduce((a, o) => a + o.v, 0);
+  if (!sum) { el.innerHTML = `<p class="sub" style="padding:40px 0;text-align:center">${esc(opt.empty || "Nothing to draw.")}</p>`; return; }
+  let a = 0; sl.forEach(o => { o.a0 = a; a += o.v / sum * 2 * Math.PI; o.a1 = a; o.mid = (o.a0 + o.a1) / 2; });
+  const pt = (ang, rr) => (C + rr * Math.sin(ang)).toFixed(2) + "," + (C - rr * Math.cos(ang)).toFixed(2);
+  const arc = (a0, a1, ro = R, ri = R0) => { a1 = Math.min(a1, a0 + 2 * Math.PI - 1e-4); const big = a1 - a0 > Math.PI ? 1 : 0;
+    return `M${pt(a0, ro)}A${ro},${ro} 0 ${big} 1 ${pt(a1, ro)}L${pt(a1, ri)}A${ri},${ri} 0 ${big} 0 ${pt(a0, ri)}Z`; };
+  const subs = []; // opt.subs: slice key -> [{name, rank, n, ha, v}], drawn in the outer ring in shades of the slice's colour
+  sl.forEach((o, k) => { const parts = ((opt.subs || {})[o.s.key] || []).filter(q => q.v > 0), tot = parts.reduce((t, q) => t + q.v, 0);
+    let b = o.a0; o.parts = parts.map(q => { const sp = Object.assign({}, q, { parent: k, a0: b, a1: b += q.v / tot * (o.a1 - o.a0), of: q.v / tot });
+      sp.mid = (sp.a0 + sp.a1) / 2; sp.idx = subs.push(sp) - 1; return sp; }); });
+  const SHADE = [1, .62, .36, .18], shade = q => SHADE[q.rank] ?? .18;
+  const pct = v => { const p = v / sum * 100; return p > 0 && p < 1 ? "<1%" : Math.round(p) + "%"; };
+  const g = `<circle cx="${C}" cy="${C}" r="${RS1 + 6}" style="fill:none;stroke:var(--line)" stroke-dasharray="2 4"/>
+    <circle cx="${C}" cy="${C}" r="${R0 - 9}" style="fill:var(--surface-2);stroke:var(--line)"/>
+    <g class="${opt.spin ? "grow" : ""}">${sl.map((o, k) => `<path class="slice" data-k="${k}" d="${arc(o.a0, o.a1)}" style="fill:${o.s.color}"/>`).join("")}
+      ${subs.map(q => `<path class="sub-arc" data-s="${q.idx}" d="${arc(q.a0, q.a1, RS1, RS0)}" style="fill:${sl[q.parent].s.color};fill-opacity:${shade(q)}"/>`).join("")}</g>
+    <text class="c-v" x="${C}" y="${C + 2}" text-anchor="middle">${opt.center ?? opt.num(sum)}</text>
+    <text class="c-l" x="${C}" y="${C + 22}" text-anchor="middle">${esc(opt.unit)}</text>
+    <text class="c-w" x="${C}" y="${C + 38}" text-anchor="middle">${esc(opt.cw ?? "now")}</text>`;
+  // opt.both: an SRs column and an Area (ha) column side by side; Share stays the share of what the pie measures.
+  const B = opt.both, isHa = opt.unit === "hectares";
+  const cols = (n, ha, v) => B ? `<span class="n${isHa ? " alt" : ""}">${n.toLocaleString()}</span><span class="n${isHa ? "" : " alt"}">${sdFmtHa(ha)}</span>` : `<span class="n">${opt.num(v)}</span>`;
+  const list = `<div class="pie-list${B ? " both" : ""}"><div class="pr hd"><span></span><span>${esc(opt.col || "Status")}</span>${B ? "<span>SRs</span><span>Area (ha)</span>" : `<span>${esc(opt.unit)}</span>`}<span>Share</span></div>` +
+    sl.map((o, k) => `<div class="pr" data-k="${k}" title="${esc(o.s.status)}"><i class="sw" style="background:${o.s.color}"></i><span class="nm">${esc(o.s.name)}</span>
+        ${cols(B ? B.n(o.s) : 0, B ? B.ha(o.s) : 0, o.v)}<span class="p">${pct(o.v)}</span></div>` +
+      o.parts.map(q => `<div class="pr sub" data-s="${q.idx}" title="${esc(o.s.status)}: ${esc(q.name)}"><i class="sw" style="background:${o.s.color};opacity:${shade(q)}"></i><span class="nm">${esc(q.name)}</span>
+        ${cols(q.n || 0, q.ha || 0, q.v)}<span class="p">${Math.round(q.of * 100)}%</span></div>`).join("")).join("") +
+    (subs.length ? `<div class="sub-note">Outer ring and indented rows: ${esc(opt.subNote || "")}; their % is of that status</div>` : "") + `</div>`;
+  el.innerHTML = `<div class="pie"><svg viewBox="0 0 300 300" role="img" aria-label="${esc(opt.label)}">${g}</svg>${list}</div><div class="tip"></div>`;
+  const tip = el.querySelector(".tip"), paths = [...el.querySelectorAll(".slice")], items = [...el.querySelectorAll(".pr[data-k]")];
+  const arcs = [...el.querySelectorAll(".sub-arc")], subRows = [...el.querySelectorAll(".pr[data-s]")];
+  const push = (node, mid, on) => { node.style.transform = on ? `translate(${(7 * Math.sin(mid)).toFixed(2)}px,${(-7 * Math.cos(mid)).toFixed(2)}px)` : ""; };
+  const focus = (k, sj) => { paths.forEach((p, j) => { const on = j === k; push(p, sl[j].mid, on); p.style.opacity = k == null || on ? "" : ".35"; });
+    arcs.forEach((x, j) => { const sp = subs[j], on = sp.parent === k && (sj == null || sj === j); push(x, sl[sp.parent].mid, sp.parent === k); x.style.opacity = k == null || on ? "" : ".25"; });
+    items.forEach((it, j) => it.classList.toggle("on", j === k && sj == null)); subRows.forEach((it, j) => it.classList.toggle("on", j === sj)); };
+  const tipAt = (k, ev, sj) => { const o = sl[k], st = o.s.status, sp = sj == null ? null : subs[sj];
+    tip.innerHTML = opt.tipFor && !sp ? opt.tipFor(o, pct(o.v)) : `<div class="t">${esc(opt.tipTitle || "")}</div>` + (sp
+      ? `<div class="r"><span><i style="background:${o.s.color};opacity:${shade(sp)}"></i>${esc(o.s.name)} › ${esc(sp.name)}</span><b>${pct(sp.v)}</b></div>
+        <div class="r"><span>SRs</span><b>${sp.n.toLocaleString()}</b></div><div class="r"><span>Area</span><b>${sdFmtHa(sp.ha)} ha</b></div>
+        <div class="r"><span>Of ${esc(o.s.name)}</span><b>${Math.round(sp.of * 100)}%</b></div>`
+      : `<div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${pct(o.v)}</b></div>
+        <div class="r"><span>SRs</span><b>${(r[st] || 0).toLocaleString()}</b></div><div class="r"><span>Area</span><b>${sdFmtHa(r[st + SD_HA] || 0)} ha</b></div>` +
+        o.parts.map(q => `<div class="r"><span>  ${esc(q.name)}</span><b>${opt.num(q.v)}</b></div>`).join("")) + (opt.extra ? opt.extra(r) : "");
+    const b = el.getBoundingClientRect(), tw = tip.offsetWidth || 170; let left = ev.clientX - b.left + 14;
+    if (left + tw > el.clientWidth) left = Math.max(0, ev.clientX - b.left - tw - 14);
+    tip.style.left = left + "px"; tip.style.top = Math.max(0, ev.clientY - b.top + 14) + "px"; tip.style.opacity = 1; };
+  // The picked slice (opt.pick: status; opt.pickSub: ring part) stays pulled out; hovering away returns to it.
+  const pk = opt.pick == null ? null : sl.findIndex(o => o.s.status === opt.pick), pj = pk == null || pk < 0 ? null : subs.findIndex(q => q.parent === pk && q.name === opt.pickSub);
+  const rest = () => { if (pk != null && pk >= 0) focus(pk, pj >= 0 ? pj : null); else focus(null); };
+  items.forEach((it, j) => it.classList.toggle("pick", j === pk && !(pj >= 0))); subRows.forEach((it, j) => it.classList.toggle("pick", j === pj));
+  const pick = (k, sj) => { if (opt.onPick) opt.onPick(sl[k].s.status, sj == null ? null : subs[sj].name); };
+  paths.forEach((p, k) => { p.addEventListener("pointermove", ev => { focus(k); tipAt(k, ev); }); p.addEventListener("pointerleave", () => { rest(); tip.style.opacity = 0; }); p.addEventListener("click", () => pick(k)); });
+  items.forEach((it, k) => { it.addEventListener("pointerenter", () => focus(k)); it.addEventListener("pointerleave", rest); it.addEventListener("click", () => pick(k)); });
+  arcs.forEach((x, j) => { const k = subs[j].parent; x.addEventListener("pointermove", ev => { focus(k, j); tipAt(k, ev, j); }); x.addEventListener("pointerleave", () => { rest(); tip.style.opacity = 0; }); x.addEventListener("click", () => pick(k, j)); });
+  subRows.forEach((it, j) => { const k = subs[j].parent; it.addEventListener("pointerenter", () => focus(k, j)); it.addEventListener("pointerleave", rest); it.addEventListener("click", () => pick(k, j)); });
+  rest();
+}
+
+const sdLhTable = (srs, remOf) => `<div class="table-scroll"><table class="lh"><thead><tr><th>SeqNo</th><th>LO / Claimant</th>${remOf ? "<th>Remark</th>" : ""}<th>DARMO</th><th>Status</th><th></th></tr></thead><tbody>
+  ${srs.slice().sort(sdBySeq).map(s => `<tr data-seq="${esc(s.seq)}" tabindex="0" aria-label="Open SR ${esc(s.seq)}"><td class="mono">${esc(s.seq)}<div class="sub">${esc(s.title || "")}</div></td><td class="who">${esc(s.claimant || "")}<div class="sub">Lot ${esc(s.lot || "")}</div></td>
+    ${remOf ? `<td>${esc(remOf(s))}</td>` : ""}<td>${esc(s.darmo || "")}</td><td>${esc(s.survey || NOT_SET)}${s.status ? `<div class="sub">${esc(STATUS_LABEL[s.status] || s.status)}</div>` : ""}</td><td class="open">Open ›</td></tr>`).join("")}</tbody></table></div>`;
+const sdRedraw = () => { const y = scrollY; renderDashboard(); scrollTo(0, y); };
+
 function renderDashboard() {
-  // Kind of survey picker: every number on the dashboard counts only SRs of the picked kind.
-  const every = allSRs(), allKinds = kindsOf(every).filter(k => every.some(s => s.kind === k));
-  if (ui.dashKind !== "All" && !allKinds.includes(ui.dashKind)) ui.dashKind = "All";
-  const list = ui.dashKind === "All" ? every : every.filter(s => s.kind === ui.dashKind), open = list.filter(isOpen), t0 = today();
-  const inMonth = s => isIso(s.decided) && daysBetween(s.decided, t0) <= 30;
-  const compliance = open.filter(s => s.status === "Compliance").length;
-  const pastDarpo = s => SURVEYS.indexOf(s.survey) > SURVEYS.indexOf(AT_DARPO);
-  const endorsed = list.filter(s => pastDarpo(s) && inMonth(s)).length;
-  const oldest = open.filter(s => s.status !== "Compliance").reduce((m, s) => Math.max(m, age(s) || 0), 0);
-  const unassigned = open.filter(s => !s.verifier).length;
-  // Each finding keeps the SRs (landholdings) it was recorded on, so a click on its bar lists them.
-  // remarks[label] maps SeqNo to the verifier's note(s) for that finding, for the Excel export.
-  const fails = {}, remarks = {};
-  list.forEach(s => { const a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {}; activeKeys(s.route, a).forEach(k => { const v = a[k.key]; if (v === "fail" || v === "missing") {
-    const label = k.kind === "doc" ? `Missing: ${k.text}` : `${k.doc} · ${k.text}`; (fails[label] = fails[label] || []).includes(s) || fails[label].push(s);
-    const r = remarks[label] = remarks[label] || {}, n = String(nt[k.key] || "").trim(); r[s.seq] = [r[s.seq], n || (v === "missing" ? "Missing (no remark)" : "Fail (no remark)")].filter(Boolean).join("; "); } }); });
-  // Findings share pie: one slice per finding; past 7 slices the rest fold into "Other". A slice click opens that finding's remark pie.
-  const uniq = arrs => [...new Set([].concat(...arrs))];
-  const items = Object.keys(fails).map(l => ({ key: l, name: l, members: [l], srs: fails[l] }))
-    .sort((a, b) => b.srs.length - a.srs.length || a.name.localeCompare(b.name));
-  const PIE_MAX = 7, rest = items.slice(PIE_MAX);
-  const slices = items.length > PIE_MAX + 1 ? items.slice(0, PIE_MAX).concat([{ key: "other", name: "Other", other: true, n: rest.length, members: rest.map(x => x.key), srs: uniq(rest.map(x => x.srs)) }]) : items;
-  const withAny = uniq(Object.values(fails)).length;
-  if (ui.dashFinding && !fails[ui.dashFinding]) ui.dashFinding = null;
-  if (ui.dashFinding && rest.some(x => x.key === ui.dashFinding) && items.length > PIE_MAX + 1) ui.showOther = true;
-  if (ui.remFinding && ui.remFinding !== "other" && !fails[ui.remFinding]) ui.remFinding = null;
-  if (ui.remFinding === "other" && !slices.some(x => x.other)) ui.remFinding = null;
-  const sortSeq = arr => arr.slice().sort((a, b) => (isOpen(b) - isOpen(a)) || (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)));
-  const lhTable = (srsList, remarkOf) => `<div class="table-scroll"><table><thead><tr><th>SeqNo</th><th>LO / Claimant</th>${remarkOf ? "<th>Remark</th>" : ""}<th>DARMO</th><th>For</th><th>Verifier</th><th>Status</th></tr></thead>
-      <tbody>${srsList.map(s => `<tr data-seq="${esc(s.seq)}" tabindex="0" aria-label="Open SR ${esc(s.seq)}">
-        <td class="mono">${esc(s.seq)}<div class="sub">${esc(s.title || "")}</div></td>
-        <td class="who">${esc(s.claimant || "")}<div class="sub">Lot ${esc(s.lot || "")}</div></td>
-        ${remarkOf ? `<td>${esc(remarkOf(s))}</td>` : ""}
-        <td>${esc(s.darmo || "")}</td><td>${esc(s.route || "")}</td><td>${esc(s.verifier || "—")}</td>
-        <td>${s.status ? `<span class="pill ${STATUS_CLASS[s.status] || ""}">${esc(STATUS_LABEL[s.status] || s.status)}</span>` : `<span class="sub">${esc(s.survey || NOT_SET)}</span>`}</td></tr>`).join("")}</tbody></table></div>`;
-  const picked = ui.dashFinding ? sortSeq(fails[ui.dashFinding]) : [];
-  const findList = !picked.length ? "" : `<div class="find-list">
-      <div class="head"><b>${picked.length} LH${picked.length === 1 ? "" : "s"} with this finding</b><button class="btn link" id="find-close">Close list</button></div>
-      ${lhTable(picked)}</div>`;
-  const sliceSum = slices.reduce((t, x) => t + x.srs.length, 0) || 1;
-  const colorOf = (x, i) => x.other ? "var(--na)" : `var(--s${i + 1})`;
-  // Most frequent findings shows the same items as the Findings share pie (top 7 + Other), each with its pie colour.
-  // The Other bar opens to list the findings folded into it; each of those lists its LHs like any other bar.
-  const maxF = Math.max(1, ...slices.map(x => x.srs.length));
-  const bar = (l, n, sw, sub) => `<button type="button" class="hbar${sub ? " sub" : ""}" data-finding="${esc(l)}" aria-pressed="${ui.dashFinding === l}" title="List the LHs with this finding"><div class="lbl"><span class="sw" style="background:${sw}"></span>${esc(l)}</div><div class="track"><i style="width:${n / maxF * 100}%"></i></div><div class="n">${n}</div></button>`;
-  const bars = slices.map((x, i) => !x.other ? bar(x.key, x.srs.length, colorOf(x, i))
-    : `<button type="button" class="hbar" id="bar-other" aria-expanded="${!!ui.showOther}" title="${ui.showOther ? "Hide" : "Show"} the ${x.n} findings in Other"><div class="lbl"><span class="sw" style="background:${colorOf(x, i)}"></span>Other <span>· ${x.n} more findings, ${ui.showOther ? "click to hide" : "click to show"}</span></div><div class="track"><i style="width:${x.srs.length / maxF * 100}%;background:var(--na)"></i></div><div class="n">${x.srs.length}</div></button>`
-      + (ui.showOther ? x.members.map(l => bar(l, fails[l].length, "var(--na)", true)).join("") : "")).join("");
-  const pct = (x, sum) => Math.round(x.srs.length / sum * 100) + "%";
-  const ncat = l => Object.keys(rcats[l] || {}).length;
-  const pie = !slices.length ? "" : `<section class="panel"><div class="panel-head"><h2>Findings share</h2><span class="sub">LHs per finding · click a slice to sort its remarks into categories</span></div>
-    <div class="panel-body"><div class="fdonut${ui.remFinding && slices.some(x => x.key === ui.remFinding) ? " has-pick" : ""}">${donutSVG(slices, colorOf, withAny, "LHs with a finding", ui.remFinding, "data-rfind")}
-      <div class="pleg">${slices.map((x, i) => `<button type="button" data-rfind="${esc(x.key)}" aria-pressed="${ui.remFinding === x.key}" title="${esc(x.other ? x.members.join("\n") : x.name)}"><span class="sw" style="background:${colorOf(x, i)}"></span><span class="nm">${esc(x.name)}${x.other ? `<small>${x.n} more</small>` : ncat(x.key) ? `<small>${ncat(x.key)} categor${ncat(x.key) === 1 ? "y" : "ies"}</small>` : ""}</span><span class="n">${x.srs.length}</span><span class="p">${pct(x, sliceSum)}</span></button>`).join("")}</div></div>
-      <p class="sub" style="margin:10px 0 0">Share is of the slice totals. An LH with findings in two slices counts in both.</p></div></section>`;
-  // Remark pie for the finding picked above: its slices are only the categories made from its remarks; empty until one is combined.
-  let remPanel = "", remCtx = null;
-  if (ui.remFinding === "other") {
-    const o = slices.find(x => x.other);
-    remPanel = `<section class="panel" id="rem-panel"><div class="panel-head"><h2>Other findings</h2><span class="sub">pick one to sort its remarks</span><button type="button" class="btn link no-print" id="rem-close">Close</button></div>
-      <div class="panel-body"><div class="pleg">${o.members.map(l => `<button type="button" data-rfind="${esc(l)}"><span class="sw" style="background:var(--na)"></span><span class="nm">${esc(l)}${ncat(l) ? `<small>${ncat(l)} categor${ncat(l) === 1 ? "y" : "ies"}</small>` : ""}</span><span class="n">${fails[l].length}</span><span class="p"></span></button>`).join("")}</div></div></section>`;
-  } else if (ui.remFinding) {
-    const f = ui.remFinding, rm = remarks[f] || {}, cats = rcats[f] || {};
-    const distinct = new Map(); // remark key -> {text, srs}
-    fails[f].forEach(s => { const t = rm[s.seq] || "", k = remKey(t); const d = distinct.get(k) || { text: t, srs: [] }; d.srs.push(s); distinct.set(k, d); });
-    const catOfRem = {}; Object.entries(cats).forEach(([c, ks]) => ks.forEach(k => { catOfRem[k] = c; }));
-    const catNames = Object.keys(cats);
-    const cslices = catNames.map(c => { const ks = cats[c].filter(k => distinct.has(k)); return { key: c, name: c, n: ks.length, srs: uniq(ks.map(k => distinct.get(k).srs)) }; }).filter(x => x.srs.length);
-    const shown = cslices.length > PIE_MAX + 1 ? cslices.slice(0, PIE_MAX).concat([{ key: "", name: "More categories", other: true, n: cslices.length - PIE_MAX, srs: uniq(cslices.slice(PIE_MAX).map(x => x.srs)) }]) : cslices;
-    const inCat = uniq(cslices.map(x => x.srs)).length, csum = shown.reduce((t, x) => t + x.srs.length, 0) || 1;
-    // Remarks already in a category leave the pick list; Ungroup brings them back.
-    const remList = [...distinct.entries()].filter(([k]) => !catOfRem[k]).sort((a, b) => b[1].srs.length - a[1].srs.length || a[1].text.localeCompare(b[1].text));
-    if (ui.remCat && !cslices.some(x => x.key === ui.remCat)) ui.remCat = null;
-    const rpicked = ui.remCat ? sortSeq(cslices.find(x => x.key === ui.remCat).srs) : [];
-    remCtx = { f, remList };
-    remPanel = `<section class="panel" id="rem-panel"><div class="panel-head"><h2>Remark categories</h2><span class="sub">${esc(f)}</span><button type="button" class="btn link no-print" id="rem-close">Close</button></div>
-      <div class="panel-body">
-      ${shown.length ? `<div class="fdonut${ui.remCat ? " has-pick" : ""}">${donutSVG(shown, colorOf, inCat, `of ${fails[f].length} LHs in a category`, ui.remCat, "data-rcat")}
-        <div class="pleg">${shown.map((x, i) => `<button type="button" ${x.other ? "disabled" : `data-rcat="${esc(x.key)}"`} aria-pressed="${ui.remCat === x.key}"><span class="sw" style="background:${colorOf(x, i)}"></span><span class="nm">${esc(x.name)}<small>${x.n} remark${x.n === 1 ? "" : "s"}</small></span><span class="n">${x.srs.length}</span><span class="p">${pct(x, csum)}</span></button>`).join("")}</div></div>
-        <p class="sub" style="margin:10px 0 0">${fails[f].length - inCat} of ${fails[f].length} LHs not in a category yet. Click a slice to list its LHs.</p>`
-        : `<div class="rem-empty">No categories yet for this finding. Tick the remarks that mean the same thing, name the category, then press Combine. The pie starts with your first category.</div>`}
-      ${rpicked.length ? `<div class="find-list"><div class="head"><b>${rpicked.length} LH${rpicked.length === 1 ? "" : "s"} in ${esc(ui.remCat)}</b><button class="btn link" id="rcat-close">Close list</button></div>${lhTable(rpicked, s => rm[s.seq] || "")}</div>` : ""}
-      <div class="cat-edit no-print">
-        ${catNames.length ? `<div class="chips">${catNames.map((c, i) => `<span class="chip" style="cursor:default">${esc(c)} <b>${cats[c].length}</b><button type="button" class="btn link" data-uncat="${i}" title="Delete this category; its remarks go back to the list">Ungroup</button></span>`).join("")}</div>` : ""}
-        <div class="cat-row"><input id="cat-q" type="search" placeholder="Search remarks" aria-label="Search remarks" autocomplete="off"><span class="sub" id="cat-qn">${remList.length} distinct remark${remList.length === 1 ? "" : "s"}</span></div>
-        <div class="cat-pick">${remList.length ? "" : `<div class="sub" style="padding:8px">Every remark is in a category. Ungroup one to edit it.</div>`}${remList.map(([k, d], i) => `<label><input type="checkbox" data-i="${i}"><span>${esc(d.text || "(blank)")}${catOfRem[k] ? `<div class="sub">in ${esc(catOfRem[k])}</div>` : ""}</span><span class="sub num">${d.srs.length}</span></label>`).join("")}</div>
-        <div class="cat-row"><input id="cat-name" list="cat-names" maxlength="60" placeholder="Category name, e.g. Not notarized" aria-label="Category name"><datalist id="cat-names">${catNames.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
-          <button type="button" class="btn primary" id="cat-add">Combine</button></div>
-        <p class="sub" style="margin:0">Typing an existing name adds to it. Categories are saved on this device only.</p></div></div></section>`;
+  const every = allSRs().filter(s => s && inBatch(s)), AREA = sd.metric === "area", SER = sdSeries(every);
+  view.innerHTML = `<div class="sdk">
+    <div class="sdk-top"><div><h2>Survey status</h2><div class="sub">${SD_KINDS.map(esc).join(" and ")} · every SR of the kind at its current survey status, from this ${HOSTED ? "phone" : "PC"}'s copy</div></div>
+      <div class="seg" role="group" aria-label="Measure" id="sd-metric"><button type="button" data-m="count" aria-pressed="${!AREA}">SRs</button><button type="button" data-m="area" aria-pressed="${AREA}">Area (ha)</button></div></div>
+    ${SD_KINDS.map((k, i) => `<section class="panel sdk-kind" style="--kc:${SD_KIND_COLOR[k] || "var(--accent)"}" aria-label="${esc(k)}">
+      <div class="kind-head"><h2><span class="kind-badge">${esc(k)}</span>survey statuses${AREA ? " by area (ha)" : ""}</h2><div class="cover" id="sd-kc-${i}"></div></div>
+      <div class="sdk-body"><div class="legend" id="sd-kl-${i}" aria-label="Show or hide a status"></div><div class="chart" id="sd-pie-${i}"></div><p class="hint" id="sd-kh-${i}"></p><div class="att" id="sd-att-${i}"></div></div></section>`).join("")}
+    <div class="sdk-notes"><b>How these are counted</b><ul>
+      <li>The outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance).</li>
+      <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction is used); an SR with no area adds 0 ha. The tables show both; <b>SRs</b> / <b>Area (ha)</b> picks what the pie and Share measure.</li>
+      <li>Click a status to open the <b>attachments</b> of its SRs. An SR lacking two documents is in both slices. Click a missing document to sort its remarks into <b>categories</b> (saved on this device, shared with the SR Flow Dashboard).</li>
+      <li>Same pies as the SR Flow Dashboard, for these two kinds only.</li></ul></div></div>`;
+  SD_KINDS.forEach((k, i) => sdKind(k, i, every.filter(s => s.kind === k), SER, AREA));
+  view.querySelectorAll("#sd-metric button").forEach(b => b.onclick = () => { sd.metric = b.dataset.m; sdSave("-dash-metric", sd.metric); sdRedraw(); });
+  view.querySelectorAll(".lh tr[data-seq]").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
+  sd.first = false;
+}
+
+function sdKind(kind, i, srs, SER, AREA) {
+  const $i = id => document.getElementById(id + i);
+  const r = { total: srs.length, totalHa: 0 }; SER.forEach(x => { r[x.key] = 0; r[x.key + SD_HA] = 0; });
+  srs.forEach(s => { const k = sdKeyOf(sdStatusOf(s)), ha = sdHa(s.area) || 0; r[k]++; r[k + SD_HA] += ha; r.totalHa += ha; });
+  $i("sd-kc-").innerHTML = `<b>${srs.length.toLocaleString()}</b> SRs · <b>${sdFmtHa(r.totalHa)}</b> ha`;
+  const present = SER.filter(x => r[x.key]);
+  $i("sd-kl-").innerHTML = present.map(x => `<button type="button" aria-pressed="${!sd.hidden.has(x.key)}" data-k="${esc(x.key)}" title="${esc(x.members ? x.members.join(", ") : x.key)}"><i style="background:${x.color}"></i>${esc(x.name)}</button>`).join("");
+  $i("sd-kl-").querySelectorAll("button").forEach(b => b.onclick = () => { const k = b.dataset.k; sd.hidden.has(k) ? sd.hidden.delete(k) : sd.hidden.add(k); sdSave("-dash-hidden", [...sd.hidden]); sdRedraw(); });
+  const show = present.filter(x => !sd.hidden.has(x.key)).map(x => Object.assign({}, x, { key: AREA ? x.key + SD_HA : x.key, status: x.key }));
+  const DARPO_SUBS = ["Pending", "Ongoing Verification", "Compliance"], darpo = {};
+  srs.forEach(s => { if (sdStatusOf(s) !== AT_DARPO) return; const k = s.status || NOT_SET, o = darpo[k] || (darpo[k] = { n: 0, ha: 0 }); o.n++; o.ha += sdHa(s.area) || 0; });
+  const subRank = k => DARPO_SUBS.includes(k) ? DARPO_SUBS.indexOf(k) : 3;
+  const parts = Object.keys(darpo).sort((p, q) => subRank(p) - subRank(q)).map(k => ({ name: k, rank: subRank(k), n: darpo[k].n, ha: darpo[k].ha, v: AREA ? darpo[k].ha : darpo[k].n }));
+  let pick = sd.pick[kind];
+  if (pick && !show.some(x => x.status === pick.st)) pick = null;
+  const el = $i("sd-pie-");
+  if (!srs.length) el.innerHTML = `<p class="sub" style="padding:40px 0;text-align:center">No ${esc(kind)} SRs on this ${HOSTED ? "phone" : "PC"} yet.</p>`;
+  else if (!show.length) el.innerHTML = `<p class="sub" style="padding:40px 0;text-align:center">Every status is hidden. Click one in the key to show it.</p>`;
+  else sdPie(el, r, { label: `${kind}: ${AREA ? "share of area at each survey status, hectares" : "share of SRs at each survey status"}`, spin: sd.first, series: show,
+    subNote: "DARPO status of the SRs at DARPO", subs: sdKeyOf(AT_DARPO) === AT_DARPO ? { [AREA ? AT_DARPO + SD_HA : AT_DARPO]: parts } : null,
+    num: AREA ? sdFmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs", cw: kind, tipTitle: kind, pick: pick && pick.st, pickSub: pick && pick.sub,
+    both: { n: s => r[s.status] || 0, ha: s => r[s.status + SD_HA] || 0 },
+    onPick: (st, sub) => { const cur = sd.pick[kind]; sd.pick[kind] = cur && cur.st === st && (cur.sub || null) === (sub || null) ? null : { st, sub: sub || null };
+      delete sd.att[kind]; delete sd.cat[kind]; sdSave("-dash-pick", sd.pick); sd.anim = sd.pick[kind] ? kind : null; sdRedraw(); sd.anim = null;
+      const a = document.getElementById("sd-att-" + i); if (a && sd.pick[kind]) a.scrollIntoView({ block: "nearest", behavior: "smooth" }); },
+    extra: z => `<div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>All ${esc(kind)} SRs</span><b>${z.total} · ${sdFmtHa(z.totalHa)} ha</b></div>` });
+  $i("sd-kh-").textContent = pick || !srs.length ? "" : "Click a status to see the attachments of its SRs: what each one lacks and which are complete.";
+  if (!pick) { $i("sd-att-").innerHTML = ""; return; }
+  sdAtt(kind, i, srs, pick);
+}
+
+function sdAtt(kind, i, srs, pick) {
+  const set = srs.filter(s => sdKeyOf(sdStatusOf(s)) === pick.st && (!pick.sub || (s.status || NOT_SET) === pick.sub));
+  const name = (pick.st === SD_OTHER ? "Other statuses" : pick.st) + (pick.sub ? " › " + pick.sub : "");
+  const { miss, rem, groups } = sdAttach(set);
+  const docs = Object.keys(miss).sort((a, b) => miss[b].length - miss[a].length || a.localeCompare(b));
+  const top = docs.length > SD_ATT_MAX + 1 ? docs.slice(0, SD_ATT_MAX) : docs, folded = docs.slice(top.length);
+  const series = top.map((l, j) => ({ key: l, status: l, name: l.replace(/^Missing: /, ""), color: SD_ATT_COLORS[j % SD_ATT_COLORS.length], srs: miss[l] }))
+    .concat(folded.length ? [{ key: SD_OTHER_MISS, status: SD_OTHER_MISS, name: `${SD_OTHER_MISS} (${folded.length})`, color: SD_OTHER_COLOR, srs: sdUniq(folded.map(l => miss[l])) }] : [])
+    .concat([SD_COMPLETE, SD_PARTLY, SD_UNCHECKED].map(g => ({ key: g, status: g, name: g, color: SD_GROUP_COLOR[g], srs: groups[g] })));
+  const row = {}; series.forEach(x => { row[x.key] = x.srs.length; });
+  const lacking = sdUniq(Object.values(miss)).length;
+  let a = sd.att[kind]; if (a && !docs.includes(a) && !series.some(x => x.key === a)) a = sd.att[kind] = null;
+  const box = document.getElementById("sd-att-" + i);
+  box.innerHTML = `<div class="${sd.anim === kind ? "att-in" : ""}"><div class="chart-head"><div><h3>Attachments · ${esc(kind)} · ${esc(name)}</h3>
+      <p class="sub"><b>${set.length}</b> SR${set.length === 1 ? "" : "s"}: <b>${lacking}</b> lacking at least one document, <b>${groups[SD_COMPLETE].length}</b> complete, ${groups[SD_PARTLY].length} partly marked, ${groups[SD_UNCHECKED].length} not marked yet. Click a missing document to sort its remarks into categories; click Complete or another group to list its SRs.</p></div>
+      <button type="button" class="btn small" id="sd-kx-${i}">Close</button></div>
+    <div class="chart" id="sd-kap-${i}"></div><div id="sd-kd-${i}"></div></div>`;
+  document.getElementById("sd-kx-" + i).onclick = () => { delete sd.pick[kind]; delete sd.att[kind]; delete sd.cat[kind]; sdSave("-dash-pick", sd.pick); sdRedraw(); };
+  sdPie(document.getElementById("sd-kap-" + i), row, { label: `Attachments of ${kind} SRs at ${name}`, spin: sd.anim === kind, series, num: v => v.toLocaleString(), unit: "SRs", col: "Attachment", center: set.length,
+    cw: "at this status", empty: "No SRs at this status.", pick: a ? (folded.includes(a) ? SD_OTHER_MISS : a) : null,
+    tipFor: (o, p) => `<div class="t">${esc(name)}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${p}</b></div><div class="r"><span>SRs</span><b>${o.v}</b></div>`,
+    onPick: st => { sd.att[kind] = sd.att[kind] === st ? null : st; delete sd.cat[kind]; sdRedraw(); } });
+  const d = document.getElementById("sd-kd-" + i);
+  if (!a) return;
+  if (a === SD_OTHER_MISS) {
+    d.innerHTML = `<div class="cat att-in"><h3>${SD_OTHER_MISS}</h3><p class="sub">Pick one to sort its remarks.</p><div class="legend">${folded.map(l => `<button type="button" data-doc="${esc(l)}"><i style="background:${SD_OTHER_COLOR}"></i>${esc(l.replace(/^Missing: /, ""))} · ${miss[l].length}</button>`).join("")}</div></div>`;
+    d.querySelectorAll("[data-doc]").forEach(b => b.onclick = () => { sd.att[kind] = b.dataset.doc; delete sd.cat[kind]; sdRedraw(); });
+    return;
   }
-  const buckets = [["0–7 days", 0, 7], ["8–14 days", 8, 14], ["15–30 days", 15, 30], ["Over 30 days", 31, 1e9]].map(([l, a, b]) => [l, open.filter(s => (age(s) || 0) >= a && (age(s) || 0) <= b).length]);
-  const maxB = Math.max(1, ...buckets.map(b => b[1]));
-  const vrows = state.verifiers.map(v => [v, list.filter(s => s.verifier === v && isOpen(s)).length, list.filter(s => s.verifier === v && !isOpen(s) && inMonth(s)).length]);
-  // --- Dashboard layout figures (2026-11-20) ---
-  const DI = {
-    files: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
-    inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/>',
-    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    back: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
-    send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
-    pin: '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
-    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
-    check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
-    trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
-    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>' };
-  const ico = n => `<span class="dk-ico"><svg viewBox="0 0 24 24" aria-hidden="true">${DI[n]}</svg></span>`;
-  const tile = (icon, tone, k, v, s) => `<div class="panel dk-tile tone-${tone}">${ico(icon)}<div><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div></div>`;
-  const pastN = list.filter(pastDarpo).length;
-  // Endorsed in the last 30 days against the 30 days before, like a period-over-period change.
-  const prevEnd = list.filter(s => pastDarpo(s) && isIso(s.decided) && daysBetween(s.decided, t0) > 30 && daysBetween(s.decided, t0) <= 60).length;
-  const delta = !prevEnd ? "" : (() => { const d = Math.round((endorsed - prevEnd) / prevEnd * 100); return `<span class="${d >= 0 ? "dk-up" : "dk-down"}">${d >= 0 ? "+" : ""}${d}%</span> vs previous 30 days`; })();
-  // Received at DARPO vs decided, by month, last 6 months.
-  const months = []; { const d = new Date(t0 + "T00:00:00"); d.setDate(1); for (let i = 5; i >= 0; i--) { const m = new Date(d.getFullYear(), d.getMonth() - i, 1); months.push([`${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}`, m.toLocaleString("en-US", { month: "short" })]); } }
-  const inMo = (v, ym) => isIso(v) && v.slice(0, 7) === ym;
-  const mrows = months.map(([ym, l]) => [l, list.filter(s => inMo(s.received, ym)).length, list.filter(s => inMo(s.decided, ym)).length]);
-  const colChart = (() => {
-    const W = 360, H = 190, L = 28, B = 22, T = 16, top = Math.max(4, ...mrows.map(r => Math.max(r[1], r[2])));
-    const step = Math.pow(10, Math.floor(Math.log10(top))) / (top / Math.pow(10, Math.floor(Math.log10(top))) > 5 ? 0.5 : top / Math.pow(10, Math.floor(Math.log10(top))) > 2 ? 1 : 2);
-    const max = Math.ceil(top / step) * step, y = v => T + (H - T - B) * (1 - v / max), gw = (W - L) / mrows.length, bw = Math.min(18, gw / 3);
-    let g = ""; for (let v = 0; v <= max + 1e-9; v += step) g += `<line class="gl" x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 4}" y="${y(v) + 3}" text-anchor="end">${Math.round(v)}</text>`;
-    const bars = mrows.map(([l, a, b], i) => { const cx = L + gw * i + gw / 2;
-      return `<rect x="${cx - bw - 1}" y="${y(a)}" width="${bw}" height="${y(0) - y(a)}" rx="2" fill="var(--accent)"><title>${l}: ${a} received</title></rect>
-        <rect x="${cx + 1}" y="${y(b)}" width="${bw}" height="${y(0) - y(b)}" rx="2" fill="var(--pass)"><title>${l}: ${b} decided</title></rect>
-        ${a ? `<text class="val" x="${cx - bw / 2 - 1}" y="${y(a) - 3}" text-anchor="middle">${a}</text>` : ""}${b ? `<text class="val" x="${cx + bw / 2 + 1}" y="${y(b) - 3}" text-anchor="middle">${b}</text>` : ""}
-        <text x="${cx}" y="${H - 6}" text-anchor="middle">${l}</text>`; }).join("");
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="SRs received at DARPO and decided, by month">${g}${bars}</svg>`;
-  })();
-  // SRs by DARMO: at DARPO (open) and past DARPO, stacked.
-  const darmos = [...new Set(list.map(s => s.darmo || NOT_SET))].map(d => { const l = list.filter(s => (s.darmo || NOT_SET) === d); return [d, l.length, l.filter(isOpen).length, l.filter(pastDarpo).length]; }).sort((a, b) => b[1] - a[1]);
-  const maxD = Math.max(1, ...darmos.map(d => d[1]));
-  const darmoBars = darmos.map(([d, n, o, p]) => `<div class="nm" title="${esc(d)}">${esc(d)}</div><div class="bar" title="${esc(d)}: ${n} SRs · ${o} at DARPO · ${p} past DARPO · ${n - o - p} not yet at DARPO"><i style="width:${o / maxD * 100}%;background:var(--warn)"></i><i style="width:${p / maxD * 100}%;background:var(--pass)"></i><i style="width:${(n - o - p) / maxD * 100}%;background:var(--accent)"></i></div><div class="n">${n}</div>`).join("");
-  // Oldest at DARPO: open SRs not in compliance, longest wait first.
-  const aging = open.filter(s => s.status !== "Compliance").sort((a, b) => (age(b) || 0) - (age(a) || 0)).slice(0, 10);
-  // Items checked: share of pass or present among pass / present / fail / missing answers on each SR's current route.
-  let nPass = 0, nAns = 0, nChecked = 0, nClean = 0;
-  list.forEach(s => { const a = (s.ans || {})[s.route] || {}; let any = false, bad = false;
-    activeKeys(s.route, a).forEach(k => { const v = a[k.key]; if (v === "pass" || v === "present" || v === "fail" || v === "missing") { nAns++; any = true; if (v === "pass" || v === "present") nPass++; else bad = true; } });
-    if (any) { nChecked++; if (!bad) nClean++; } });
-  const openAges = open.filter(s => s.status !== "Compliance").map(age).filter(v => v !== null);
-  const avgAge = openAges.length ? Math.round(openAges.reduce((t, v) => t + v, 0) / openAges.length) : 0;
-  const pctTxt = (a, b) => b ? (a / b * 100).toFixed(1) + "%" : "—";
-  const strip = (icon, tone, v, k, s) => `<div class="tone-${tone}">${ico(icon)}<div><div class="v">${v}</div><div class="k">${k}</div><div class="s">${s}</div></div></div>`;
-  view.innerHTML = `
-    <div class="dash-kind"><div class="field"><label for="d-kind">Kind of survey</label><select id="d-kind"><option value="All" ${ui.dashKind === "All" ? "selected" : ""}>All kinds (${every.length})</option>${allKinds.map(k => `<option value="${esc(k)}" ${ui.dashKind === k ? "selected" : ""}>${esc(k)} (${every.filter(s => s.kind === k).length})</option>`).join("")}</select></div>
-      <span class="sub">${ui.dashKind === "All" ? "Showing all kinds of survey" : `Showing ${list.length} SR${list.length === 1 ? "" : "s"} of ${esc(ui.dashKind)} only`}</span></div>
-    <div class="dk">
-    <div class="dk-tiles">
-      ${tile("files", "accent", "Total SRs", list.length, `${open.length} at DARPO · ${pastN} past DARPO`)}
-      ${tile("inbox", "warn", "At DARPO", open.length, `${SUBS.map(x => open.filter(s => s.status === x).length + " " + x.toLowerCase()).join(" · ")} · ${unassigned} unassigned`)}
-      ${tile("clock", oldest > 14 ? "fail" : "pass", "Oldest at DARPO", `<span style="${oldest > 14 ? "color:var(--fail)" : ""}">${oldest}<small> days</small></span>`, "since received, not counting compliance")}
-      ${tile("back", "na", "In compliance", compliance, "returned to DARMO, waiting")}
-      ${tile("send", "pass", "Endorsed to RPMO", endorsed, delta || "last 30 days")}
-    </div>
-    <div class="dk3 wide-mid">
-      <section class="panel"><div class="panel-head"><h2>Received vs decided</h2><span class="sub">at DARPO · last 6 months</span></div>
-        <div class="panel-body dk-cols"><div class="dk-legend"><span><span class="sw" style="background:var(--accent)"></span>Received</span><span><span class="sw" style="background:var(--pass)"></span>Decided</span></div>${colChart}</div></section>
-      ${pie || `<section class="panel"><div class="panel-head"><h2>Findings share</h2></div><div class="panel-body sub">No findings recorded yet.</div></section>`}
-      <section class="panel"><div class="panel-head"><h2>SRs by DARMO</h2><span class="sub">${darmos.length} DARMO${darmos.length === 1 ? "" : "s"}</span></div>
-        <div class="panel-body"><div class="dk-legend"><span><span class="sw" style="background:var(--warn)"></span>At DARPO</span><span><span class="sw" style="background:var(--pass)"></span>Past DARPO</span><span><span class="sw" style="background:var(--accent)"></span>Not yet at DARPO</span></div>
-        <div class="dk-hb">${darmoBars || '<div class="sub">No SRs.</div>'}</div></div></section>
-    </div>
-    <div class="dk3">
-      <section class="panel"><div class="panel-head"><h2>Most frequent findings</h2><span class="sub">count of SRs, all routes · same as the pie${slices.length ? " · click one to list its LHs" : ""}</span>${slices.length ? '<button type="button" class="btn link no-print" id="find-export" title="Excel file: one column per finding, one row per LH, the remark in each cell">Export to Excel</button>' : ""}</div>
-        <div class="panel-body hbars">${slices.length ? bars : '<div class="sub">No findings recorded yet.</div>'}
-        ${findList}</div></section>
-      <section class="panel dk-alert"><div class="panel-head"><h2>Oldest at DARPO</h2><span class="sub">not counting compliance · click to open</span></div>
-        ${aging.length ? `<div class="table-scroll"><table><thead><tr><th>SeqNo</th><th>LO / Claimant</th><th class="r">Days</th><th>Status</th></tr></thead>
-        <tbody>${aging.map(s => { const d = age(s); return `<tr data-seq="${esc(s.seq)}" tabindex="0" aria-label="Open SR ${esc(s.seq)}"><td class="mono">${esc(s.seq)}</td><td class="who">${esc(s.claimant || "")}<div class="sub">${esc(s.darmo || "")}${s.verifier ? " · " + esc(s.verifier) : ""}</div></td>
-          <td class="days${d > 30 ? " hot" : d > 14 ? " warm" : ""}">${d === null ? "—" : d}</td><td><span class="pill ${STATUS_CLASS[s.status] || ""}">${esc(STATUS_LABEL[s.status] || s.status)}</span></td></tr>`; }).join("")}</tbody></table></div>`
-          : '<div class="panel-body sub">No SRs waiting at DARPO.</div>'}</section>
-        <section class="panel"><div class="panel-head"><h2>By survey status</h2><span class="sub">all SRs</span></div>
-          <div class="table-scroll"><table><thead><tr><th>Survey status</th><th class="r">SRs</th></tr></thead>
-          <tbody>${[...SURVEYS, NOT_SET].map(k => `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${list.filter(s => (s.survey || NOT_SET) === k).length}</td></tr>`).join("")}</tbody></table></div></section>
-    </div>
-    ${remPanel}
-    <div class="dk3">
-        <section class="panel"><div class="panel-head"><h2>By kind of survey</h2><span class="sub">all SRs · at DARPO · past DARPO</span></div>
-          <div class="table-scroll"><table><thead><tr><th>Kind</th><th class="r">SRs</th><th class="r">At DARPO</th><th class="r">Past DARPO</th></tr></thead>
-          <tbody>${allKinds.filter(k => ui.dashKind === "All" || k === ui.dashKind).map(k => { const l = list.filter(s => s.kind === k); return `<tr style="cursor:default"><td>${esc(k)}</td><td class="r num">${l.length}</td><td class="r num">${l.filter(isOpen).length}</td><td class="r num">${l.filter(pastDarpo).length}</td></tr>`; }).join("")}</tbody></table></div></section>
-        <section class="panel"><div class="panel-head"><h2>SRs at DARPO by age</h2></div>
-          <div class="panel-body hbars">${buckets.map(([l, n]) => `<div class="hbar"><div class="lbl">${l}</div><div class="track blue"><i style="width:${n / maxB * 100}%"></i></div><div class="n">${n}</div></div>`).join("")}</div></section>
-        <section class="panel"><div class="panel-head"><h2>Verifier load</h2><span class="sub">open · closed last 30 days</span></div>
-          <div class="table-scroll"><table><thead><tr><th>Verifier</th><th class="r">Open</th><th class="r">Closed</th></tr></thead>
-          <tbody>${vrows.map(([v, o, c]) => `<tr style="cursor:default"><td>${esc(v)}</td><td class="r num">${o}</td><td class="r num">${c}</td></tr>`).join("")}</tbody></table></div></section>
-    </div>
-    <section class="panel dk-strip" aria-label="Summary figures">
-      ${strip("pin", "accent", darmos.filter(d => d[0] !== NOT_SET).length, "DARMOs", "with SRs in this view")}
-      ${strip("users", "accent", state.verifiers.length, "Verifiers", `${vrows.filter(r => r[1]).length} with open SRs`)}
-      ${strip("check", "pass", pctTxt(nPass, nAns), "Items passed", `${nPass} of ${nAns} items checked`)}
-      ${strip("trend", avgAge > 14 ? "fail" : "warn", `${avgAge}<small style="font-size:13px;font-weight:500"> days</small>`, "Average wait at DARPO", "open SRs, not counting compliance")}
-      ${strip("shield", "pass", pctTxt(nClean, nChecked), "SRs with no finding", `${nClean} of ${nChecked} SRs checked`)}
-    </section>
-    </div>`;
-  const redraw = () => { const y = scrollY; renderDashboard(); scrollTo(0, y); };
-  const bindKey = b => { if (b.tagName === "path") b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); b.onclick(); } }; };
-  view.querySelectorAll("[data-finding]").forEach(b => { b.onclick = () => { const k = b.dataset.finding; ui.dashFinding = ui.dashFinding === k ? null : k; redraw(); }; });
-  view.querySelectorAll("[data-rfind]").forEach(b => { b.onclick = () => { const k = b.dataset.rfind; ui.remFinding = ui.remFinding === k ? null : k; ui.remCat = null; redraw();
-    const rp = view.querySelector("#rem-panel"); if (rp) rp.scrollIntoView({ block: "nearest", behavior: "smooth" }); }; bindKey(b); });
-  view.querySelectorAll("[data-rcat]").forEach(b => { b.onclick = () => { const k = b.dataset.rcat; ui.remCat = ui.remCat === k ? null : k; redraw(); }; bindKey(b); });
-  const dk = view.querySelector("#d-kind"); if (dk) dk.onchange = () => { ui.dashKind = dk.value; ui.dashFinding = null; ui.remFinding = null; ui.remCat = null; redraw(); };
-  const bo = view.querySelector("#bar-other"); if (bo) bo.onclick = () => { ui.showOther = !ui.showOther; redraw(); };
-  const fc = view.querySelector("#find-close"); if (fc) fc.onclick = () => { ui.dashFinding = null; redraw(); };
-  const rc = view.querySelector("#rem-close"); if (rc) rc.onclick = () => { ui.remFinding = null; ui.remCat = null; redraw(); };
-  const rcc = view.querySelector("#rcat-close"); if (rcc) rcc.onclick = () => { ui.remCat = null; redraw(); };
-  const fx = view.querySelector("#find-export"); if (fx) fx.onclick = () => exportFindings(fails, remarks);
-  view.querySelectorAll(".find-list tr[data-seq], .dk-alert tr[data-seq]").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
-  // Search filters the remark list in place (no redraw), so ticks survive; ticked remarks stay in the Combine even when hidden.
-  const cq = view.querySelector("#cat-q"); if (cq) cq.oninput = () => {
-    const words = cq.value.toLowerCase().split(/\s+/).filter(Boolean), rows = [...view.querySelectorAll(".cat-pick label")];
-    let shown = 0; rows.forEach(r => { const hit = words.every(w => r.textContent.toLowerCase().includes(w)); r.hidden = !hit; shown += hit; });
-    const ticked = rows.filter(r => r.querySelector("input").checked).length;
-    view.querySelector("#cat-qn").textContent = (words.length ? `${shown} of ${rows.length} shown` : `${rows.length} distinct remark${rows.length === 1 ? "" : "s"}`) + (ticked ? ` · ${ticked} ticked` : "");
+  if (!miss[a]) { // Complete, Partly marked or not marked yet: list the SRs
+    const g = series.find(x => x.key === a);
+    d.innerHTML = `<div class="cat att-in"><div class="chart-head"><h3>${esc(a)} · ${g.srs.length} SR${g.srs.length === 1 ? "" : "s"}</h3></div>${g.srs.length ? sdLhTable(g.srs) : `<p class="sub">None.</p>`}</div>`;
+    return;
+  }
+  sdCats(kind, i, a, miss[a], rem[a] || {}, d);
+}
+
+/* Remark categories for one missing document: rcats[label][category] = [remark keys], the same store as the SR Flow Dashboard. */
+function sdCats(kind, i, label, srs, rm, d) {
+  const distinct = new Map(); // remark key -> {text, srs}
+  srs.forEach(s => { const t = rm[s.seq] || "", k = remKey(t); const o = distinct.get(k) || { text: t, srs: [] }; o.srs.push(s); distinct.set(k, o); });
+  const cats = rcats[label] || {}, catNames = Object.keys(cats), catOf = {};
+  catNames.forEach(c => cats[c].forEach(k => { catOf[k] = c; }));
+  const cs = catNames.map((c, j) => ({ key: c, status: c, name: c, color: SD_PALETTE[j % SD_PALETTE.length], n: cats[c].filter(k => distinct.has(k)).length,
+    srs: sdUniq(cats[c].filter(k => distinct.has(k)).map(k => distinct.get(k).srs)) })).filter(x => x.srs.length);
+  const inCat = sdUniq(cs.map(x => x.srs)).length, row = {}; cs.forEach(x => { row[x.key] = x.srs.length; });
+  const remList = [...distinct.entries()].filter(([k]) => !catOf[k]).sort((p, q) => q[1].srs.length - p[1].srs.length || p[1].text.localeCompare(q[1].text));
+  let pc = sd.cat[kind]; if (pc && !cs.some(x => x.key === pc)) pc = sd.cat[kind] = null;
+  const picked = pc ? cs.find(x => x.key === pc).srs : [];
+  d.innerHTML = `<div class="cat att-in"><div class="chart-head"><div><h3>Remark categories</h3><p class="sub">${esc(label)} · ${srs.length} SR${srs.length === 1 ? "" : "s"}</p></div><button type="button" class="btn small" id="sd-kcx-${i}">Close</button></div>
+    ${cs.length ? `<div class="chart" id="sd-kcp-${i}"></div><p class="sub">${srs.length - inCat} of ${srs.length} SRs not in a category yet. Click a category to list its SRs.</p>`
+      : `<div class="rem-empty">No categories yet for this document. Tick the remarks that mean the same thing, name the category, then press Combine. The pie starts with your first category.</div>`}
+    ${picked.length ? `<h3 style="margin-top:10px">${picked.length} SR${picked.length === 1 ? "" : "s"} in ${esc(pc)}</h3>${sdLhTable(picked, s => rm[s.seq] || "")}` : ""}
+    <div class="cat-edit no-print">
+      ${catNames.length ? `<div class="chips">${catNames.map((c, j) => `<span class="chip">${esc(c)} <b>${cats[c].length}</b><button type="button" data-uncat="${j}" title="Delete this category; its remarks go back to the list">Ungroup</button></span>`).join("")}</div>` : ""}
+      <div class="cat-row"><input id="sd-kq-${i}" type="search" placeholder="Search remarks" aria-label="Search remarks" autocomplete="off"><span class="sub" id="sd-kqn-${i}">${remList.length} distinct remark${remList.length === 1 ? "" : "s"}</span></div>
+      <div class="cat-pick">${remList.length ? "" : `<div class="sub" style="padding:8px">Every remark is in a category. Ungroup one to edit it.</div>`}${remList.map(([k, o], j) => `<label><input type="checkbox" data-j="${j}"><span>${esc(o.text || "(blank)")}</span><span class="sub num">${o.srs.length}</span></label>`).join("")}</div>
+      <div class="cat-row"><input id="sd-kn-${i}" list="sd-kns-${i}" maxlength="60" placeholder="Category name, e.g. Not notarized" aria-label="Category name"><datalist id="sd-kns-${i}">${catNames.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+        <button type="button" class="btn primary" id="sd-kadd-${i}">Combine</button></div>
+      <p class="sub" style="margin:0">Typing an existing name adds to it. Categories are saved on this device only, shared with the SR Flow Dashboard.</p></div></div>`;
+  document.getElementById("sd-kcx-" + i).onclick = () => { sd.att[kind] = null; delete sd.cat[kind]; sdRedraw(); };
+  if (cs.length) sdPie(document.getElementById("sd-kcp-" + i), row, { label: `Remark categories of ${label}`, spin: true, series: cs, num: v => v.toLocaleString(), unit: "SRs", col: "Category", center: inCat, cw: "in a category",
+    pick: pc, tipFor: (o, p) => `<div class="t">${esc(label)}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${p}</b></div><div class="r"><span>SRs</span><b>${o.v}</b></div><div class="r"><span>Remarks</span><b>${o.s.n}</b></div>`,
+    onPick: st => { sd.cat[kind] = sd.cat[kind] === st ? null : st; sdRedraw(); } });
+  d.querySelectorAll("[data-uncat]").forEach(b => b.onclick = () => { const c = catNames[+b.dataset.uncat]; if (rcats[label]) { delete rcats[label][c]; if (!Object.keys(rcats[label]).length) delete rcats[label]; } saveRcats(); toast(`Category "${c}" removed`); sdRedraw(); });
+  const q = document.getElementById("sd-kq-" + i); q.oninput = () => { const words = q.value.toLowerCase().split(/\s+/).filter(Boolean), rows = [...d.querySelectorAll(".cat-pick label")];
+    let n = 0; rows.forEach(x => { const hit = words.every(w => x.textContent.toLowerCase().includes(w)); x.hidden = !hit; n += hit; });
+    const ticked = rows.filter(x => x.querySelector("input").checked).length;
+    document.getElementById("sd-kqn-" + i).textContent = (words.length ? `${n} of ${rows.length} shown` : `${rows.length} distinct remark${rows.length === 1 ? "" : "s"}`) + (ticked ? ` · ${ticked} ticked` : ""); };
+  document.getElementById("sd-kadd-" + i).onclick = () => {
+    const nm = document.getElementById("sd-kn-" + i).value.trim().replace(/\s+/g, " "), picks = [...d.querySelectorAll(".cat-pick input:checked")].map(c => remList[+c.dataset.j][0]);
+    if (!picks.length) { toast("Tick at least one remark"); return; }
+    if (!nm) { toast("Type a name for the category"); document.getElementById("sd-kn-" + i).focus(); return; }
+    try { rcats = JSON.parse(localStorage.getItem(RCAT_STORE)) || rcats; } catch (e) {} // read fresh, so a category made on the SR Flow Dashboard meanwhile is kept
+    const c = rcats[label] = rcats[label] || {};
+    Object.keys(c).forEach(x => { c[x] = c[x].filter(k => !picks.includes(k)); if (!c[x].length) delete c[x]; });
+    c[nm] = (c[nm] || []).concat(picks); saveRcats(); toast(`${picks.length} remark${picks.length === 1 ? "" : "s"} combined into "${nm}"`); sdRedraw();
   };
-  if (remCtx) {
-    const { f, remList } = remCtx;
-    view.querySelectorAll("[data-uncat]").forEach(b => b.onclick = () => { const c = Object.keys(rcats[f] || {})[+b.dataset.uncat]; delete rcats[f][c]; if (!Object.keys(rcats[f]).length) delete rcats[f]; saveRcats(); toast(`Category "${c}" removed`); redraw(); });
-    const ca = view.querySelector("#cat-add"); if (ca) ca.onclick = () => {
-      const name = view.querySelector("#cat-name").value.trim().replace(/\s+/g, " ");
-      const picks = [...view.querySelectorAll(".cat-pick input:checked")].map(c => remList[+c.dataset.i][0]);
-      if (!picks.length) { toast("Tick at least one remark"); return; }
-      if (!name) { toast("Type a name for the category"); view.querySelector("#cat-name").focus(); return; }
-      const cats = rcats[f] = rcats[f] || {};
-      Object.keys(cats).forEach(c => { cats[c] = cats[c].filter(k => !picks.includes(k)); if (!cats[c].length) delete cats[c]; });
-      cats[name] = (cats[name] || []).concat(picks);
-      saveRcats(); toast(`${picks.length} remark${picks.length === 1 ? "" : "s"} combined into "${name}"`); redraw();
-    };
-  }
-}
-
-/* Donut for the findings pie: hand-drawn SVG (works offline). Each slice is a keyboard-focusable path with a native tooltip. */
-function donutSVG(slices, colorOf, center, centerLabel, pick, attr) {
-  const sum = slices.reduce((t, x) => t + x.srs.length, 0) || 1, C = 100, R = 94, r = 60, TAU = Math.PI * 2;
-  const pt = (rad, a) => `${(C + rad * Math.cos(a)).toFixed(2)} ${(C + rad * Math.sin(a)).toFixed(2)}`;
-  let a0 = -Math.PI / 2;
-  const paths = slices.map((x, i) => {
-    const f = x.srs.length / sum, a1 = a0 + f * TAU, big = f > .5 ? 1 : 0, top = -Math.PI / 2, bot = Math.PI / 2;
-    const d = f > .9999
-      ? `M${pt(R, top)}A${R} ${R} 0 1 1 ${pt(R, bot)}A${R} ${R} 0 1 1 ${pt(R, top)}ZM${pt(r, top)}A${r} ${r} 0 1 0 ${pt(r, bot)}A${r} ${r} 0 1 0 ${pt(r, top)}Z`
-      : `M${pt(R, a0)}A${R} ${R} 0 ${big} 1 ${pt(R, a1)}L${pt(r, a1)}A${r} ${r} 0 ${big} 0 ${pt(r, a0)}Z`;
-    a0 = a1;
-    return `<path class="slice${pick === x.key ? " on" : ""}" fill-rule="evenodd" d="${d}" style="fill:${colorOf(x, i)}" ${x.key ? `${attr}="${esc(x.key)}" tabindex="0" role="button"` : ""} aria-label="${esc(x.name)}: ${x.srs.length} LHs"><title>${esc(x.name)}: ${x.srs.length} LH${x.srs.length === 1 ? "" : "s"} (${Math.round(f * 100)}%)</title></path>`;
-  }).join("");
-  return `<svg viewBox="0 0 200 200" role="group" aria-label="Findings share">${paths}<text class="c-n" x="100" y="102" text-anchor="middle">${center}</text><text class="c-l" x="100" y="120" text-anchor="middle">${esc(centerLabel)}</text></svg>`;
-}
-
-/* Findings export (2026-11-18): every finding (not only the top 8 on the dashboard), most frequent first.
-   Sheet "Findings by LH": one row per LH with a finding, one column per finding, the verifier's remark in the cell.
-   Sheet "Remarks list": one row per LH and finding, for filtering. Sheet "Summary": finding and count. */
-function exportFindings(fails, remarks) {
-  const labels = Object.keys(fails).sort((a, b) => fails[b].length - fails[a].length || a.localeCompare(b));
-  if (!labels.length) return;
-  const bySeq = new Map(); labels.forEach(l => fails[l].forEach(s => bySeq.set(s.seq, s)));
-  const srs = [...bySeq.values()].sort((a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)));
-  const info = s => [s.seq, s.title || "", s.claimant || "", s.lot || "", s.darmo || "", s.route || "", s.verifier || "", STATUS_LABEL[s.status] || s.status || s.survey || NOT_SET];
-  const infoHead = ["SeqNo", "Title No.", "LO/Claimant", "Lot No.", "DARMO", "For", "Verifier", "Status"];
-  const matrix = [infoHead.concat(labels.map(l => `${l} (${fails[l].length})`))]
-    .concat(srs.map(s => info(s).concat(labels.map(l => (remarks[l] || {})[s.seq] || ""))));
-  // Remark category: the category the remark was put in on the Dashboard (this device's categories only).
-  const rcatOf = (l, t) => { const k = remKey(t); return Object.keys(rcats[l] || {}).find(c => rcats[l][c].includes(k)) || ""; };
-  const long = [infoHead.concat(["Finding", "Remark", "Remark category"])];
-  labels.forEach(l => fails[l].slice().sort((a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq)))
-    .forEach(s => { const t = (remarks[l] || {})[s.seq] || ""; long.push(info(s).concat([l, t, rcatOf(l, t)])); }));
-  const catRows = [];
-  labels.forEach(l => Object.keys(rcats[l] || {}).forEach(c => { const n = fails[l].filter(s => rcatOf(l, (remarks[l] || {})[s.seq] || "") === c).length; if (n) catRows.push([l, c, n]); }));
-  const summary = [["Finding", "SRs"]].concat(labels.map(l => [l, fails[l].length]))
-    .concat(catRows.length ? [[], ["Finding", "Remark category", "LHs"]].concat(catRows) : [])
-    .concat([[], ["Exported", new Date().toLocaleString("en-PH")], ["LHs with a finding", srs.length]]);
-  const blob = xlsx([["Findings by LH", matrix], ["Remarks list", long], ["Summary", summary]]);
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = `SR-Findings-${today()}.xlsx`;
-  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  toast(`Findings exported: ${labels.length} findings, ${srs.length} LHs`);
 }
 
 function renderChecklists() {
