@@ -93,6 +93,7 @@ h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em
 .legend button[aria-pressed="false"] { color: var(--faint); }
 .legend button[aria-pressed="false"] i { opacity: .25; box-shadow: none; }
 .legend.big { margin: 4px 0 10px; }
+.pill-commit { display: inline-block; margin-top: 3px; font-family: var(--mono); font-size: 10.5px; padding: 1px 7px; border-radius: 999px; color: var(--fg); background: rgba(34,195,230,.14); box-shadow: inset 0 0 0 1px rgba(34,195,230,.45); white-space: nowrap; }
 .cover { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .cover b { color: var(--cyan); }
 
@@ -263,6 +264,7 @@ td { font-family: var(--mono); }
       <div class="src" id="src">Loading…</div>
     </div>
     <div class="controls">
+      <div class="seg" role="group" aria-label="Commitment for registration" id="commit"><button data-c="all">All LHs</button><button data-c="in">Commitment</button><button data-c="out">Not commitment</button></div>
       <div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div><button class="btn order-reset" id="order-reset" hidden title="Put the kinds of survey back in order by name">Reset order</button>
     </div>
   </header>
@@ -445,6 +447,7 @@ function pieChart(el, r, prev, opt) {
         <div class="r"><span>Of ${esc(o.s.name)}</span><b>${Math.round(sp.of * 100)}%</b></div>`
       : `<div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${pct(o.v)}</b></div>
         <div class="r"><span>SRs</span><b>${(r[st] || 0).toLocaleString()}</b></div><div class="r"><span>Area</span><b>${fmtHa(r[st + HA] || 0)} ha</b></div>` +
+        (r[st + CM] != null ? `<div class="r"><span>Commitment</span><b>${r[st + CM].toLocaleString()}</b></div>` : "") +
         o.parts.map(q => `<div class="r"><span>\u00a0\u00a0${esc(q.name)}</span><b>${opt.num(q.v)}</b></div>`).join("")) + (opt.extra ? opt.extra(r) : "");
     const b = el.getBoundingClientRect(), tw = tip.offsetWidth || 170; let left = ev.clientX - b.left + 14;
     if (left + tw > el.clientWidth) left = Math.max(0, ev.clientX - b.left - tw - 14);
@@ -468,7 +471,8 @@ function pieChart(el, r, prev, opt) {
    opens the attachments pie of that kind's SRs at that status; a click on a missing document opens its remark categories, shared with the SR Desk dashboard. */
 const NOT_SET = "Not set";
 const $ = id => document.getElementById(id);
-let ui = { metric: "count", pick: {}, att: {}, cat: {}, anim: null };
+let ui = { metric: "count", commit: "all", pick: {}, att: {}, cat: {}, anim: null };
+try { const c = localStorage.getItem("srdash-commit"); if (c === "in" || c === "out") ui.commit = c; } catch (e) {}
 try { if (localStorage.getItem("srdash-metric") === "area") ui.metric = "area"; } catch (e) {}
 try { const p = JSON.parse(localStorage.getItem("srdash-pick")); if (p && typeof p === "object") ui.pick = p; } catch (e) {}
 const savePick = () => { try { localStorage.setItem("srdash-pick", JSON.stringify(ui.pick)); } catch (e) {} };
@@ -487,6 +491,13 @@ function seriesFor(rawList) {
   keyOf = st => own.includes(st) ? st : OTHER;
   return own.map((st, i) => ({ key: st, name: short(st), color: PALETTE[i] || OTHER_COLOR })).concat(rest.length ? [{ key: OTHER, name: `${OTHER} (${rest.length})`, color: OTHER_COLOR, members: rest }] : []);
 }
+/* Commitment for registration (2026-11-21, user: "add that commitment to SR Flow Dashboard"), as on the SR Desk Dashboard: the same list,
+   written between the markers by SKILLS/scripts/sr_desk_commitment.py (pass both html files so the two pages keep the same list). */
+/*COMMIT-BEGIN*/const COMMIT_SRC = "Survey_by_Batch_Records_2026-11-21-2.xlsx", COMMIT_Q = {"1": "41557 41583 41595 41598 41604 48774 48780 48863 48920 49001 49003 49052 49087 49177 49188 49212 49299 49328 49473 49510 49580 49589 49600 49660 49742 49853 49882 49887 49915 49926 49930 49936 49999 50000 50002 50070 50109 50272 50281 50308 50359 50466 50488 50537 50553 148003 148010 148030 148031 148039 148167 152065 152184 152462 152472 152522 152549 152669 152719 152758", "2": "49091 49092 49571 50287 50370 50418 50459 50503 50505 50590 50592 142996 143156 143165 143179 143313 148034 148049 148063 148064 148076 148091 148100 148102 148110 148112 148133 148139 148164 149132 152049 152167 152189 152224 152228 152229 152230 152253 152303 152310 152323 152330 152387 152392 152422 152436 152481 152499 152512 152521 152538 152545 152546 152551 152552 152554 152555 152573 152619 152637 152725 152737", "3": "41651 48786 48804 48828 49004 49068 49214 49354 49384 49413 49481 49543 49557 49567 49581 49593 49638 49711 49735 49830 49907 49950 49951 50014 50061 50163 50191 50202 50240 50334 50362 50405 50419 50442 50460 50475 50542 50565 50583 50586 50598 50608 50649 50661 50662 50663 50668 142997 143009 143085 143089 148058 152559 152653", "4": "48724 48822 49053 49131 49133 49135 49138 49910 50143 143001 143086 143107 143129 143137 143142 143185 143191 143209 143230 143233 143259 143264 143281 143306 148004 148006 148021 148036 148043 148055 148103 148106 148108 148109 148138 148143 148159 148168 152055 152062 152068 152072 152109 152188 152194 152199 152201 152204 152209 152220 152235 152248 152262 152265 152268 152279 152300 152318 152335 152345 152351 152366 152377 152381 152412 152420 152426 152429 152430 152441 152455 152479 152519 152527 152528 152529 152568 152570 152571 152574 152587 152594 152595 152627 152631 152634 152635 152649 152658 152672 152673 152683 152701 152715 152743 152746 152764 152768"};/*COMMIT-END*/
+const COMMIT = new Map(); Object.entries(COMMIT_Q).forEach(([q, l]) => l.split(" ").filter(Boolean).forEach(seq => COMMIT.set(seq, q)));
+const commitQ = s => COMMIT.get(String(s && s.seq != null ? s.seq : s));
+const commitLabel = q => q === undefined ? "" : q === "0" ? "Commitment" : `Commitment · Q${q}`;
+const CM = " cm"; // suffix of the commitment count next to each status's count
 const hidden = new Set();
 try { (JSON.parse(localStorage.getItem("srdash-hidden")) || []).forEach(k => hidden.add(k)); } catch (e) {}
 
@@ -497,7 +508,7 @@ const kindSort = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 const bySeq = (a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).localeCompare(String(b.seq));
 const uniq = arrs => [...new Set([].concat(...arrs))];
 const lhTable = (srs, remOf) => `<div class="table-scroll"><table class="lh"><thead><tr><th>SeqNo</th><th>LO / Claimant</th>${remOf ? "<th>Remark</th>" : ""}<th>DARMO</th><th>Status</th><th></th></tr></thead><tbody>
-  ${srs.slice().sort(bySeq).map(s => `<tr data-seq="${esc(s.seq)}" tabindex="0" title="Open SR ${esc(s.seq)} in the SR Verification Desk"><td class="mono">${esc(s.seq)}<div class="sub">${esc(s.title)}</div></td><td>${esc(s.claimant)}<div class="sub">Lot ${esc(s.lot)}</div></td>
+  ${srs.slice().sort(bySeq).map(s => `<tr data-seq="${esc(s.seq)}" tabindex="0" title="Open SR ${esc(s.seq)} in the SR Verification Desk"><td class="mono">${esc(s.seq)}<div class="sub">${esc(s.title)}</div>${commitQ(s) !== undefined ? `<span class="pill-commit">${esc(commitLabel(commitQ(s)))}</span>` : ""}</td><td>${esc(s.claimant)}<div class="sub">Lot ${esc(s.lot)}</div></td>
     ${remOf ? `<td>${esc(remOf(s))}</td>` : ""}<td>${esc(s.darmo)}</td><td>${esc(s.survey || NOT_SET)}${s.status ? `<div class="sub">${esc(s.status)}</div>` : ""}</td><td class="open">Open ›</td></tr>`).join("")}</tbody></table></div>`;
 /* A list row opens that SR in the SR Verification Desk, as a click on its register row does: the request goes through this device's storage
    (the SR Desk reads STORE + "-open"), then the panel switches to the SR Desk; opened on its own, this page goes to sr-desk.html. Sample SRs do not open. */
@@ -516,13 +527,15 @@ const KIND_COLORS = ["#1f9fc4", "#8a63e8", "#d9821a", "#24a274", "#d9487a", "#6b
 let firstPaint = true;
 
 function render() {
-  const raw = readDesk() || sampleDesk(), list = raw.list, AREA = ui.metric === "area"; sampleOn = !!raw.sample;
-  const SER = seriesFor(list);
+  const raw = readDesk() || sampleDesk(), all = raw.list, AREA = ui.metric === "area"; sampleOn = !!raw.sample;
+  const SER = seriesFor(all); // colours come from every SR, so a status keeps its colour whichever LHs are shown
+  const list = ui.commit === "all" ? all : all.filter(s => (commitQ(s) !== undefined) === (ui.commit === "in"));
   $("live").classList.toggle("off", raw.sample);
   $("src").innerHTML = raw.sample ? "Sample data · no SR Desk copy found on this PC"
-    : `${list.length.toLocaleString()} SRs from this PC's SR Desk copy · register pulled ${esc(raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : "—")}${raw.pending ? ` · ${raw.pending} change${raw.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
+    : `${all.length.toLocaleString()} SRs from this PC's SR Desk copy${ui.commit === "all" ? "" : ` · showing ${list.length.toLocaleString()} ${ui.commit === "in" ? "committed for registration" : "not committed for registration"}`} · register pulled ${esc(raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : "—")}${raw.pending ? ` · ${raw.pending} change${raw.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
   $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Open the SR Verification Desk from this same place, connect it in Settings and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
   document.querySelectorAll("#metric button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === ui.metric)));
+  document.querySelectorAll("#commit button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.c === ui.commit)));
   const byName = [...new Set(list.map(s => s.kind || NOT_SET))].sort(kindSort), rcats = loadRcats();
   const kinds = orderKinds(byName), colorOf = k => KIND_COLORS[byName.indexOf(k) % KIND_COLORS.length]; // a kind keeps its colour wherever it is dragged
   $("kinds").innerHTML = kinds.map((k, i) => `<section class="panel kindp" id="kp-${i}" data-kind="${esc(k)}" style="--kc:${colorOf(k)}" aria-label="${esc(k)}">
@@ -541,13 +554,14 @@ function render() {
     <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. The status tables show both. <b>SRs</b> / <b>Area (ha)</b> at the top picks what the pie and the Share column measure.</li>
     <li>Click a status (or a DARPO status in the outer ring) to open the <b>attachments</b> of those SRs, from the SR Desk's Attachments tab. Each missing document counts every SR that lacks it, so an SR lacking two documents is in both slices. An SR with nothing missing is <b>Complete</b> (every required document marked Present or N/A), <b>Partly marked</b>, or <b>not marked yet</b>.</li>
     <li>Click a missing document to sort its remarks into <b>categories</b>. They are the same categories as on the SR Desk dashboard (saved on this device only); reopen the SR Desk to see changes made here.</li>
+    <li><b>Commitment</b> marks the ${COMMIT.size.toLocaleString()} LHs committed for registration in ${esc(COMMIT_SRC)} (by Seq No, with the New Milestone quarter). <b>Commitment</b> / <b>Not commitment</b> at the top limits every pie to them; with <b>All LHs</b>, each kind's count, each status's tooltip and the SR lists still show which are committed. The same list is on the SR Desk Dashboard.</li>
     <li>Read-only for SRs: nothing on this page is written to the SR Desk or the Sheet.</li></ul>`;
 }
 
 function renderKind(kind, i, srs, SER, AREA, rcats) {
-  const r = { now: true, total: srs.length, totalHa: 0 }; SER.forEach(x => { r[x.key] = 0; r[x.key + HA] = 0; });
-  srs.forEach(s => { const k = keyOf(statusOf(s)); r[k]++; r[k + HA] += s.area || 0; r.totalHa += s.area || 0; });
-  $("kc-" + i).innerHTML = `pie shows all <b>${srs.length.toLocaleString()}</b> SRs · <b>${fmtHa(r.totalHa)}</b> ha`;
+  const r = { now: true, total: srs.length, totalHa: 0, cm: 0 }; SER.forEach(x => { r[x.key] = 0; r[x.key + HA] = 0; r[x.key + CM] = 0; });
+  srs.forEach(s => { const k = keyOf(statusOf(s)); r[k]++; r[k + HA] += s.area || 0; r.totalHa += s.area || 0; if (commitQ(s) !== undefined) { r[k + CM]++; r.cm++; } });
+  $("kc-" + i).innerHTML = `pie shows ${ui.commit === "all" ? "all" : ui.commit === "in" ? "the commitment" : "the not-commitment"} <b>${srs.length.toLocaleString()}</b> SRs · <b>${fmtHa(r.totalHa)}</b> ha${ui.commit === "all" ? ` · <b>${r.cm.toLocaleString()}</b> commitment` : ""}`;
   const present = SER.filter(x => r[x.key]);
   $("kl-" + i).innerHTML = present.map(x => `<button aria-pressed="${!hidden.has(x.key)}" data-k="${esc(x.key)}" title="${esc(x.members ? x.members.join(", ") : x.key)}"><i style="background:${x.color};color:${x.color}"></i>${esc(x.name)}</button>`).join("");
   $("kl-" + i).querySelectorAll("button").forEach(b => b.onclick = () => { const k = b.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
@@ -710,6 +724,7 @@ function printKind(i) {
 /* Light / dark: follows the Survey Unit panel ("aw-theme" message, sent when the page loads and when the theme changes; aw.theme on this device). */
 try { const th = localStorage.getItem("aw.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch (e) {}
 window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
+document.querySelectorAll("#commit button").forEach(b => b.onclick = () => { ui.commit = b.dataset.c; try { localStorage.setItem("srdash-commit", ui.commit); } catch (e) {} render(); });
 document.querySelectorAll("#metric button").forEach(b => b.onclick = () => { ui.metric = b.dataset.m; try { localStorage.setItem("srdash-metric", ui.metric); } catch (e) {} render(); });
 $("order-reset").onclick = () => { saveOrder(null); render(); };
 addEventListener("storage", e => { if (e.key === STORE || e.key === RCAT_STORE || e.key === ORDER_STORE) render(); }); // the SR Desk synced, or changed categories, in another tab
