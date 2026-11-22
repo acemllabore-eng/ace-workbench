@@ -533,7 +533,7 @@ function render() {
   $("live").classList.toggle("off", raw.sample);
   $("src").innerHTML = raw.sample ? "Sample data · no SR Desk copy found on this PC"
     : `${all.length.toLocaleString()} SRs from this PC's SR Desk copy${ui.commit === "all" ? "" : ` · showing ${list.length.toLocaleString()} ${ui.commit === "in" ? "committed for registration" : "not committed for registration"}`} · register pulled ${esc(raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : "—")}${raw.pending ? ` · ${raw.pending} change${raw.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
-  $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Sign in from the Survey Unit panel's top bar, open the SR Verification Desk and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
+  $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Sign in from the top bar of the Survey Unit panel, open the SR Verification Desk and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
   document.querySelectorAll("#metric button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === ui.metric)));
   document.querySelectorAll("#commit button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.c === ui.commit)));
   const byName = [...new Set(list.map(s => s.kind || NOT_SET))].sort(kindSort), rcats = loadRcats();
@@ -689,29 +689,38 @@ function bindGrip(g) {
     e.key === "ArrowUp" ? box.insertBefore(p, sib) : box.insertBefore(sib, p);
     saveOrder(domOrder()); $("order-reset").hidden = false; g.focus(); p.scrollIntoView({ block: "nearest" }); flashMoved(p);
   };
+  /* 2026-11-23 fix: the move/up listeners were on the grip with pointer capture, but moving the kind in the list (insertBefore)
+     takes it out of the page for an instant, which drops the capture. After the first reorder the grip got no more moves and
+     no pointerup, so the drag froze and the list stayed folded. Listeners are now on the document, filtered by pointer id.
+     The edge scroll keeps going while the pointer rests near the top or bottom (it used to step only when the pointer moved). */
   g.onpointerdown = e => {
-    if (e.button !== 0) return;
-    e.preventDefault(); g.setPointerCapture(e.pointerId);
-    const before = domOrder().join("|");
+    if (e.button !== 0 || box.classList.contains("reordering")) return;
+    e.preventDefault();
+    const id = e.pointerId, before = domOrder().join("|");
+    const top0 = p.getBoundingClientRect().top;
     box.classList.add("reordering"); p.classList.add("dragging");
-    p.scrollIntoView({ block: "center" }); // the list just folded; keep the dragged kind under the pointer's area
-    let lastY = e.clientY, raf = 0;
+    scrollBy(0, p.getBoundingClientRect().top - top0); // the list just folded; keep the dragged kind where it was, under the pointer
+    let lastY = e.clientY, raf = 0, done = false;
     const place = () => {
       raf = 0;
+      if (done) return;
       const others = [...box.querySelectorAll(".kindp")].filter(x => x !== p);
       const next = others.find(x => { const r = x.getBoundingClientRect(); return lastY < r.top + r.height / 2; });
       if (next ? p.nextElementSibling !== next : box.lastElementChild !== p) box.insertBefore(p, next || null);
-      if (lastY < 40) scrollBy(0, -12); else if (lastY > innerHeight - 40) scrollBy(0, 12); // near the edge: scroll the page
+      const edge = lastY < 50 ? -14 : lastY > innerHeight - 50 ? 14 : 0; // near the edge: scroll the page, and keep scrolling while held there
+      if (edge) { scrollBy(0, edge); raf = requestAnimationFrame(place); }
     };
-    const move = ev => { lastY = ev.clientY; if (!raf) raf = requestAnimationFrame(place); };
-    const end = () => {
-      g.removeEventListener("pointermove", move); g.removeEventListener("pointerup", end); g.removeEventListener("pointercancel", end);
-      if (raf) { cancelAnimationFrame(raf); place(); } // apply the last move before dropping
+    const move = ev => { if (ev.pointerId !== id) return; lastY = ev.clientY; if (!raf) raf = requestAnimationFrame(place); };
+    const end = ev => {
+      if (ev.pointerId !== id || done) return;
+      document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", end); document.removeEventListener("pointercancel", end);
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0; place(); done = true; // apply the last move before dropping
       box.classList.remove("reordering"); p.classList.remove("dragging");
       if (domOrder().join("|") !== before) { saveOrder(domOrder()); $("order-reset").hidden = false; flashMoved(p); }
-      p.scrollIntoView({ block: "start", behavior: "smooth" });
+      p.scrollIntoView({ block: "nearest", behavior: "smooth" });
     };
-    g.addEventListener("pointermove", move); g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end);
+    document.addEventListener("pointermove", move); document.addEventListener("pointerup", end); document.addEventListener("pointercancel", end);
   };
 }
 
