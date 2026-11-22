@@ -360,6 +360,91 @@ html.peek body::before, html.peek body::after { display: none !important; }
 .fx-tab { border-collapse: collapse; width: 100%; max-width: 520px; } .fx-tab td { padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; } .fx-tab td:first-child { color: var(--muted); white-space: nowrap; width: 1%; } .fx-tab .mk { width: 1%; text-align: center; font-weight: 600; }
 .fx-tab tr.ok .mk { color: var(--pass); } .fx-tab tr.bad td { color: var(--fail); }
 .fx-res { font-weight: 500; } .fx-res.pass { color: var(--pass); } .fx-res.fail { color: var(--fail); }
+/* Document models in the Document checks tab (2026-11-22): model left, checks and data right; the glow moves to the field.
+   Redrawn from the user's reference copies: printed words as deco, the fields as regions over them. */
+:root { --paper: #FCFBF6; --paper-ink: #23292A; --paper-faint: #C9CFC6; --paper-val: #1B3F7A; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper: #1E2420; --paper-ink: #D9DFDA; --paper-faint: #3E4842; --paper-val: #9DC0F2; } }
+:root[data-theme="dark"] { --paper: #1E2420; --paper-ink: #D9DFDA; --paper-faint: #3E4842; --paper-val: #9DC0F2; }
+.drawer { transition: width .25s ease; }
+.drawer.wide { width: min(1320px, 100%); }
+.doc-card.has-dm { overflow: clip; }
+.dm-split { display: grid; grid-template-columns: minmax(280px, 480px) minmax(0, 1fr); gap: 16px; padding: 0 12px 12px; align-items: start; }
+.dm-split .checks { margin: 0; }
+.dm-side { position: sticky; top: -16px; padding-top: 16px; display: grid; gap: 6px; align-content: start; z-index: 1; }
+.dm-stage { display: grid; }
+.dm { position: relative; width: min(100%, calc((100vh - 360px) * var(--ar))); margin: 0 auto; container-type: inline-size; background: var(--paper); color: var(--paper-ink);
+  border: 1px solid var(--line); border-radius: 3px; box-shadow: 0 1px 2px rgba(20, 30, 25, .08), 0 10px 28px rgba(20, 30, 25, .10); overflow: hidden; font-family: Georgia, "Times New Roman", serif; }
+.dm[hidden] { display: none; }
+.dm.is-scan { background: #fff; } .dm-scan { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+.dm.no-scan::after { content: "Model image not found (dm folder missing beside the page)"; position: absolute; inset: 40% 8% auto; text-align: center; font: 13px/1.4 var(--font-body); color: var(--muted); }
+.dm { --scan-f: brightness(1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dm { --scan-f: invert(.88) hue-rotate(180deg); } }
+:root[data-theme="dark"] .dm { --scan-f: invert(.88) hue-rotate(180deg); }
+.dm-scan { filter: var(--scan-f); transition: filter .3s ease; }
+.dm.is-scan.has-focus .dm-scan:not(.dm-sharp) { filter: var(--scan-f) blur(1.6px) brightness(.42); }
+.dm-sharp { pointer-events: none; }
+.dm-r.is-scan { padding: 0 .3cqw; } .dm-r.is-scan .v { background: var(--paper); padding: 0 .4cqw; border-radius: 2px; font-size: clamp(7px, 1.6cqw, 13px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper-val) 35%, transparent); }
+.dm.is-scan .dm-r:not(.on) { border-color: transparent; } .dm.is-scan .dm-r.st-pass { border-color: color-mix(in srgb, var(--pass) 70%, transparent); } .dm.is-scan .dm-r.st-fail { border-color: var(--fail); }
+.dm.is-scan.has-focus .dm-r, .dm.is-scan.has-focus .dm-r.on { opacity: 1; background: transparent; border-color: transparent; }
+.dm.is-scan .dm-r:hover { border-color: transparent; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.dm.is-scan .dm-focus { border: 1px solid color-mix(in srgb, #9cc4ff 85%, transparent); border-radius: 4px; margin: -2px 0 0 -2px; padding: 2px; box-sizing: content-box;
+  box-shadow: 0 0 6px 1px color-mix(in srgb, #9cc4ff 70%, transparent), 0 0 18px 4px color-mix(in srgb, var(--accent) 45%, transparent); }
+.dm-f-sans { font-family: Arial, "Helvetica Neue", sans-serif; } .dm-f-mono { font-family: "Courier New", Courier, monospace; }
+.dm-in { position: absolute; inset: 0; transform-origin: 0 0; transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
+.dm-d { position: absolute; }
+.dm-t { font-size: calc(1.9cqw * var(--fs, 1)); line-height: 1.2; white-space: pre-line; overflow: hidden; color: var(--paper-ink); }
+.dm-t.k-xs { font-size: calc(1.45cqw * var(--fs, 1)); } .dm-t.k-sm { font-size: calc(2.1cqw * var(--fs, 1)); } .dm-t.k-big { font-size: calc(3.2cqw * var(--fs, 1)); } .dm-t.k-mega { font-size: calc(6.4cqw * var(--fs, 1)); letter-spacing: .02em; } .dm-t.k-huge { font-size: calc(4.6cqw * var(--fs, 1)); letter-spacing: .02em; }
+.dm-t.k-b { font-weight: 700; } .dm-t.k-i { font-style: italic; } .dm-t.k-u { text-decoration: underline; } .dm-t.k-c { text-align: center; } .dm-t.k-r { text-align: right; }
+.dm-t.k-sans { font-family: Arial, sans-serif; } .dm-t.k-serif { font-family: Georgia, serif; }
+.dm-t.k-old { font-family: "Old English Text MT", "UnifrakturMaguntia", "Engravers MT", Georgia, serif; font-weight: 700; }
+.dm-bars { background: repeating-linear-gradient(to bottom, transparent 0 calc(2.3cqw - 1px), var(--paper-faint) calc(2.3cqw - 1px) 2.3cqw); }
+.dm-box { border: 1px solid var(--paper-ink); opacity: .75; } .dm-box.k-frame { border: 3px double var(--paper-faint); opacity: 1; } .dm-box.k-logo { border: 0; background: color-mix(in srgb, var(--pass) 14%, transparent); }
+.dm-hl { border-top: 1px solid var(--paper-ink); opacity: .6; } .dm-hl.k-dbl { border-top: 3px double var(--paper-ink); }
+.dm-vl { border-left: 1px solid var(--paper-ink); opacity: .7; }
+.dm-grid { border: 1px solid var(--paper-ink); opacity: .7; } .dm-grid i { position: absolute; background: var(--paper-ink); }
+.dm-grid .gv { top: 0; bottom: 0; width: 1px; } .dm-grid .gh { left: 0; right: 0; height: 1px; opacity: .55; }
+.dm-sig { border-top: 1px solid var(--paper-ink); font-size: calc(1.5cqw * var(--fs, 1)); text-align: center; padding-top: .3cqw; opacity: .8; }
+.dm-svg { color: var(--paper-ink); overflow: visible; }
+.dm-r { position: absolute; border: 1px dashed transparent; border-radius: 2px; padding: .2cqw .5cqw; display: flex; align-items: center; overflow: hidden; cursor: pointer;
+  transition: opacity .25s, background-color .25s, border-color .25s; }
+.dm-r:hover { border-color: var(--accent); }
+.dm-r.is-m { align-items: flex-start; } .dm-r.is-c { justify-content: center; text-align: center; } .dm-r.is-r { justify-content: flex-end; text-align: right; }
+.dm-r .v { font-size: calc(1.75cqw * var(--fs, 1)); line-height: 1.2; color: var(--paper-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.dm-r.is-m .v { white-space: pre-wrap; overflow-wrap: anywhere; }
+.dm-r.is-b .v { font-weight: 700; } .dm-r.is-i .v { font-style: italic; }
+.dm-r .v.ph { opacity: .58; }
+.dm-r .v.is-val { color: var(--paper-val); font-weight: 600; font-family: "Courier New", Courier, monospace; }
+.dm-r.st-pass { border: 1px solid color-mix(in srgb, var(--pass) 60%, transparent); background: color-mix(in srgb, var(--pass) 8%, transparent); }
+.dm-r.st-fail { border: 1px solid var(--fail); background: color-mix(in srgb, var(--fail) 11%, transparent); }
+.dm.has-focus .dm-r:not(.on) { opacity: .4; }
+.dm.has-focus .dm-r.on { background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.dm-focus { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border: 2px solid var(--accent); border-radius: 4px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: left .38s cubic-bezier(.2, .8, .2, 1), top .38s cubic-bezier(.2, .8, .2, 1), width .38s cubic-bezier(.2, .8, .2, 1), height .38s cubic-bezier(.2, .8, .2, 1), opacity .2s; }
+.dm.has-focus .dm-focus { opacity: 1; }
+.dm-pages { display: flex; flex-wrap: wrap; gap: 4px; }
+.dm-pg { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.dm-pg[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg); color: var(--fg); }
+.dm-cap { min-height: 40px; display: grid; gap: 1px; font-size: 13px; align-content: end; } .dm-cap b { font-weight: 600; }
+.dm-cap .dm-goto { font-size: 12.5px; padding: 0; }
+.dm-key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); align-items: center; }
+.dm-key .k { display: inline-block; width: 10px; height: 10px; border-radius: 2px; border: 1px dashed var(--paper-faint); margin-right: 4px; vertical-align: -1px; }
+.dm-key .k.pass { border: 1px solid var(--pass); background: var(--pass-bg); } .dm-key .k.fail { border: 1px solid var(--fail); background: var(--fail-bg); }
+.dm-zoom { margin-left: auto; display: inline-flex; gap: 5px; align-items: center; cursor: pointer; color: var(--fg); }
+.checks .row.dm-on { box-shadow: inset 3px 0 0 var(--accent); }
+.checks .row.dm-on:not(.is-fail) { background: var(--accent-bg); }
+.fx.dm-on { border-left-color: var(--accent); }
+@keyframes dmflash { from { background: color-mix(in srgb, var(--accent) 28%, transparent); } }
+.checks .row.dm-flash { animation: dmflash 1.1s ease-out; }
+@media (prefers-reduced-motion: reduce) { .dm-focus, .dm-r, .drawer, .dm-in { transition: none; } .checks .row.dm-flash { animation: none; } }
+/* One column below ~900 px: a small model stays at the top while the checks scroll under it. */
+@media (max-width: 900px) {
+  .dm-split { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .dm-side { top: -16px; background: var(--surface); padding-bottom: 8px; border-bottom: 1px solid var(--line); z-index: 2; }
+  .dm { width: min(100%, calc(30vh * var(--ar))); }
+  .dm-key { justify-content: center; } .dm-cap { min-height: 34px; text-align: center; } .dm-pages { justify-content: center; }
+}
+@media (max-width: 600px) { .dm { width: min(100%, calc(24vh * var(--ar))); } .dm-key > span { display: none; } .dm-zoom { margin: 0 auto; } .dm-cap { font-size: 12px; min-height: 30px; } }
 .fx-eng ul { margin: 2px 0 0; padding-left: 16px; } .fx-eng li.fail { color: var(--fail); } .fx-eng li.pass { color: var(--pass); } .fx-eng li.warn { color: var(--warn); }
 @media (max-width: 600px) { .fx { margin-left: 0; } }
 .ctype { display: inline-block; font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 4px; white-space: nowrap; vertical-align: 1px; }
@@ -500,7 +585,7 @@ const CL = {
       { label: "Required documents", items: [
         "Plan (in mylar or drafting film) duly signed and sealed by GE affiliated by LRA", "Certified True Copy of Title",
         "Duly Notarized Field Notes (signed by MARPO/CARPO & PARPO) and Notarized Field Notes Cover available at Provincial GEP Offices",
-        "Lot Data Computation Original & Duplicate Copy (manual or computerized)", "Indorsement Letter from DAR SPLIT Operations" ] },
+        "Lot Data Computation Original & Duplicate Copy (manual or computerized)" ] },
       { label: "As needed", items: [ "Cadastral Map/LDC/LDS", "Previous Approved Plan", "If title is TCT under CLOA or E. Patent submit trace back of title to determine mode of Original Title" ], asNeeded: true },
       { label: "DARRO requirements", items: [ "CARP Survey Profile", "PARPO/MARPO /GE Joint Certification (2 copies)", "Certification as to Award Limit (2 copies)" ] }
     ],
@@ -614,7 +699,6 @@ const HOW_DOC = [
   [/^Order of Cancellation/i, "Needed only when the land is covered by an approved subdivision plan. Otherwise mark N/A."],
   [/^Order of Rejection/i, "Needed only when the land is covered by an unapproved subdivision plan. Otherwise mark N/A."],
   [/Instrument Registration/i, "The registration certificate of the survey instrument that was used."],
-  [/^Indorsement Letter/i, "The indorsement letter from DAR SPLIT Operations."],
   [/^Previous Approved Plan/i, "Needed only for some SRs. Mark N/A when not needed."],
   [/^If title is TCT/i, "Needed only when the title is a TCT under CLOA or E. Patent. Otherwise mark N/A."]
 ];
@@ -1239,6 +1323,381 @@ function fxBox(s, di, j, text, off, editable, D, E) {
 // Group order inside a document: Auto first, then the items checked by hand; each keeps its key (g<doc>.<index>).
 const checkOrder = (route, di) => { const g = CL[route].guide[di], auto = j => checkType(route, di, g.checks[j]) === "auto", js = g.checks.map((_, j) => j);
   return [...js.filter(auto), ...js.filter(j => !auto(j))]; };
+
+/* ---------- Document models (2026-11-22, user: model of the document on the left, the actual data on the right; the spot of each
+   field is highlighted on the model, like a card checkout form). Redrawn the same day from the user's reference copies (plan O-2070,
+   a CLOA title, a field notes cover, lot data and boundary computations, a CARP survey profile, a joint certification, the award limit
+   template): the same printed words, boxes and positions, with made-up sample values in place of names (the page is also published).
+   No reference was given for Reference data; that model is still a plain outline. Positions are read off the references by eye.
+   Model: {pages: [{name, ar (width / height), deco, regions}], on, rx, font}.
+   Region: [id (unique in the model), label, x, y, w, h (% of the page), sample, FX_FIELDS key or null, options]; options: "m" several
+   lines, "c" centred, "r" right, "pNN" value starts NN% in (the printed label sits under it as deco).
+   Deco: [type, x, y, w, h, text, class]; types t (text; classes b i u c r xs sm big huge m), bars, box (class "frame" for the title border),
+   hl / vl (lines; "dbl"), grid (text = column positions in % of the box, class = row count), sig, svg (text = inner SVG, class = viewBox).
+   on: check text -> region ids; rx: [pattern, ids]; DM_ALL checks point at every region that has a value field. ---------- */
+const DM_ALL = ["Entries should be complete"];
+const DM_PLAN_SVG = `<g fill="none" stroke="currentColor" stroke-width="2.2"><path d="M412 562 L343 508 L560 280 L672 395 L578 527 L465 604 Z"/></g>
+  <g fill="none" stroke="currentColor" stroke-width="1"><path d="M412 562 L615 338"/><path stroke-dasharray="7 6" d="M343 508 L288 556 M560 280 L512 236 M672 395 L728 442 M465 604 L515 652 M578 527 L606 556 M560 280 L606 230 M672 395 L700 360"/></g>
+  <g fill="currentColor" font-family="Arial, sans-serif" font-size="11" text-anchor="middle">
+  <text x="470" y="445">LOT 0000-A</text><text x="470" y="458">A = 00,000 SQ.M.</text><text x="548" y="488">LOT 0000-B</text><text x="548" y="501">A = 00,000 SQ.M.</text>
+  <text transform="translate(420 360) rotate(-50)">LOT 00, CAD-000-D</text><text transform="translate(405 372) rotate(-50)">… CADASTRE</text>
+  <text transform="translate(660 300) rotate(48)">LOT 00, CAD-000-D</text><text transform="translate(640 512) rotate(-55)">LOT 00, CAD-000-D</text>
+  <text transform="translate(370 600) rotate(40)">LOT 00, CAD-000-D</text><text transform="translate(560 590) rotate(-30)">LOT 00, CAD-000-D</text>
+  <text x="384" y="570" font-size="9">000.00M.</text><text x="630" y="322" font-size="9">000.00M.</text>
+  <text x="343" y="502" font-size="9">2</text><text x="560" y="272" font-size="9">3</text><text x="680" y="395" font-size="9">4</text><text x="578" y="520" font-size="9">5</text><text x="404" y="575" font-size="9">1</text></g>
+  <g fill="currentColor"><circle cx="412" cy="562" r="3"/><circle cx="343" cy="508" r="3"/><circle cx="560" cy="280" r="3"/><circle cx="672" cy="395" r="3"/><circle cx="578" cy="527" r="3"/><circle cx="465" cy="604" r="3"/></g>`;
+// Scan pages (2026-11-22, user: "the models are not satisfactory ... all should be identical"): the user's reference copies with every
+// name, signature and identifying number covered and a made-up value typed in its place (built by dm_build.py, see the README).
+// Field spots in % of the page, placed from OCR word boxes. Images live beside the page in dm/<key>.jpg.
+const DM_IMG = {"plan":{"w":1800,"h":1273,"spots":{"fmt":[11.0,1.1,4.83,2.36],"btd":[8.78,8.25,14.56,9.66],"std":[8.78,17.91,14.56,17.44],"tie":[55.56,4.08,15.11,11.63],"adj":[21.11,18.85,36.11,59.7],"draw":[26.11,29.07,28.33,40.06],"foot":[9.72,82.64,16.94,4.71],"fee":[60.33,85.62,9.78,7.38],"cloa":[80.0,4.71,5.28,1.81],"owner":[75.56,11.63,11.44,1.96],"lot":[77.11,13.83,7.78,2.99],"titleNo":[75.0,16.5,12.11,1.73],"owners":[72.56,18.77,16.78,1.65],"urban":[72.11,21.21,8.56,1.49],"brgy":[72.11,22.55,8.56,1.34],"mun":[72.11,23.72,8.56,1.34],"prov":[72.11,24.98,9.33,1.26],"island":[72.11,26.08,9.33,1.41],"area":[72.0,27.57,18.11,1.65],"scale":[72.0,28.91,18.33,3.61],"cert":[71.78,33.31,17.89,13.2],"surveyed":[71.67,46.35,3.67,2.12],"ge":[78.0,47.6,11.78,4.87],"origSurvey":[71.67,52.95,5.89,2.36],"simple":[72.11,60.96,16.89,3.3],"sigs":[78.0,65.67,11.78,6.44],"ao":[72.11,71.48,17.67,7.7],"verif":[71.67,80.6,14.22,5.81],"addInfo":[71.67,85.62,17.89,4.16]}},"title1":{"w":1100,"h":1543,"spots":{"sn":[11.36,8.68,23.0,2.92],"titleNo":[38.18,16.59,17.82,2.33],"cloa":[63.64,25.92,11.27,2.01],"owner":[53.18,33.38,32.45,2.07],"brgy":[11.64,36.29,36.0,1.94],"mun":[63.18,36.62,15.18,1.88],"prov":[10.73,37.85,16.73,1.81],"island":[39.09,37.98,10.18,1.88],"area":[10.0,39.14,77.45,2.33],"awardee":[11.0,46.34,82.27,3.63],"given":[10.73,62.54,77.91,5.18],"coref":[12.18,67.14,18.36,3.82],"orig":[10.36,72.97,78.27,4.15],"entry":[49.09,85.87,38.91,8.1],"addr":[12.73,94.3,30.91,3.95],"rod":[56.18,91.77,26.18,6.22]}},"title2":{"w":1100,"h":1512,"spots":{"lotA":[33.18,7.28,9.55,2.78],"survA":[42.73,7.28,13.09,2.78],"tie":[5.82,10.45,75.64,4.23],"td":[5.45,14.29,79.64,11.9],"areaA":[5.82,26.46,75.27,4.37],"bounds":[5.82,29.76,77.45,4.63],"bearing":[62.73,34.26,20.18,2.58],"geOrig":[5.82,37.17,77.64,2.12],"origDate":[5.82,39.02,77.64,3.44],"note":[5.82,43.32,78.73,4.43],"tdchk":[6.36,48.02,70.0,11.24],"annot":[12.73,60.19,66.55,20.24],"rodA":[42.73,85.05,23.64,10.19]}},"title3":{"w":1100,"h":1512,"spots":{"entry2":[7.73,13.89,39.55,2.65],"coowners":[7.27,19.84,50.91,43.98],"nothing":[17.27,66.8,64.55,7.28]}},"fnc1":{"w":1000,"h":1331,"spots":{"cls":[0.0,17.88,47.0,4.43],"owner":[0.0,26.3,86.0,4.13],"addr":[0.0,29.23,86.0,3.98],"lot":[0.0,32.53,33.2,3.38],"survNo":[48.0,32.61,38.0,3.31],"brgy":[4.0,43.88,82.0,3.01],"mun":[4.0,46.66,82.0,3.23],"prov":[4.0,49.59,82.0,2.85],"island":[4.0,52.37,82.0,2.85],"bearing":[0.0,55.15,86.0,3.01],"decl":[0.0,57.93,86.0,2.93],"date":[0.0,60.63,86.0,3.16],"ge":[4.0,63.49,82.0,5.33],"geAddr":[0.0,68.52,86.0,10.52],"nature":[0.0,79.19,86.0,4.66]}},"fnc2":{"w":1000,"h":1681,"spots":{"remarks":[8.0,11.78,87.2,47.71],"cnName":[11.0,66.86,38.2,2.74],"cnKind":[57.5,71.62,22.5,2.74],"cnTitle":[80.6,75.91,15.4,2.5],"cnOwner":[6.4,79.36,88.8,5.12],"cnBrgy":[6.8,86.5,88.4,2.91],"cnMun":[6.8,89.17,53.2,2.8],"cnProv":[60.0,87.33,35.2,4.64],"cnIsland":[16.8,91.61,43.2,2.62],"cnDates":[6.8,93.99,88.4,5.23]}},"fnc3":{"w":1000,"h":1412,"spots":{"geCert":[0.0,0.99,84.2,27.05],"instr":[0.0,37.11,84.2,6.23],"instman":[0.0,43.34,84.2,3.54],"geSig":[36.0,65.86,50.2,7.22],"geName":[36.0,74.08,50.2,7.51],"geReg":[36.0,81.87,50.2,8.22]}},"fnc4":{"w":1000,"h":1667,"spots":{"officers":[2.0,7.2,96.0,11.52],"place":[2.8,25.67,57.2,7.92],"dnot":[2.8,36.59,96.4,8.52],"notary":[47.8,57.59,52.2,18.12],"docno":[2.4,74.69,35.8,14.7],"stamp":[60.0,75.7,40.0,10.98]}},"ldc":{"w":1200,"h":1400,"spots":{"lot":[7.0,8.0,19.83,2.57],"dsurv":[57.0,9.79,35.67,2.79],"owner":[7.0,11.29,36.5,3.43],"ge":[68.17,12.71,24.5,4.43],"loc":[6.67,14.71,58.5,2.43],"ssym":[6.67,16.86,35.17,2.57],"tie":[6.67,25.57,86.67,5.14],"stn":[6.67,28.93,14.33,21.21],"az":[21.17,28.93,14.0,10.36],"ne":[35.33,28.93,32.67,21.21],"bd":[69.83,31.43,22.83,19.71],"area":[58.33,51.71,27.67,4.43],"sig":[6.67,56.43,79.33,3.71]}},"profile":{"w":1600,"h":1098,"spots":{"owner":[10.94,15.76,30.44,2.55],"address":[10.94,17.85,30.44,2.28],"loc":[10.94,19.67,30.44,2.28],"landType":[10.94,21.49,30.44,2.28],"landSize":[10.94,23.22,30.44,2.73],"title":[45.5,15.76,13.0,2.46],"lot":[45.5,17.85,13.0,2.09],"survNo":[45.5,19.49,13.0,2.37],"areaT":[45.5,21.31,13.0,2.37],"seq":[45.5,23.13,13.0,2.46],"stype":[59.06,15.48,17.94,2.64],"under":[59.06,17.67,17.94,6.19],"date":[59.06,23.86,17.94,3.55],"lots":[11.0,33.88,10.25,30.6],"areas":[21.25,33.88,8.75,30.6],"landuse":[30.0,33.88,10.0,30.6],"status":[40.0,33.88,11.88,30.6],"claimants":[51.88,32.42,16.88,32.06],"sigcol":[68.75,32.42,12.5,32.06],"total":[21.25,64.66,8.75,3.64],"sigs":[10.94,66.94,71.69,13.02]}},"joint":{"w":1050,"h":1279,"spots":{"para":[10.29,8.44,76.57,12.04],"owner":[16.95,19.94,51.81,3.67],"loc":[16.95,23.46,51.81,2.03],"lot":[16.95,25.18,27.81,2.81],"survNo":[44.76,24.39,16.38,3.6],"titleNo":[16.95,30.49,32.76,2.81],"area":[16.95,32.84,32.76,2.58],"date":[16.67,61.77,69.24,4.07],"darmo":[10.86,65.21,50.29,2.58],"sigs":[10.29,68.02,75.62,26.74]}},"award":{"w":1000,"h":1442,"spots":{"rule":[6.0,18.31,83.2,8.88],"names":[15.3,33.77,34.4,17.89],"lots":[49.7,33.77,16.0,17.89],"areas":[65.7,33.77,19.4,17.89],"total":[49.7,51.66,35.4,2.64],"pfb":[15.3,70.87,69.8,2.77],"issued":[9.0,77.25,81.6,4.72],"sig":[54.0,87.93,30.2,4.99]}}};
+const DM_MODELS = [
+  { id: "plan", match: /^Plan/i, font: "sans", pages: [{ name: "Plan", img: "plan", ar: 1.414, fs: 0.42,
+    deco: [["box", 8.2, 4.1, 86.8, 90.1], ["vl", 70.9, 4.1, 0, 90.1], ["svg", 0, 0, 100, 100, DM_PLAN_SVG, "0 0 1287 910"],
+      ["box", 8.8, 4.4, 14.8, 31], ["t", 8.8, 4.6, 14.8, 1.8, "TECHNICAL DESCRIPTION", "c sm"], ["hl", 8.8, 6.6, 14.8, 0], ["t", 8.8, 6.8, 2.8, 1.4, "LINES", "c xs"],
+      ["t", 11.6, 6.8, 6.4, 1.4, "BEARINGS", "c xs"], ["t", 18, 6.8, 5.6, 1.4, "DISTANCES", "c xs"], ["hl", 8.8, 8.5, 14.8, 0],
+      ["box", 55.8, 4.2, 14.5, 11.4], ["t", 8, 82.5, 4, 1.4, "NOTES:", "xs"], ["box", 60.5, 86, 10.4, 6.6],
+      ["t", 71.5, 6.2, 23.5, 3.8, "PLAN", "c mega"], ["t", 71.5, 9.9, 23.5, 1.1, "OF", "c xs"], ["t", 71.5, 10.9, 23.5, 1.1, "SUBDIVISION SURVEY MADE FOR", "c xs"],
+      ["t", 71.5, 13.4, 23.5, 0.9, "OF", "c xs"], ["t", 71.5, 15.4, 23.5, 1.1, "… CADASTRE", "c xs"], ["t", 71.5, 17.9, 23.5, 1.1, "ISSUED IN FAVOR OF", "c xs"],
+      ["t", 72, 20.4, 12, 1.1, "SITUATED IN THE", "b xs"], ["t", 72, 21.6, 8, 1.2, "RURBAN CODE :", "b xs"], ["t", 72, 22.8, 8, 1.2, "BARANGAY OF:", "b xs"],
+      ["t", 72, 24, 8, 1.2, "MUNICIPALITY OF:", "b xs"], ["t", 72, 25.2, 8, 1.2, "PROVINCE OF :", "b xs"], ["t", 72, 26.4, 8, 1.2, "ISLAND OF :", "b xs"],
+      ["t", 72, 27.7, 12, 1.6, "CONTAINING AN AREA OF", "b xs"], ["hl", 72, 32.6, 23, 0], ["t", 72, 57.4, 23, 1.9, "Department of Justice", "c sm"],
+      ["t", 72, 59.3, 23, 1, "LAND REGISTRATION AUTHORITY", "c xs"], ["hl", 71, 80.2, 24, 0], ["t", 70.4, 4.4, 1, 1.6, "N", "b xs"], ["t", 70.4, 89.4, 1, 1.6, "S", "b xs"],
+      ["t", 1, 93.4, 24, 5.4, "C E R T I F I C A T I O N\nI, Engr. …, a duly licensed Geodetic Engineer …, hereby certify that I conducted the actual relocation and subdivision survey …", "xs m"],
+      ["t", 92, 95.5, 6, 1.4, "(LRA) P", "xs"]],
+    regions: [["fmt", "Form No. and its date (prescribed format)", 10.6, 1, 9, 2.4, "LRA Form No. PIA\n30 March 1978", null, "m"],
+      ["btd", "Boundary technical description", 8.8, 8.6, 14.8, 9.6, "BOUNDARY\n1-2   N 45° 00' W   150.00M.\n2-3   N 45° 00' E   300.00M.\n3-4   S 45° 00' E   150.00M.\n4-1   S 45° 00' W   300.00M.", null, "m c"],
+      ["std", "Sublots technical description", 8.8, 18.2, 14.8, 17, "LOT 0000-A\n1-2   N 45° 00' W    75.00M.\n2-3   N 45° 00' E   300.00M.\n…\nLOT 0000-B\n1-2   N 45° 00' E   300.00M.\n…", null, "m c"],
+      ["tie", "Tie lines from the reference point", 55.8, 4.2, 14.5, 11.4, "Tie lines from BLLM No. 1\nCAD-000-D, … Cadastre to Corner Marked \"1\":\nLOT NO.   BEARINGS   DISTANCES\nBRDY   S 40° 00' E   3,000.00M.\n0000-A   S 40° 00' E   3,000.00M.", null, "m c"],
+      ["adj", "Adjoining lots", 20, 17, 50, 62, "", null], ["draw", "Lots, corners, lines and symbols", 25.5, 29, 28, 38, "", null],
+      ["foot", "Notes (footnotes)", 10, 83.8, 26, 4.4, "All corners are P.S. cyl. conc. mons. 15x40 cms.\nAll corners not otherwise described are A.R. cyl. conc. mons.\nThis plan is facilitated by government under DAR SPLIT Project.", null, "m"],
+      ["fee", "Verification fee · number of lots and corners", 60.5, 86, 10.4, 6.6, "(LRA) P\nVERIFICATION FEE\nAMOUNT P ____\nDate ____  0 Lots  0 Corners", null, "m"],
+      ["cloa", "Rec. No. (CLOA)", 71.5, 4.3, 23.5, 1.9, "L.R.A. ……  REC. No. CLOA ……", "cloa", "c"],
+      ["owner", "Survey made for (registered owner, et al.)", 71.5, 12, 23.5, 1.4, "JUAN DELA CRUZ, SR., ET. AL.", "owner", "c"],
+      ["lot", "Lot No. and cadastre", 71.5, 14.2, 23.5, 1.3, "LOT 0000, CAD-000-D", "lot", "c"],
+      ["titleNo", "Title (describes in OCT / TCT No.)", 71.5, 16.5, 23.5, 1.3, "DESCRIBES IN OCT CLOA-O-0000", "titleNo", "c"],
+      ["owners", "Issued in favor of (every registered owner)", 71.5, 19, 23.5, 1.3, "JUAN DELA CRUZ, SR. & JUAN DELA CRUZ, JR.", "owners", "c"],
+      ["urban", "Rurban code", 72, 21.6, 22, 1.2, "000000", "urban", "p40"], ["brgy", "Barangay", 72, 22.8, 22, 1.2, "BARANGAY", "brgy", "p40"],
+      ["mun", "Municipality", 72, 24, 22, 1.2, "MUNICIPALITY", "mun", "p40"], ["prov", "Province", 72, 25.2, 22, 1.2, "MASBATE", "prov", "p40"],
+      ["island", "Island", 72, 26.4, 22, 1.2, "MASBATE", "island", "p40"], ["area", "Area (containing an area of)", 72, 27.6, 23, 1.7, "00,000   SQ. M.", "area", "p60"],
+      ["scale", "Bearings (true / grid) and scale", 72, 29.4, 23, 3.2, "BEARINGS TRUE/GRID\nSCALE 1 : 0000", null, "m c"],
+      ["cert", "GE certification on the plan", 72, 33.6, 23, 12.4, "I certify that this is a correct plan of the land survey herein plotted in accordance with the actual measurements and observations performed by me; that the boundaries of the property indicated to me by the owner … are identical with those stated in the Certificate of Title …", null, "m"],
+      ["surveyed", "Date surveyed", 72, 46.2, 8, 2.4, "SURVEYED:\nMONTH 00, 0000", "dateSurvey", "m"],
+      ["ge", "GE: name, Reg. Cert. No., PTR, signature and dry seal", 79, 47.6, 16, 4.6, "NAME OF GE\nGEODETIC ENGINEER\nReg. Cert. No. 0000  Date: ____\nPTR No. 0000000  Date: ____", "geNow", "m c"],
+      ["origSurvey", "Original survey", 72, 52.8, 13, 2.4, "ORIGINAL SURVEY:\nMONTH 00-00, 0000", "origSurvey", "m"],
+      ["simple", "Verified … as a SIMPLE / COMPLEX plan", 72, 60.7, 23, 2.4, "Verified and recommended for approval as  SIMPLE  plan.\nQuezon City, ……………… 20 ….", null, "m"],
+      ["sigs", "Signatories' names and titles", 72, 64.3, 23, 8.6, "NAME\nActg. Asst. Chief, Subdivision-Consolidation Division\n\nNAME\nDirector, Land Registration Operations Service", null, "m r"],
+      ["ao", "A.O. (approved by authority)", 72, 73.1, 23, 6.6, "Approved pursuant to P.D. 1529\nQuezon City, Philippines …… 20 ….\nBY AUTHORITY PURSUANT TO A.O. NO. 0000-000\nNAME · DEPUTY ADMINISTRATOR FOR OPERATIONS", null, "m"],
+      ["verif", "Verification record (plotted, checked, exams, dates)", 72, 80.5, 23, 5.8, "Plotted on PIM/MIM No. ____  Date ____\nRecorded by ____  Date ____\nPlan checked against title ____  Date ____\nPrel. / Sec. / Final Exam ____  Date ____", "verifDate", "m"],
+      ["addInfo", "Additional information and remarks", 72, 86.4, 23, 4.2, "Additional information and remarks\nSubject to whatever subsisting encumbrances to the conformity of co-owners …\nSUBMITTED DOCUMENT: ……", "addInfo", "m"]] }],
+    on: { "Check Scale": ["scale"], "Signature of Geodetic Engineer": ["ge"], "Check Bearings (True/Grid)": ["scale", "btd"], "Use the prescribed format": ["fmt"],
+      "Check authority to print if already expired": ["fmt"], "Check footnotes": ["foot"],
+      "Entries should conform with title, profile and ldc": ["lot", "owner", "titleNo", "area", "brgy", "mun", "prov", "island"],
+      "Upper right corner of plan must be properly filled out": ["cloa", "owner", "lot", "titleNo", "owners", "urban", "brgy", "mun", "prov", "island", "area"],
+      "Check summation of distances of bdry. lines traversed by subd. lines": ["draw", "btd"], "Signature of MARPO": ["sigs"], "Signature of AutoCAD operator": ["sigs"],
+      "Simple Plan- Resulting lots w/out Road": ["draw", "simple"], "Complex Plan- Resulting lots w/ Road": ["draw", "simple"],
+      "Rec. No. (Free Patent) / CLOA": ["cloa"], "Registered owner, et al.": ["owner"], "Lot No.": ["lot"], "OCT / TCT No.": ["titleNo"], "Issued in favor of all registered owners": ["owners"],
+      "Adjoining lots": ["adj"], "Registered owners in the upper right corner": ["owner", "owners"], "Urban code": ["urban"], "Barangay": ["brgy"], "Municipality": ["mun"],
+      "Province": ["prov"], "Island": ["island"], "Area": ["area"], "Original survey": ["origSurvey"], "Signatories' names and titles": ["sigs"], "A.O. for Administrator": ["ao"],
+      "Additional info": ["addInfo"], "Verification date": ["verif"], "Lots and corners": ["draw", "fee"], "Boundary technical description": ["btd", "tie"],
+      "Sublots technical description": ["std"], "Sublots: Lot No. and area": ["std", "draw"] },
+    rx: [[/^Indicate|symbol|Fragmentation|^Subdivided lots|^Print distance|^Plot traverse|^Name of claimants|^Boundary line weight|^Boundary corners/i, ["draw"]]] },
+  { id: "title", match: /Title/i, font: "serif", pages: [
+    { name: "Front", img: "title1", ar: 0.7, fs: 0.8,
+      deco: [["t", 2, 0.4, 30, 4.4, "Judicial Form No. 140-A\nCLOA Form No. 2-A\n(Revised September 2003)", "i xs m"], ["t", 80, 1.8, 18, 3, "Book ________\nPage ________", "i xs m"],
+        ["box", 5.5, 5.3, 93.7, 94.1, "", "frame"], ["t", 36, 8.9, 40, 1.6, "REPUBLIC OF THE PHILIPPINES", "c sm"], ["t", 36, 10.5, 40, 1.6, "DEPARTMENT OF JUSTICE", "c b sm"],
+        ["t", 36, 12.1, 40, 1.5, "LAND REGISTRATION AUTHORITY", "c xs"], ["t", 26, 13.7, 54, 1.5, "REGISTRY OF DEEDS FOR THE  PROVINCE OF ……", "c xs"],
+        ["t", 18, 14.9, 64, 3, "Transfer Certificate of Title", "c huge old"], ["t", 28, 17.4, 8, 1.8, "CA", "xs"],
+        ["bars", 6, 19.9, 88, 3.8], ["t", 20, 24.2, 60, 1.5, "\"REPUBLIC OF THE PHILIPPINES", "c xs"], ["t", 20, 25.7, 60, 1.6, "DEPARTMENT OF AGRARIAN REFORM", "c b sm"],
+        ["t", 18, 27.3, 46, 1.6, "CERTIFICATE OF LAND OWNERSHIP AWARD NO.", "r xs"], ["t", 6, 29, 60, 1.5, "TO ALL WHOM THESE PRESENTS SHALL COME, GREETINGS:", "xs"],
+        ["t", 6, 30.7, 41, 2.2, "ITS IMPLEMENTATION, there is hereby awarded unto", "xs i"], ["t", 44, 32, 52, 1.6, ", a parcel of agricultural land situated in Barangay", "r xs i"],
+        ["t", 46, 33.6, 14, 1.8, ", Municipality of", "xs i"], ["t", 76, 33.6, 20, 1.8, ", Province of", "r xs i"], ["t", 22, 35.4, 10, 1.8, ", Island of", "xs i"],
+        ["t", 48, 35.4, 48, 1.8, ", Philippines, containing an area of", "r xs i"], ["bars", 6, 39.2, 88, 6.6], ["bars", 6, 50.2, 88, 13.4],
+        ["t", 50, 68.2, 32, 7, "BY AUTHORITY OF THE PRESIDENT\n\nNAME\nSecretary of Agrarian Reform\"", "c xs m"],
+        ["t", 8, 96, 86, 1.8, "*State the civil status, name of spouse if married, age if a minor, citizenship and residence of the awardee.", "i xs c"]],
+      regions: [["sn", "Serial No. (the CLOA No.)", 9, 8.9, 25, 2.8, "SN No.00000000", "cloa", "b"], ["titleNo", "Title No. (No. CLOA-T-…)", 37, 17.1, 28, 2.3, "No. CLOA-T-0000", "titleNo", "c"],
+        ["cloa", "CLOA No.", 64.5, 27.2, 22, 1.8, "00000000", "cloa"], ["owner", "Awarded unto (registered owner, et al.)", 47, 30.6, 50, 2.2, "JUAN DELA CRUZ, ET. AL.", "owner"],
+        ["brgy", "Barangay", 6, 33.5, 40, 1.9, "Barangay", "brgy", "c"], ["mun", "Municipality", 60, 33.5, 16, 1.9, "Municipality", "mun", "c"],
+        ["prov", "Province", 6, 35.3, 16, 1.9, "Masbate", "prov", "c"], ["island", "Island", 32, 35.3, 16, 1.9, "Masbate", "island", "c"],
+        ["area", "Area (containing an area of)", 6, 37.1, 90, 1.9, "TWO HUNDRED … SQUARE METERS (000,000) square meters,", "area"],
+        ["awardee", "The awardee: name, civil status, citizenship, residence", 6, 45.9, 90, 4, "No. 6657, there is hereby awarded unto the said*  JUAN DELA CRUZ, et. al., married to ……, Filipino of legal age, resident of ……", null, "m"],
+        ["given", "Given at (place and date of issue)", 6, 63.9, 90, 4, "IN TESTIMONY WHEREOF … Given at Quezon City, Philippines, on this __ day of ______, in the year of Our Lord Two Thousand and ____", null, "m"],
+        ["coref", "See page \"B\" for the names of co-owners", 7, 68.6, 24, 3.4, "See page \"B\" for\nName of Co-owner", null, "m"],
+        ["orig", "Original registration (OCT No., earlier TCT No.)", 6, 76, 90, 4.6, "It is hereby certified that said land was originally registered on ______ as Original Certificate of Title No. P-0000 pursuant to … This certificate is a transfer from Transfer Certificate of Title No. T-00000", null, "m i"],
+        ["entry", "Entry in the Registry of Deeds (date and time)", 50, 82.8, 42, 7.4, "Entered in the Registry of Deeds of ……\npursuant to Section 24 of Republic Act No. 6657 on this __ day of ______\ntwo thousand and ____ at ____ m.", null, "m"],
+        ["addr", "Owner's postal address", 7, 91.6, 32, 3.4, "Barangay, Municipality, Province\n(Owner's postal address)", null, "m"],
+        ["rod", "Register of Deeds (signature)", 56, 91, 32, 3.8, "NAME\nRegister of Deeds", null, "m c"]] },
+    { name: "Page A · Description of the land", img: "title2", ar: 0.72, fs: 0.85,
+      deco: [["box", 1, 0.5, 98, 99, "", "frame"], ["t", 30, 4.2, 40, 1.9, "DESCRIPTION OF THE LAND", "c sm"], ["t", 30, 49.8, 40, 1.9, "A N N O T A T I O N", "c u sm"],
+        ["t", 8, 88.6, 70, 1.6, "(Continued on Page B, ____________________)", "i xs"]],
+      regions: [["lotA", "Lot No.", 32, 7.9, 13, 2.4, "Lot 0000-A,", "lot", "r"], ["survA", "Survey symbol (Surv. Sym.)", 45.5, 7.9, 16, 2.4, "Csd-00000", "survSym"],
+        ["tie", "Tie line (point 1 from the reference monument)", 6, 10.5, 86, 3.8, "Beginning at a point marked \"1\" of Lot 0000-A, on plan Csd-00000, being N. 00-00'E., 0000.00 m. from BLLM # 1, Pls-000-D, thence", null, "m"],
+        ["td", "Technical description: bearings and distances", 6, 14.5, 86, 9.2, "S. 00 deg. 00'E., 00.00m. to point 2;  S. 00 deg. 00'W., 00.00m. to point 3;\nS. 00 deg. 00'W., 00.00m. to point 4;  S. 00 deg. 00'W., 00.00m. to point 5;\n…\nN. 00 deg. 00'W., 00.00m. to point 12;  N. 00 deg. 00'E., 000.00m. to point 1;\npoint of beginning.", null, "m"],
+        ["areaA", "Area (containing an area of)", 6, 24.6, 86, 2.8, "Containing an area of TWO HUNDRED … (000,000) SQUARE METERS. All points referred to are indicated on the", "area", "m"],
+        ["bounds", "Bounded on … (adjoining lots and roads)", 6, 27.5, 62, 5.2, "plan and are marked on the ground by Old points. Bounded on the E., and SE., along lines 1-2-3-4-5-6-7 by Road; on SE., along line 7-8 by Lot 0000-B …", null, "m"],
+        ["bearing", "Bearings (true / grid)", 68, 30.7, 24, 2, "Bearings true.", "bearingGrid"],
+        ["geOrig", "Plan prepared by (GE of the original survey)", 6, 32.8, 86, 2.1, "The plan of this lot was prepared … by NAME, Chief, Isolated Survey Section,", "geOrig"],
+        ["origDate", "Date surveyed and approved", 6, 34.9, 86, 2.1, "on September 00, 0000 and approved on September 00, 0000.", "origDate"],
+        ["note", "Note (identical lot, F.P.A. No.)", 6, 38.2, 86, 2.8, "Note: This lot is identical to Lot 0000, a portion of Lot 000, Pls-000-D, and is covered by F.P.A. No.(…)0000.", null, "m"],
+        ["tdchk", "T/D checked by · certified correct", 6, 42.2, 86, 7, "T/D Checked By:                                   CERTIFIED CORRECT:\n(As copied from TCT No. T-00000)\n\n________________                                NAME · Engineer III", null, "m"],
+        ["annot", "Annotation (encumbrance)", 6, 52.2, 86, 11.4, "The parcel of land described in this Certificate of Land Ownership Award (CLOA) is encumbered in favor of:\nLAND BANK OF THE PHILIPPINES\nto ensure full payment of its value pursuant to RA 6657 by the Agrarian Reform Beneficiaries/Farmer's Cooperative or Farmer's Association named herein.\nNAME · OIC – PARO II", null, "m"],
+        ["rodA", "Register of Deeds (signature)", 40, 81, 44, 6, "NAME\nRegister of Deeds", null, "m c"]] },
+    { name: "Page B · Encumbrances and co-owners", img: "title3", ar: 0.72, fs: 0.85,
+      deco: [["box", 1, 0.5, 98, 99, "", "frame"], ["t", 10, 4, 80, 2.2, "MEMORANDUM OF ENCUMBRANCES", "c b sm"], ["t", 30, 12, 40, 1.8, "NAME OF CO-OWNER", "c xs"],
+        ["t", 6, 88.4, 70, 1.6, "(Memorandum of Encumbrances continued on Page ______)", "i xs"], ["sig", 40, 93, 40, 3, "Register of Deeds"]],
+      regions: [["entry2", "Entry No.", 6, 7.8, 40, 2.4, "Entry No. ____________", null],
+        ["coowners", "Names of the co-owners (civil status, residence)", 6, 14.2, 86, 42, "1. JUAN DELA CRUZ\n    Married to ……\n    Filipino of legal age\n    Resident of ……\n2. PEDRO DELA CRUZ\n    Married to ……\n    Filipino of legal age\n    Resident of ……\n3. …\nx-x-x-nothing follows-x-x-x", "owners", "m"],
+        ["nothing", "Later annotations (after \"nothing follows\")", 6, 57.2, 86, 7, "N O T H I N G   F O L L O W S\nSubsequent annotations shall be stored in electronic form in the PHILARIS.", null, "m c"]] }],
+    on: { "OCT / TCT No.": ["titleNo", "orig"], "Registered owner, et al.": ["owner", "awardee"], "Barangay": ["brgy"], "Municipality": ["mun"], "Province": ["prov"], "Island": ["island"],
+      "Area": ["area", "areaA"], "Lot No.": ["lotA"], "Survey symbol (Surv. Sym.)": ["survA"], "Tie line": ["tie"], "Technical description (TD)": ["tie", "td", "areaA"], "Bearing": ["bearing"],
+      "Date of survey": ["origDate"], "GE": ["geOrig"], "Co-owners": ["coref", "coowners"], "Check annotation": ["annot", "nothing", "entry2"],
+      "Entries should conform with plan, otherwise certify on field notes cover": ["owner", "lotA", "areaA", "td"] } },
+  { id: "fnc", match: /Field Notes Cover/i, font: "serif", pages: [
+    { name: "Cover", img: "fnc1", ar: 0.78, fs: 1.05,
+      deco: [["t", 2, 2.4, 34, 4.8, "L.R.A. Form No. N-1\n(Revised Aug. 3, 1977)", "xs m"], ["t", 15, 9, 70, 3, "FIELD NOTES COVER", "c b big sans"],
+        ["t", 2, 17.9, 28, 2.8, "Class of Survey", "b sm"], ["t", 62, 17.9, 36, 2.8, "(LRA) P ______  No. ____", "b sm"],
+        ["t", 2, 20.9, 96, 2.8, "Executed under Sec. 44 of Act. 496, as amended.", "b sm"], ["t", 2, 23.8, 96, 2.8, "L.R.A. (GLRO) Cad. Record No. ______________", "b sm"],
+        ["t", 2, 26.5, 8, 2.8, "For:", "b sm"], ["t", 2, 29.3, 12, 2.8, "Address:", "b sm"], ["t", 2, 32.3, 12, 2.8, "Lot No.", "b sm"], ["t", 24, 32.3, 36, 2.8, "Block No. ______ PSD/PCS/PCN", "b sm"],
+        ["t", 2, 35.7, 96, 2.8, "Psu ________________________ or H/F ______", "b sm"], ["t", 2, 40.8, 30, 2.8, "Situated in the:", "b sm"],
+        ["t", 6, 43.9, 28, 2.8, "Barrio of", "b sm"], ["t", 6, 47.1, 28, 2.8, "Municipality/City of", "b sm"], ["t", 6, 50.1, 28, 2.8, "Province of", "b sm"],
+        ["t", 6, 53.1, 28, 2.8, "Island of:", "b sm"], ["t", 2, 56.2, 28, 2.8, "Bearings", "b sm"], ["t", 2, 59.2, 28, 2.8, "Declination", "b sm"],
+        ["t", 2, 62, 28, 2.8, "Surveyed (date)", "b sm"], ["t", 6, 64.9, 10, 2.8, "By:", "b sm"], ["t", 40, 67.7, 50, 2, "(Geodetic Engineer)", "c b xs"],
+        ["t", 2, 70, 12, 2.8, "Address:", "b sm"], ["bars", 2, 73, 96, 8], ["t", 2, 81.8, 24, 2.8, "Nature of Land:", "b sm"],
+        ["t", 2, 84.7, 96, 2.8, "Note checked by: ________________ Date ________", "b sm"], ["t", 22, 87.4, 30, 2, "(L.R. Examiner)", "c b xs"],
+        ["t", 2, 92, 96, 4.8, "NOTE: This field notes cover should be properly accomplished by the Geodetic Engineer who executed the survey noted herein.", "b sm m"]],
+      regions: [["cls", "Class of survey", 2, 17.9, 60, 2.8, "SUBDIVISION", "surveyType", "p38"], ["owner", "Owner, et al. (For:)", 2, 26.5, 96, 2.8, "JUAN DELA CRUZ, ET. AL.", "owner", "p9"],
+        ["addr", "Address of the registered owner", 2, 29.3, 96, 2.8, "BARANGAY, MUNICIPALITY, PROVINCE", "address", "p13"], ["lot", "Lot No.", 2, 32.3, 22, 2.8, "0000", "lot", "p50"],
+        ["survNo", "Surv. No. (PSD/PCS/PCN)", 60, 32.3, 38, 2.8, "CAD-000-D", "survNo"], ["brgy", "Land: Barangay", 6, 43.9, 92, 2.8, "BARANGAY", "brgy", "p40"],
+        ["mun", "Land: Municipality", 6, 47.1, 92, 2.8, "MUNICIPALITY", "mun", "p40"], ["prov", "Land: Province", 6, 50.1, 92, 2.8, "MASBATE", "prov", "p40"],
+        ["island", "Land: Island", 6, 53.1, 92, 2.8, "MASBATE", "island", "p40"], ["bearing", "Bearings", 2, 56.2, 96, 2.8, "GRID", "bearingGrid", "p48"],
+        ["decl", "Declination", 2, 59.2, 96, 2.8, "", null, "p48"], ["date", "Date of survey (Surveyed)", 2, 62, 96, 2.8, "MONTH 00, 0000", "dateSurvey", "p48"],
+        ["ge", "GE (By:)", 6, 64.9, 92, 2.8, "NAME OF GEODETIC ENGINEER", "geNow", "p40"], ["geAddr", "Address of the GE", 2, 70, 96, 10.5, "", "geAddress", "p13"],
+        ["nature", "Nature of land", 2, 81.8, 96, 2.8, "AGRICULTURAL", "nature", "p27"]] },
+    { name: "Certificate of these notes", img: "fnc2", ar: 0.6, fs: 1.1,
+      deco: [["t", 5, 1, 90, 4.6, "REMARKS OR ADDITIONAL INFORMATION\nWITH REGARD TO THIS SURVEY", "c b sm m sans"], ["t", 25, 7.4, 50, 2, "C E R T I F I C A T I O N", "c b sm sans"],
+        ["bars", 2, 10.4, 96, 49], ["t", 15, 63.3, 70, 2, "CERTIFICATE OF THESE NOTES", "c b sm sans"],
+        ["t", 2, 67.6, 4, 2.6, "I,", "b sm"], ["t", 64, 67.6, 34, 2.6, ", hereby certify that the foregoing", "b xs"],
+        ["t", 2, 70.2, 96, 2.2, "are the complete original field notes indicating the true and actual", "b xs"], ["t", 2, 72.6, 40, 2.4, "measurements made in the", "b xs"],
+        ["t", 2, 75.1, 70, 2.4, "(nature of Survey) Survey of the property / properties described in Original / Transfer Certificate of Title No. (s)", "b xs m"],
+        ["t", 2, 78.2, 30, 2.2, "Issued in the name(s) of", "b xs"], ["t", 2, 87.7, 28, 2.5, "situated in the Barrio of", "b xs"],
+        ["t", 2, 90.3, 26, 2.5, "Municipality/City of", "b xs"], ["t", 57, 90.3, 18, 2.5, ", Province of", "b xs"], ["t", 8, 92.9, 18, 2.5, "Island of", "b xs"]],
+      regions: [["remarks", "Remarks and certification lines", 2, 10.4, 96, 49, "", null], ["cnName", "GE named in the certificate", 6, 67.6, 58, 2.6, "NAME OF GE", "geNow", "c"],
+        ["cnKind", "Nature of the survey", 40, 72.6, 58, 2.4, "SUBDIVISION", "surveyType", "c"], ["cnTitle", "Title No.(s)", 72, 75.9, 26, 2.4, "CLOA-O-000", "titleNo", "c"],
+        ["cnOwner", "Issued in the name(s) of", 2, 80.4, 96, 4.4, "JUAN DELA CRUZ, ET. AL.", "owner"], ["cnBrgy", "Barrio (barangay)", 30, 87.7, 68, 2.5, "BARANGAY", "brgy"],
+        ["cnMun", "Municipality", 28, 90.3, 29, 2.5, "MUNICIPALITY", "mun", "c"], ["cnProv", "Province", 75, 90.3, 23, 2.5, "MASBATE", "prov", "c"],
+        ["cnIsland", "Island", 26, 92.9, 40, 2.5, "MASBATE", "island", "c"], ["cnDates", "Dates of the notes (from – to)", 2, 95.4, 96, 4.4, "from  MONTH 00, 20 00\nto ____________________, 20__ inclusive.", "certNotes", "m"]] },
+    { name: "GE certification", img: "fnc3", ar: 0.72, fs: 1.05,
+      deco: [["bars", 2, 29.6, 96, 6.4], ["t", 2, 37.6, 96, 6.4, "This survey was executed with a ______________________\n(instrument) made by ______________ with Serial No. ________\nand with chain and stadia tested and approved by the Bureau of Lands,", "b xs m"],
+        ["t", 2, 44, 46, 2.6, "The work of transitman was performed by", "b xs"],
+        ["t", 2, 92.6, 96, 5, "I/WE hereby certify that the herein lots subject of the subdivision plan do not constitute or form part of a subdivision project as defined in Section", "b xs m"]],
+      regions: [["geCert", "GE certification (I further certify …)", 2, 1.8, 96, 25.6, "I further certify that this survey was executed in conformity with existing laws and regulations, more particularly as regards the placing of concrete monuments and/or other visible marks on the ground along the boundary of each lot, that the foregoing field notes and accompanying plat accurately indicate the exact geographical position of the property …", null, "m"],
+        ["instr", "Instrument details (instrument, make, serial No.)", 2, 37.6, 96, 4.4, "", "instrument", "p52"],
+        ["instman", "Instrument man (transitman)", 2, 44, 96, 2.6, "", "transitman", "p50"],
+        ["geSig", "GE signature and seal (Signed & Sealed)", 37, 69.4, 50, 3.4, "Signed & Sealed", null, "c"],
+        ["geName", "GE printed name", 37, 73, 50, 5.6, "NAME OF GEODETIC ENGINEER\n(Printed Name)\n(GEODETIC ENGINEER)", "geNow", "m c"],
+        ["geReg", "Registration Cert. No. and licence fee", 37, 82.6, 50, 7.6, "Registration Cert. No. ____ 0000\nLicense (Professional) fee paid ____\nUnder O.R. No. ____\ndated ____", "geReg", "m"]] },
+    { name: "Signatures and notary", img: "fnc4", ar: 0.6, fs: 1.1,
+      deco: [["t", 2, 1.4, 96, 5, "2(d) of Presidential Decree No. 957, and that I have authorized the submission of said plan to the Land Registration Commission for approval", "b xs m"],
+        ["bars", 2, 45.6, 96, 13.6], ["t", 2, 92.4, 96, 5, "NOTE: If signed by the representative of the owner, he should present a special power of attorney for the purpose.", "b xs m"]],
+      regions: [["officers", "CARPO and PARPO signatures", 2, 8.8, 96, 9.6, "\n\nNAME                                    NAME\nOIC – PARPO II                          OIC – CARPO", null, "m"],
+        ["place", "Place notarized", 2, 26.2, 60, 7.2, "REPUBLIC OF THE PHILIPPINES )\n                                            ) S.S.\nCITY / MUNICIPALITY ____________ )", null, "m"],
+        ["dnot", "Date notarized (subscribed and sworn)", 2, 37.4, 96, 7.6, "SUBSCRIBED AND SWORN to before me on this ____ day\nof ______________, 20__ the above Geodetic\nEngineer presented to me his Res. Cert. No. A- ____", null, "m"],
+        ["notary", "Notary: name, commission, signature and seal", 47, 60.4, 51, 15, "NAME OF NOTARY\nNotary Public for ……\nNotarial Commission No. ……\nRoll of Attorneys No. ……\nPTR No. …… · IBP O.R. No. ……", null, "m c"],
+        ["docno", "Doc. No., Page No., Book No., Series", 2, 76.2, 40, 13.8, "Doc. No. ______\nPage No. ______\nBook No. ______\nSeries of 20__", null, "m"],
+        ["stamp", "Documentary stamp", 52, 76, 34, 14, "documentary stamp", null, "c"]] }],
+    on: { "Class of survey": ["cls", "cnKind"], "Owner, et al.": ["owner", "cnOwner"], "Address of registered owner": ["addr"], "Lot No.": ["lot"], "Surv. No.": ["survNo"],
+      "Land: Barangay": ["brgy", "cnBrgy"], "Land: Municipality": ["mun", "cnMun"], "Land: Province": ["prov", "cnProv"], "Land: Island": ["island", "cnIsland"], "Bearing": ["bearing"],
+      "Date of survey": ["date"], "GE": ["ge", "cnName", "geName"], "Address of GE": ["geAddr"], "Nature": ["nature"], "Certification": ["geCert", "remarks"],
+      "Certificate of these notes": ["cnName", "cnKind", "cnTitle", "cnOwner", "cnBrgy", "cnMun", "cnProv", "cnIsland", "cnDates"], "Instrument details": ["instr"],
+      "Instrument man": ["instman"], "Registration Cert. No.": ["geReg"], "Declination": ["decl"], "CARPO and PARPO signatures": ["officers"], "Address / place notarized": ["place"],
+      "Date notarized": ["dnot"], "Notary": ["notary", "docno"], "Signed & sealed by GE": ["geSig", "geName"], "Documentary stamp": ["stamp"] } },
+  { id: "ldc", match: /^Lot Data Computation/i, font: "mono", pages: [{ name: "Lot data computation (sublot)", img: "ldc", ar: 1.02, fs: 0.8,
+    deco: [["t", 25, 1.8, 50, 2.4, "LOT DATA COMPUTATION", "c b sm serif"], ["hl", 1, 4.9, 98, 0, "", "dbl"], ["t", 1.5, 6.6, 12, 2.4, "Lot No.:", "sm"],
+      ["t", 55, 6.6, 18, 2.4, "Date Surveyed:", "sm"], ["hl", 73, 8.9, 25, 0], ["t", 1.5, 11.4, 8, 2.4, "Owner:", "sm"], ["t", 1.5, 16.3, 12, 2.4, "Location:", "sm"],
+      ["t", 1.5, 18.6, 22, 2.4, "Surv. Sym. & No.:", "sm"], ["t", 84, 18.6, 14, 2.4, "Sheet 1/1", "r sm"], ["hl", 1, 21.6, 98, 0],
+      ["t", 1.5, 22.6, 14, 4.6, "STATION\nCORNER", "xs m"], ["t", 17, 22.6, 16, 4.6, "|   AZIMUTH\n|   DISTANCE", "xs m"], ["t", 34, 22.6, 38, 4.6, "|   C O O R D I N A T E S\n|      NORTHING   |   EASTING", "xs m"],
+      ["t", 72, 22.6, 10, 4.6, "|  LINE\n|  DESC", "xs m"], ["t", 82, 22.6, 17, 4.6, "|  BEARING\n|  DISTANCE", "xs m"], ["hl", 1, 27.6, 98, 0], ["hl", 1, 79, 98, 0, "", "dbl"],
+      ["t", 2, 85.8, 72, 9.6, "Printed for the exclusive use by: DEPARTMENT OF AGRARIAN REFORM\nDAR CENTRAL OFFICE, Elliptical Road, Diliman, Quezon City\nAuthorized by The Land Management Bureau\nUntil March 2, 2029", "xs m"]],
+    regions: [["lot", "Lot No. (boundary) / Sublot No. (sublots)", 1.5, 6.6, 34, 2.4, "0000-A", "lot", "p32"], ["dsurv", "Date surveyed", 55, 6.6, 43, 2.4, "", "dateSurvey", "p42"],
+      ["owner", "Owner, et al.", 1.5, 11.4, 62, 2.4, "JUAN DELA CRUZ, ET AL.", "owner", "p13"], ["ge", "GE (original surveyor or today's GE)", 66, 10.8, 32, 5, "NAME OF GE\nGeodetic Engineer", "geOrig", "m r"],
+      ["loc", "Location", 1.5, 16.3, 72, 2.4, "Barangay, Municipality, Province, Island of …", "location", "p17"], ["ssym", "Survey symbol (Surv. Sym. & No.)", 1.5, 18.6, 52, 2.4, "CAD-000-D", "survSym", "p44"],
+      ["tie", "Reference tie point (TP-1)", 1, 29.2, 98, 5.8, "Reference: BLLM No.1,      1,000,000.0000   500,000.0000    TP-1    S 00°00' W\n         Cad-000-D, … Cadastre                                             0,000.00", null, "m"],
+      ["stn", "Stations and corners", 1, 36, 17, 36.5, "1=1/Lot 0000-A\n\n2=5/Bdry.\n\n3=1/Bdry.\n\n4=2/Bdry.\n\n5=2/Lot 0000-A", null, "m"],
+      ["az", "Azimuth and distance (tie points)", 18, 36, 15, 36.5, "", null, "m"], ["ne", "Northing and easting", 33, 36, 40, 36.5, "1,000,000.0000   500,000.0000\n\n1,000,000.0000   500,000.0000\n\n1,000,000.0000   500,000.0000\n\n1,000,000.0000   500,000.0000", null, "m c"],
+      ["bd", "Line, bearing and distance", 73, 36, 26, 36.5, "1-2    S 00°00' E\nA.R.        00.00\n2-3    S 00°00' W\n           000.00\n3-4    S 00°00' W\n           000.00", null, "m"],
+      ["area", "Area", 52, 73.2, 47, 5.2, "= 0,000.00\nArea (Sq.m.) = 0,000", "area", "m r"],
+      ["sig", "Prepared, checked and approved (signatures)", 1, 79.8, 98, 3.6, "Prepared ______  Input Data Checked by ______  Date ______  Date Approved ______", null]] }],
+    on: { "Lot No. (boundary) / Sublot No. (sublots)": ["lot"], "Owner, et al.": ["owner"], "Location": ["loc"], "Survey symbol (Surv. Sym.)": ["ssym"],
+      "GE: original surveyor (boundary) / today's GE (sublots)": ["ge"], "Reference tie point": ["tie", "az"], "Northing, Easting": ["ne", "stn"], "Bearing / Distance": ["bd"],
+      "Area": ["area"], "Signed by GE": ["ge", "sig"], "Entries should conform with plan": ["lot", "bd", "area"] } },
+  { id: "ref", match: /Cadastral Map|Reference Data/i, font: "sans", pages: [{ name: "Reference data (outline: no reference copy yet)", ar: 1.3,
+    deco: [["svg", 5, 34, 41, 50, DM_PLAN_SVG, "250 220 520 460"]],
+    regions: [["refplan", "Reference plan (LRC, Psu, Psd)", 3, 4, 45, 22, "plan No.", null], ["refldc", "Reference LDC / LDS: coordinates, technical description", 52, 4, 45, 50, "coordinates · TD", null],
+      ["cadmap", "Cadastral map: subject lot and adjoining lots", 3, 29, 45, 66, "", null], ["cert", "Certified copy", 52, 58, 45, 14, "certified true copy stamp", null]] }],
+    on: { "Ref. plan (ex: LRC, Psu, Psd)": ["refplan"], "Ref. LDC/LDS: check coordinates and Technical Description": ["refldc"], "Cadastral map: check adjoining lots": ["cadmap"], "Certified Copy": ["cert"] } },
+  { id: "profile", match: /Profile/i, font: "sans", pages: [{ name: "CARP survey profile", img: "profile", ar: 1.35, fs: 0.5,
+    deco: [["t", 30, 2.2, 40, 2.4, "CARP SURVEY PROFILE", "c b sm"],
+      ["t", 2.5, 6.6, 17, 2.3, "LANDOWNER", "xs"], ["t", 2.5, 9.1, 17, 2.3, "ADDRESS", "xs"], ["t", 2.5, 11.6, 17, 2.3, "LOCATION OF PROPERTY", "xs"],
+      ["t", 2.5, 14.1, 17, 2.3, "PROGRAM CLASS / LAND TYPE", "xs"], ["t", 2.5, 16.4, 17, 2.3, "LAND SIZE", "xs"],
+      ["t", 47, 6.6, 12, 2.3, "TITLE NO.", "xs"], ["t", 47, 9.1, 12, 2.3, "LOT NO.", "xs"], ["t", 47, 11.6, 12, 2.3, "PROJECT NO.", "xs"], ["t", 47, 14.1, 12, 2.3, "AREA (SQ. M.)", "xs"],
+      ["t", 47, 16.4, 12, 2.3, "SEQUENCE NO.", "xs"], ["t", 72, 6.6, 12, 2.3, "SURVEY TYPE", "xs"], ["t", 72, 9.1, 12, 2.3, "UNDERTAKEN BY", "xs"],
+      ["t", 72, 11.4, 12, 2.3, "(  ) ADMIN", "xs"], ["t", 72, 13.6, 12, 2.3, "(  ) CONTRACT", "xs"], ["t", 72, 16.4, 12, 2.3, "DATE OF SURVEY", "xs"],
+      ["grid", 2.9, 23.1, 95.5, 46, "11.4,25.4,38.4,56.8,79.5", "15"], ["t", 2.9, 23.3, 10.9, 4.4, "NEW LOT NUMBER\n(1)", "c b xs m"], ["t", 13.8, 23.3, 13.4, 4.4, "AREA (SQ. M.)\n(2)", "c b xs m"],
+      ["t", 27.2, 23.3, 12.4, 4.4, "LAND USE\n(3)", "c b xs m"], ["t", 39.6, 23.3, 17.5, 4.4, "STATUS\n(4)", "c b xs m"], ["t", 57.1, 23.3, 21.7, 4.4, "CLAIMANTS\n(5)", "c b xs m"],
+      ["t", 78.8, 23.3, 19.6, 4.4, "SIGNATURE\n(6)", "c b xs m"], ["t", 3.5, 66.6, 10, 2.4, "TOTAL", "r b xs"],
+      ["t", 2.5, 86, 50, 10, "Distribution of Copies:\nDARRO · Original    DENR · Duplicate    DARPO · Triplicate\nMARPO · Quadruplicate    GE · Quintuplicate", "xs m"]],
+    regions: [["owner", "Landowner", 20.5, 6.6, 22, 2.3, "JUAN DELA CRUZ, ET. AL.", "owner", "c"], ["address", "Address", 20.5, 9.1, 22, 2.3, "Barangay, Municipality, Masbate", "address", "c"],
+      ["loc", "Location of property", 20.5, 11.6, 22, 2.3, "Barangay, Municipality, Masbate", "location", "c"], ["landType", "Program class / land type", 20.5, 14.1, 22, 2.3, "KKK/GOL", "landType", "c"],
+      ["landSize", "Land size", 20.5, 16.4, 22, 2.3, "0-24", "landSize", "c"], ["title", "Title No.", 59, 6.6, 12, 2.3, "O-000", "titleNo", "c"],
+      ["lot", "Lot No.", 59, 9.1, 12, 2.3, "0000", "lot", "c"], ["survNo", "Project No. (Surv. No.)", 59, 11.6, 12, 2.3, "CAD 000-D", "survNo", "c"],
+      ["areaT", "Area of the title (sq. m.)", 59, 14.1, 12, 2.3, "00,000", "area", "c"], ["seq", "Sequence No.", 59, 16.4, 12, 2.3, "00000", "seqNo", "c"],
+      ["stype", "Survey type", 84, 6.6, 14, 2.3, "Subdivision", "surveyType", "c"], ["under", "Undertaken by (Admin / Contract)", 84, 9.1, 14, 7, "SBA B4\n( X ) ADMIN", "undertaken", "m c"],
+      ["date", "Date of survey", 84, 16.4, 14, 2.3, "MONTH 00, 0000", "dateSurvey", "c"],
+      ["lots", "New lot numbers", 2.9, 27.8, 10.9, 38.6, "0000-A\n\n0000-B", null, "m c"], ["areas", "Areas of the new lots", 13.8, 27.8, 13.4, 38.6, "0,000\n\n0,000", null, "m c"],
+      ["landuse", "Land use", 27.2, 27.8, 12.4, 38.6, "COCOLAND\n\nCOCOLAND", null, "m c"], ["status", "Status (carpable / non-carpable)", 39.6, 27.8, 17.5, 38.6, "CARPABLE\n\nCARPABLE", null, "m c"],
+      ["claimants", "Claimants", 57.1, 27.8, 21.7, 38.6, "JUAN DELA CRUZ / REPRESENTED\nBY PEDRO DELA CRUZ\nMARIA DELA CRUZ / REPRESENTED BY …", null, "m"],
+      ["sigcol", "Claimants' signatures", 78.8, 27.8, 19.6, 38.6, "signature\n\nsignature", null, "m c"], ["total", "Total (aggregate area)", 13.8, 66.5, 13.4, 2.6, "00,000", null, "c b"],
+      ["sigs", "Signatures: surveyed, validated, concurred, noted", 2.5, 70.6, 96, 13.4, "Surveyed by:              Validated by:              Concurred by:              Noted by:\n\nNAME · Geodetic Engineer   NAME · SARPO   NAME · MARPO   NAME · OIC, PARPO II", null, "m"]] }],
+    on: { "Owner": ["owner"], "Address": ["address"], "Location of property": ["loc"], "Land type": ["landType"], "Land size": ["landSize"], "Title": ["title"], "Lot No.": ["lot"],
+      "Surv. No.": ["survNo"], "Area of the title": ["areaT"], "Sequence No.": ["seq"], "Survey type": ["stype"], "Undertaken": ["under"], "Date of survey": ["date"],
+      "Check signatures": ["sigcol", "sigs"], "Lot no., claimants, land use & area should conform with plan, title & ldc": ["lots", "areas", "landuse", "claimants"],
+      "Check status (carpable, non-carpable)": ["landuse", "status"], "Check summation of aggregate area": ["areas", "total"] } },
+  { id: "joint", match: /Joint Cert/i, font: "sans", pages: [{ name: "Joint certification", img: "joint", ar: 0.69, fs: 1.25,
+    deco: [["t", 8, 1.2, 84, 2.6, "JOINT PARPO-MARPO-GE CERTIFICATION", "c b sm"], ["t", 2, 9.2, 50, 2, "TO WHOM IT MAY CONCERN:", "xs"],
+      ["t", 10, 23.2, 20, 2.3, "Landowner", "xs"], ["t", 10, 25.5, 20, 2.3, "Location", "xs"], ["t", 10, 27.7, 20, 2.3, "Lot/Project No.", "xs"],
+      ["t", 10, 33.2, 20, 2.3, "Title No.", "xs"], ["t", 10, 35.4, 20, 2.3, "Area (has.)", "xs"],
+      ["t", 2, 40.6, 96, 8.6, "THIS IS TO CERTIFY FURTHER that the resultant subdivided lots had been duly and completely monumented, survey profile had been validated and confirmed to be true and correct and that subject landholding is not covered by ongoing, pending, and/or approved surveys.", "xs m"],
+      ["t", 2, 51.6, 96, 13.6, "THIS IS TO CERTIFY FURTHER that this Office will no longer request any corrections, amendments, and/or any kind of changes in the Approved Survey Plan (ASP) of the subject landholding as the same was thoroughly reviewed and validated by the undersigned. However, this certification does not apply to technical errors that may be noted later after the approval of the survey, and request for the changes shall be made within 15 days upon receipt of the Approved Survey Plan (ASP).", "xs m"]],
+    regions: [["para", "Kind of survey and the supervising GE", 2, 11, 96, 9.8, "THIS IS TO CERTIFY that the subdivision survey of the landholding included in survey by Administration and have been duly executed and completed under the supervision by ENGR. NAME OF GE, to wit:", null, "m"],
+      ["owner", "Landowner", 10, 23.2, 80, 2.3, "JUAN DELA CRUZ, ET. AL", "owner", "p29"], ["loc", "Location", 10, 25.5, 80, 2.3, "BARANGAY, MUNICIPALITY", "location", "p29"],
+      ["lot", "Lot No.", 10, 27.7, 40, 2.3, "0000/", "lot", "p58"], ["survNo", "Project No. (Surv. No.)", 50, 27.7, 30, 2.3, "CAD 000-D", "survNo"],
+      ["titleNo", "Title No.", 10, 33.2, 60, 2.3, "O-000", "titleNo", "p48"], ["area", "Area (has.)", 10, 35.4, 60, 2.3, "0.0000", "area", "p48"],
+      ["date", "Date issued", 6, 67.6, 92, 2.3, "Issued this ___ day of ________, 20__ at DAR", null], ["darmo", "DAR Municipal Office", 2, 69.9, 62, 2.3, "Municipal Office, ________________.", null],
+      ["sigs", "Signatures: MARPO, GE (concurrence), Project Manager (noted)", 2, 74, 96, 25, "\n\nNAME                                   With my concurrence:\nMARPO                                  NAME\n                                       DAR Geodetic Engineer\n\n                    Noted:\n                    NAME\n                    Project Manager", null, "m"]] }],
+    on: { "Landowner": ["owner"], "Location": ["loc"], "Lot No.": ["lot"], "Surv. No.": ["survNo"], "Title No.": ["titleNo"], "Area": ["area"], "Date": ["date"], "DARMO": ["darmo"], "Check signatures": ["sigs"] } },
+  { id: "award", match: /Award Limit/i, font: "sans", pages: [{ name: "Certification as to award limit", img: "award", ar: 0.67, fs: 1.3,
+    deco: [["box", 0.5, 0.6, 11.5, 7, "", "logo"], ["t", 0.5, 1.8, 11.5, 3, "DAR", "c b big"], ["t", 14, 1, 60, 6.4, "REPUBLIC OF THE PHILIPPINES\nDEPARTMENT OF AGRARIAN REFORM\nTunay na Pagbabago sa Repormang Agraryo", "xs m b"],
+      ["t", 25, 11.2, 50, 2, "C E R T I F I C A T I O N", "c b sm"], ["t", 2, 15, 50, 2, "TO WHOM IT MAY CONCERN:", "xs"],
+      ["grid", 12.3, 29.9, 75.1, 25.4, "49.3,72.3", "9"], ["t", 12.3, 30.1, 37, 3.6, "Name of Agrarian Reform\nBeneficiary", "c b xs m"], ["t", 49.3, 30.1, 17.3, 3.6, "Lot No.", "c b xs"],
+      ["t", 66.6, 30.1, 20.8, 3.6, "Area (has.)", "c b xs"], ["t", 13, 52.6, 20, 2.6, "Total", "b xs"],
+      ["t", 6, 57.4, 92, 6.6, "This further certifies that the area to be awarded to the hereunder potential farmer-beneficiary/ies will not exceed the award limit of three (3) hectares, to wit:", "xs m"],
+      ["grid", 12.3, 66.8, 75.1, 8.6, "49.3,70.5", "2"], ["t", 12.3, 67, 37, 5, "Name of Potential Farmer-\nBenficiary", "c b xs m"], ["t", 49.3, 67, 17.3, 3, "Lot No.", "b xs"],
+      ["t", 66.6, 67, 20.8, 3, "Area (has.)", "b xs"], ["hl", 1, 97.2, 98, 0], ["t", 1, 97.6, 70, 2.2, "DAR Provincial Office of ……", "b xs"]],
+    regions: [["rule", "Award limit: three (3) hectares", 2, 18.6, 96, 9.2, "THIS IS TO CERTIFY THAT based on EP/CLOA and survey database, the area awarded to the following Agrarian Reform Beneficiaries (ARBs) does not exceed the award limit of three (3) hectares, to wit:", null, "m"],
+      ["names", "Names of the beneficiaries", 12.3, 33.9, 37, 18.6, "", "owner", "m"], ["lots", "Lot Nos.", 49.3, 33.9, 17.3, 18.6, "", "lot", "m c"],
+      ["areas", "Areas (has.)", 66.6, 33.9, 20.8, 18.6, "", "area", "m c"], ["total", "Total area", 49.3, 52.5, 38.1, 2.8, "", null, "c"],
+      ["pfb", "Potential farmer-beneficiaries", 12.3, 72.2, 75.1, 3.2, "", null], ["issued", "Date and place issued", 6, 80.2, 92, 3.8, "Issued this ____ day of __________, 20__ at Department of Agrarian Reform … Provincial Office.", null, "m"],
+      ["sig", "Signature (OIC-PARPO II)", 54, 90.6, 34, 5, "NAME\nOIC-PARPO II", null, "m c"]] }],
+    on: { "Registered owner's name": ["names"], "Lot No.": ["lots"], "Area": ["areas"], "CA/VOS/OLT: 3.0000 has.": ["rule", "areas", "total"], "Signature": ["sig"] } }
+];
+// Not verified live: the phone version takes the images from the Pages site, which must carry apps/dm/ (see the README).
+const dmImgSrc = k => (typeof HOSTED !== "undefined" && HOSTED ? "https://acemllabore-eng.github.io/ace-workbench/apps/" : "") + "dm/" + k + ".jpg";
+const dmModelFor = doc => DM_MODELS.find(m => m.match.test(doc)) || null;
+const dmRegs = m => m.pages.flatMap((p, pi) => p.regions.map(g => ({ g, pi })));
+function dmIds(m, text) {
+  if (m.on[text]) return m.on[text];
+  const r = (m.rx || []).find(([p]) => p.test(text)); if (r) return r[1];
+  return DM_ALL.includes(text) ? dmRegs(m).filter(({ g }) => g[7]).map(({ g }) => g[0]) : [];
+}
+// Value of a region on this document: typed, else the JSON (LRA only: FX_FIELDS is keyed by the LRA guide's document index).
+function dmVal(s, di, key, D) { if (!key || s.route !== "LRA" || !FX_FIELDS[key] || !(di in FX_FIELDS[key].src)) return "";
+  const v = fxValues(s, key, D).find(x => String(x.di) === String(di)); return v ? v.v : ""; }
+const dmPos = (x, y, w, h) => `left:${x}%;top:${y}%;width:${w}%;height:${h}%`;
+const dmCls = c => String(c || "").split(" ").filter(Boolean).map(x => "k-" + x).join(" ");
+function dmDeco([t, x, y, w, h, tx, cls]) {
+  const p = dmPos(x, y, w, h);
+  if (t === "svg") return `<svg class="dm-d dm-svg" style="${p}" viewBox="${cls}" preserveAspectRatio="none" aria-hidden="true">${tx}</svg>`;
+  if (t === "bars") return `<div class="dm-d dm-bars" style="${p}"></div>`;
+  if (t === "box") return `<div class="dm-d dm-box ${dmCls(cls)}" style="${p}"></div>`;
+  if (t === "hl" || t === "vl") return `<div class="dm-d dm-${t} ${dmCls(cls)}" style="${p}"></div>`;
+  if (t === "sig") return `<div class="dm-d dm-sig" style="${p}"><span>${esc(tx)}</span></div>`;
+  if (t === "grid") { const cols = String(tx).split(",").filter(Boolean), n = +cls || 1;
+    return `<div class="dm-d dm-grid" style="${p}">${cols.map(c => `<i class="gv" style="left:${c}%"></i>`).join("")}${Array.from({ length: n - 1 }, (_, i) => `<i class="gh" style="top:${(i + 1) * 100 / n}%"></i>`).join("")}</div>`; }
+  return `<div class="dm-d dm-t ${dmCls(cls)}" style="${p}">${esc(tx)}</div>`;
+}
+// The left side of a document block: the model (one or more pages), each region coloured by the answers of the checks that point at it.
+function dmSide(s, di, d, a, D) {
+  const m = dmModelFor(d.doc); if (!m) return "";
+  const st = {}; d.checks.forEach((t, j) => { const v = a[`g${di}.${j}`]; if (!v) return; dmIds(m, t).forEach(id => { st[id] = st[id] === "fail" || v === "fail" ? "fail" : v === "pass" ? "pass" : st[id] || v; }); });
+  const pages = m.pages.map((pg0, pi) => {
+    const sc = pg0.img && DM_IMG[pg0.img], pg = sc ? Object.assign({}, pg0, { ar: Math.round(sc.w / sc.h * 1000) / 1000, deco: [], scan: dmImgSrc(pg0.img),
+      regions: pg0.regions.filter(g => sc.spots[g[0]]).map(([id, label, , , , , , key]) => [id, label, ...sc.spots[id], "", key, "scan"]) }) : pg0;
+    const regs = pg.regions.map(([id, label, x, y, w, h, ph, key, opt]) => { const v = dmVal(s, di, key, D), o = String(opt || ""), pl = (o.match(/p(\d+)/) || [])[1];
+      const cls = ["dm-r", o === "scan" ? "is-scan" : "", st[id] ? "st-" + st[id] : "", /\bm\b/.test(o) ? "is-m" : "", /\bc\b/.test(o) ? "is-c" : "", /\br\b/.test(o) ? "is-r" : "", /\bb\b/.test(o) ? "is-b" : "", /\bi\b/.test(o) ? "is-i" : ""].filter(Boolean).join(" ");
+      return `<div class="${cls}" data-rg="${id}" data-pg="${pi}" ${key ? `data-fxk="${key}"` : ""} data-box="${x} ${y} ${w} ${h}" style="${dmPos(x, y, w, h)}${pl ? `;padding-left:${Math.round(pl * w) / 100}%` : ""}" title="${esc(label)}">${o !== "scan" && (ph || v || key) ? `<span class="v ${v ? "is-val" : "ph"}" data-ph="${esc(ph)}">${esc(v || ph)}</span>` : ""}</div>`; }).join("");
+    return `<div class="dm dm-f-${m.font} ${pg.scan ? "is-scan" : ""}" data-page="${pi}" style="aspect-ratio:${pg.ar};--ar:${pg.ar};--fs:${pg.fs || 1}" ${pi ? "hidden" : ""} aria-hidden="true"><div class="dm-in">${pg.scan ? `<img class="dm-scan" src="${pg.scan}" alt="" loading="lazy" decoding="async" onerror="this.closest('.dm').classList.add('no-scan')">` : ""}${pg.deco.map(dmDeco).join("")}${regs}<div class="dm-focus"></div></div></div>`; }).join("");
+  const tabs = m.pages.length > 1 ? `<div class="dm-pages" role="group" aria-label="Pages">${m.pages.map((pg, pi) => `<button type="button" class="dm-pg" data-pgbtn="${pi}" aria-pressed="${!pi}">${esc(pg.name)}</button>`).join("")}</div>` : "";
+  return `<div class="dm-side"><div class="dm-cap" aria-live="polite"><span class="sub">${esc(m.pages[0].name)}${m.pages.length > 1 ? ` and ${m.pages.length - 1} more page${m.pages.length > 2 ? "s" : ""}` : ""}. Point at a check, or click the model, to see where it is.</span></div>
+    ${tabs}<div class="dm-stage">${pages}</div>
+    <div class="dm-key"><span><i class="k pass"></i>Pass</span><span><i class="k fail"></i>Fail</span><span><i class="k"></i>Not checked</span><label class="dm-zoom"><input type="checkbox" data-dmzoom ${dmZoomOn ? "checked" : ""}> Zoom in on the spot</label></div></div>`;
+}
+let dmZoomOn = true; try { dmZoomOn = localStorage.getItem("srdesk-dmzoom") !== "0"; } catch (e) {}
+function dmShowPage(sp, pi) {
+  sp.querySelectorAll(".dm[data-page]").forEach(p => { p.hidden = +p.dataset.page !== pi; });
+  sp.querySelectorAll(".dm-pg").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.pgbtn === pi)));
+}
+// Zoom: scale the page so the lit box fills about two thirds of it, kept inside the page's edges.
+function dmZoom(page, box) {
+  const inn = page && page.querySelector(".dm-in"); if (!inn) return;
+  if (!dmZoomOn || !box) { inn.style.transform = ""; return; }
+  const [x0, y0, x1, y1] = box, k = Math.max(1, Math.min(3.2, 66 / Math.max(x1 - x0, 1), 66 / Math.max(y1 - y0, 1)));
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, tx = Math.min(0, Math.max(100 - 100 * k, 50 - cx * k)), ty = Math.min(0, Math.max(100 - 100 * k, 50 - cy * k));
+  inn.style.transform = `translate(${tx}%, ${ty}%) scale(${k})`;
+}
+// Light the given spots on one page. On a scan the page goes dark and blurred, and a sharp copy of the scan shows through each
+// spot (user, 2026-11-22: "make it glow ... the highlight is only readable and the background is blur"); nothing covers the text.
+function dmLight(page, regs) {
+  page.querySelectorAll(".dm-sharp").forEach(x => x.remove());
+  if (!regs.length) { page.classList.remove("has-focus"); dmZoom(page, null); return; }
+  const box = r => r.dataset.box.split(" ").map(Number), [x, y, w, h] = box(regs[0]), f = page.querySelector(".dm-focus"), base = page.querySelector(".dm-scan");
+  Object.assign(f.style, { left: x + "%", top: y + "%", width: w + "%", height: h + "%" });
+  if (base) regs.forEach(r => { const [a, b, c, d] = box(r), p = 0.3, im = base.cloneNode(); im.className = "dm-scan dm-sharp"; im.removeAttribute("onerror");
+    im.style.clipPath = `inset(${Math.max(0, b - p)}% ${Math.max(0, 100 - a - c - p)}% ${Math.max(0, 100 - b - d - p)}% ${Math.max(0, a - p)}% round 3px)`; base.after(im); });
+  page.classList.add("has-focus"); dmZoom(page, [x, y, x + w, y + h]);
+}
+// Move the glow to the regions of one check, on the page that holds the first of them; the caption names them and the other pages.
+function dmFocus(sp, row) {
+  const cap = sp.querySelector(".dm-cap");
+  sp.querySelectorAll(".dm.has-focus").forEach(p => dmLight(p, []));
+  sp.querySelectorAll(".dm-on").forEach(x => x.classList.remove("dm-on"));
+  const key = row && row.dataset.row; if (key) sp.querySelectorAll(`[data-row="${key}"], .fx[data-for="${key}"]`).forEach(x => x.classList.add("dm-on"));
+  const ids = (row && row.dataset.rg || "").split(" ").filter(Boolean), regs = ids.map(id => sp.querySelector(`.dm-r[data-rg="${id}"]`)).filter(Boolean);
+  sp.querySelectorAll(".dm-r.on").forEach(r => r.classList.remove("on")); sp.querySelectorAll(".dm.has-focus").forEach(p => p.classList.remove("has-focus"));
+  const name = row ? (row.querySelector(".tx") || {}).firstChild : null, nm = name ? name.textContent.trim() : "";
+  if (!regs.length) { sp.querySelectorAll(".dm-in").forEach(i => { i.style.transform = ""; }); if (cap) cap.innerHTML = nm ? `<b>${esc(nm)}</b><span class="sub">Not one spot: look over the whole document.</span>` : ""; return; }
+  const pi = +regs[0].dataset.pg, page = sp.querySelector(`.dm[data-page="${pi}"]`), here = regs.filter(r => +r.dataset.pg === pi);
+  dmShowPage(sp, pi);
+  regs.forEach(r => r.classList.add("on"));
+  dmLight(page, here);
+  const pgs = sp.querySelectorAll(".dm[data-page]").length, names = [...sp.querySelectorAll(".dm-pg")].map(b => b.textContent);
+  const elsewhere = [...new Set(regs.filter(r => +r.dataset.pg !== pi).map(r => +r.dataset.pg))];
+  const where = here.length > 1 ? `${here.length} places: ` + here.map(r => r.title).join(" · ") : here[0].title === nm ? "Highlighted on the model." : "On the model: " + here[0].title;
+  if (cap) cap.innerHTML = `<b>${esc(nm)}</b><span class="sub">${esc(where)}${pgs > 1 ? ` (${esc(names[pi])})` : ""}${elsewhere.length ? `. Also on: ${elsewhere.map(p => `<button type="button" class="btn link dm-goto" data-goto="${p}">${esc(names[p])}</button>`).join(", ")}` : ""}</span>`;
+}
+function dmBind(root) {
+  root.querySelectorAll(".dm-split").forEach(sp => {
+    let cur = null;
+    const pick = e => { const r = e.target.closest(".row[data-rg], .fx[data-for]"); if (!r || !sp.contains(r)) return;
+      const row = r.classList.contains("fx") ? sp.querySelector(`.row[data-row="${r.dataset.for}"]`) : r; if (row && row !== cur) { cur = row; dmFocus(sp, row); } };
+    sp.addEventListener("mouseover", pick); sp.addEventListener("focusin", pick);
+    sp.addEventListener("click", e => {
+      const pb = e.target.closest("[data-pgbtn], [data-goto]");
+      if (pb) { const pi = +(pb.dataset.pgbtn ?? pb.dataset.goto), page = sp.querySelector(`.dm[data-page="${pi}"]`); dmShowPage(sp, pi);
+        const on = [...page.querySelectorAll(".dm-r.on")]; if (on.length) { sp.querySelectorAll(".dm.has-focus").forEach(p => dmLight(p, [])); dmLight(page, on); }
+        return; }
+      const rg = e.target.closest(".dm-r"); if (!rg) return;
+      const row = [...sp.querySelectorAll(".row[data-rg]")].find(r => r.dataset.rg.split(" ").includes(rg.dataset.rg)); if (!row) return;
+      cur = row; dmFocus(sp, row); row.scrollIntoView({ block: "center", behavior: "smooth" });
+      row.classList.remove("dm-flash"); void row.offsetWidth; row.classList.add("dm-flash");
+      const fx = sp.querySelector(`.fx[data-for="${row.dataset.row}"] .fx-in:not(:disabled)`), t = fx || row.querySelector(".seg button:not(:disabled)"); if (t) t.focus({ preventScroll: true }); });
+  });
+  root.querySelectorAll("[data-dmzoom]").forEach(z => z.onchange = () => { dmZoomOn = z.checked; try { localStorage.setItem("srdesk-dmzoom", dmZoomOn ? "1" : "0"); } catch (e) {}
+    root.querySelectorAll("[data-dmzoom]").forEach(x => { x.checked = dmZoomOn; });
+    root.querySelectorAll(".dm-split").forEach(sp => sp.querySelectorAll(".dm[data-page]").forEach(p => { const f = p.querySelector(".dm-focus");
+      dmZoom(p, p.classList.contains("has-focus") ? [parseFloat(f.style.left), parseFloat(f.style.top), parseFloat(f.style.left) + parseFloat(f.style.width), parseFloat(f.style.top) + parseFloat(f.style.height)] : null); })); });
+  // Typing a value shows it on the model at once, as a card form does.
+  root.querySelectorAll(".dm-split .fx-in").forEach(inp => inp.addEventListener("input", () => { const key = inp.dataset.fx.split("|")[1], sp = inp.closest(".dm-split");
+    sp.querySelectorAll(`.dm-r[data-fxk="${key}"] .v`).forEach(v => { const t = inp.value.trim(); v.textContent = t || v.dataset.ph; v.classList.toggle("ph", !t); v.classList.toggle("is-val", !!t); }); }));
+}
 
 /* ---------- Dates ---------- */
 function isoDate(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -2029,6 +2488,7 @@ function showStep(step) {
   ui.step = step;
   document.querySelectorAll(".pane").forEach(p => p.hidden = p.dataset.pane !== step);
   document.querySelectorAll(".step").forEach(b => b.setAttribute("aria-selected", String(b.dataset.step === step)));
+  const dw = document.querySelector(".drawer"); if (dw) dw.classList.toggle("wide", step === "checks"); // room for the document models
   const b = document.querySelector(".dw-body"); if (b) b.scrollTop = 0;
   stepIntoView();
 }
@@ -2066,13 +2526,16 @@ function openSR(seq) {
   const attachRow = (gi, i, text) => `<div class="doc-card">${row(`d${gi}.${i}`, i + 1, text, "doc")}</div>`;
   const checkBlock = (gi, i, text) => { const dk = `d${gi}.${i}`, di = guideOf(gi, i); if (di === null) return ""; const d = c.guide[di];
     const off = skipped(a, dk), mark = a[dk] === "present" ? "Present" : a[dk] === "missing" ? "Missing" : a[dk] === "na" ? "N/A" : "";
-    return `<div class="doc-card"><div class="doc-head"><span class="no">${i + 1}</span><span class="tx">${esc(text)}</span><span class="att ${mark ? "is-" + a[dk] : "is-unset"}">${mark ? "Attachment: " + mark : "Attachment not marked yet"}</span></div><div class="checks ${off ? "off" : ""}">
+    const dmS = off ? "" : dmSide(s, di, d, a, FXD); // model of the document on the left, the checks and their data on the right
+    return `<div class="doc-card ${dmS ? "has-dm" : ""}"><div class="doc-head"><span class="no">${i + 1}</span><span class="tx">${esc(text)}</span><span class="att ${mark ? "is-" + a[dk] : "is-unset"}">${mark ? "Attachment: " + mark : "Attachment not marked yet"}</span></div>${dmS ? `<div class="dm-split">${dmS}` : ""}<div class="checks ${off ? "off" : ""}">
       <div class="checks-head"><span>Checks on this document</span><span class="count" id="vc-${di}"></span></div>
       ${off ? `<div class="checks-skip">Checks skipped: the attachment is marked ${mark}. Change it in the Attachments tab if the document is there.</div>` : `
       ${(() => { const ty = j => checkType(s.route, di, d.checks[j]), ord = checkOrder(s.route, di), au = ord.filter(j => ty(j) === "auto"), hand = ord.filter(j => ty(j) !== "auto"); let n = 0;
-        const r = j => { n++; const t = d.checks[j]; return row(`g${di}.${j}`, `${i + 1}.${n}`, t, "check", off, d.doc, ty(j)) + (ty(j) === "auto" ? fxBox(s, di, j, t, off, editable, FXD, FXE) : ""); };
+        const mdl = dmS && dmModelFor(d.doc), r = j => { n++; const t = d.checks[j], k = `g${di}.${j}`, rg = mdl ? dmIds(mdl, t).join(" ") : "";
+          return row(k, `${i + 1}.${n}`, t, "check", off, d.doc, ty(j)).replace('<div class="row', `<div data-rg="${rg}" class="row`)
+            + (ty(j) === "auto" ? fxBox(s, di, j, t, off, editable, FXD, FXE).replace('<div class="fx"', `<div data-for="${k}" class="fx"`) : ""); };
         return au.length ? `<div class="grp-label">From the documents (Auto) · ${au.length}</div>${au.map(r).join("")}${hand.length ? `<div class="grp-label">Check by hand · ${hand.length}</div>${hand.map(r).join("")}` : ""}` : ord.map(r).join(""); })()}
-      ${dis ? "" : `<div class="tools">${d.checks.some(t => checkType(s.route, di, t) === "auto") ? `<button class="btn small" data-fxmark="${di}">Mark the Auto items from the data</button>` : ""}<button class="btn small" data-passall="${di}">Pass the unchecked items</button></div>`}`}</div></div>`; };
+      ${dis ? "" : `<div class="tools">${d.checks.some(t => checkType(s.route, di, t) === "auto") ? `<button class="btn small" data-fxmark="${di}">Mark the Auto items from the data</button>` : ""}<button class="btn small" data-passall="${di}">Pass the unchecked items</button></div>`}`}</div>${dmS ? "</div>" : ""}</div>`; };
   const lockNote = !c || canCheck(s) ? "" : `<p class="readonly-note">${s.status === "Compliance" ? "Locked while the SR is with the DARMO for compliance." : `Read only: the checklist is used while the survey status is ${AT_DARPO}.`}</p>`;
   const noRoute = `<div class="banner"><div>${s.survey === AT_RPMO ? `Choose <b>For approval by</b> (DENR or LRA) in Details to open its attachments. At ${AT_RPMO} only the attachments can be marked.` : isOpen(s) ? "Choose <b>For approval by</b> (DENR or LRA) in Details to open its checklist. Leave it Unassigned for SRs that go to neither." : `The checklist is used while the survey status is ${AT_DARPO}.`}</div></div>`;
   const guideToggle = `<label class="toggle"><input type="checkbox" data-guide-toggle ${ui.guide ? "checked" : ""}> Show how-to notes</label>`;
@@ -2093,7 +2556,7 @@ function openSR(seq) {
   const holder = s.verifier && state.me && s.verifier !== state.me.name && state.me.role !== "admin";
   document.getElementById("drawer-root").innerHTML = `
     <div class="scrim" id="scrim"></div>
-    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dw-title">
+    <aside class="drawer ${ui.step === "checks" ? "wide" : ""}" role="dialog" aria-modal="true" aria-labelledby="dw-title">
       <header class="dw-head"><div style="min-width:0">
           <div class="meta"><span class="mono">SeqNo ${esc(s.seq)}</span>${s.route ? `<span class="route">${s.route}</span>` : ""}<span class="pill st-survey ${s.survey ? "" : "st-unset"}" id="dw-survey-pill">${esc(s.survey || NOT_SET)}</span><span class="pill ${STATUS_CLASS[s.status] || ""}" id="dw-status" ${s.status ? "" : "hidden"}>${esc(STATUS_LABEL[s.status] || "")}</span>
             <span class="sub" id="dw-meta">${isOpen(s) ? (s.received ? `At DARPO since ${fmtDate(s.received)} · ${age(s)} days` : "At DARPO, date received not set") : ""}${s.round > 1 ? ` · Round ${s.round}` : ""}</span></div>
@@ -2235,6 +2698,7 @@ function openSR(seq) {
   const p = root.querySelector("#dw-primary");
   if (p) p.onclick = () => decide(seq);
   xcBind(seq, root);
+  dmBind(root);
   loadHistory(seq);
   refresh(seq);
   stepIntoView();

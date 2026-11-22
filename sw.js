@@ -1,7 +1,7 @@
 /* ACE Workbench service worker: keeps the panel and every app page on the device so the Workbench opens with no signal.
    Only files from this site are kept. Google Sheet sync (script.google.com) and satellite tiles always go to the network.
    VERSION is stamped by build-pages.py from the files' content; a new VERSION makes phones fetch the new files. */
-const VERSION = "45a5c3b2dc1b";
+const VERSION = "38140d4445d3";
 const CACHE = "aw-" + VERSION;
 const FILES = [
   "./", "index.html", "manifest.webmanifest",
@@ -11,6 +11,10 @@ const FILES = [
   "apps/vendor/control-points.js", "apps/vendor/e2c-template.js",
   "apps/vendor/images/layers.png", "apps/vendor/images/layers-2x.png",
   "apps/vendor/images/marker-icon.png", "apps/vendor/images/marker-icon-2x.png", "apps/vendor/images/marker-shadow.png",
+  // SR Desk document models (scans, names covered)
+  "apps/dm/plan.jpg", "apps/dm/title1.jpg", "apps/dm/title2.jpg", "apps/dm/title3.jpg",
+  "apps/dm/fnc1.jpg", "apps/dm/fnc2.jpg", "apps/dm/fnc3.jpg", "apps/dm/fnc4.jpg",
+  "apps/dm/ldc.jpg", "apps/dm/profile.jpg", "apps/dm/joint.jpg", "apps/dm/award.jpg",
 ];
 
 self.addEventListener("install", e => {
