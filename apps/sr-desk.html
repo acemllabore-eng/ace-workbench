@@ -1858,7 +1858,7 @@ function edit(seq, mutate) {
 let syncing = false, syncTimer = null;
 function scheduleSync(ms = 1500) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); }
 async function api(method, payload) {
-  if (!state.cfg.url || !state.cfg.key) throw new Error("Not set up: add the web app address and your key in Settings");
+  if (!state.cfg.url || !state.cfg.key) throw new Error((HOSTED ? "Not set up: add your key in Settings" : "Not signed in: use Sign in in the Survey Unit panel's top bar"));
   let r;
   if (method === "GET") r = await fetch(state.cfg.url + "?action=" + payload + "&key=" + encodeURIComponent(state.cfg.key), { redirect: "follow" });
   else r = await fetch(state.cfg.url, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device }, payload)) });
@@ -1987,7 +1987,7 @@ function render() {
 
 function renderRegister(opts = {}) {
   const list = allSRs();
-  if (!list.length) { view.innerHTML = `<div class="panel empty">No SRs on this PC yet. Connect in Settings, then press Sync now while online.</div>`; return; }
+  if (!list.length) { view.innerHTML = `<div class="panel empty">No SRs on this PC yet. Sign in from the Survey Unit panel's top bar, then press Sync now while online.</div>`; return; }
   const counts = { Open: list.filter(isOpen).length, All: list.length, Mine: state.me ? list.filter(s => s.verifier === state.me.name).length : 0, Attention: list.filter(s => s.conflict).length };
   Object.keys(STATUS_CLASS).forEach(s => counts[s] = list.filter(r => r.status === s).length);
   const chips = ["Open", ...SUBS, "Mine", "All"].concat(counts.Attention ? ["Attention"] : []);
@@ -2401,25 +2401,20 @@ function renderChecklists() {
 function renderSettings() {
   const admin = state.me && state.me.role === "admin";
   view.innerHTML = `
-    <section class="panel"><div class="panel-head"><h2>Connection</h2><span class="sub">${HOSTED ? "This phone" : "This PC"}: <span class="mono">${esc(state.cfg.device)}</span></span></div>
+    <section class="panel"><div class="panel-head"><h2>Sign-in</h2><span class="sub">${HOSTED ? "This phone" : "This PC"}: <span class="mono">${esc(state.cfg.device)}</span></span></div>
       <div class="panel-body"><form class="form" id="cfg">
         ${HOSTED ? `<p class="hint"><b>Phone version: needs internet.</b> Each change goes to the Sheet at once and is not kept on the phone. With no signal, a change is refused. No Excel backup is made here; the PCs make them.</p>`
-          : `<div class="field"><label for="c-url">Web app address</label><input id="c-url" type="url" required placeholder="https:&#47;&#47;script.google.com/macros/s/…/exec" value="${esc(state.cfg.url)}"></div>`}
-        <div class="field"><label for="c-key">Your verifier key</label><input id="c-key" required autocomplete="off" spellcheck="false" placeholder="ABCDE-12345" value="${esc(state.cfg.key)}"></div>
-        <p class="hint">Each verifier has their own key. It decides whose name goes on the checklists you save from ${HOSTED ? "this phone" : "this PC"}. Get it from the Admin. Your Survey Unit key (Unit Desk, Time Log, Databases) works here too.</p>
-        ${state.cfg.shared ? `<p class="readonly-note">Signed in through the Survey Unit panel${state.me ? " as <b>" + esc(state.me.name) + "</b>" : ""}. To use another key, sign out in the panel's top bar.</p>` : ""}
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Save and connect</button><span id="c-msg" class="sub" style="align-self:center"></span></div>
+          : `<p class="hint">One sign-in for every app: <b>Sign in</b> in the Survey Unit panel's top bar. Sign out there too. The key decides whose name goes on the checklists you save from this PC.</p>
+        <p class="readonly-note">${state.cfg.key && state.me ? "Signed in as <b>" + esc(state.me.name) + "</b>." : "<b>Not signed in.</b>"}</p>`}
+        ${HOSTED ? `<div class="field"><label for="c-key">Your verifier key</label><input id="c-key" required autocomplete="off" spellcheck="false" placeholder="ABCDE-12345" value="${esc(state.cfg.key)}"></div>
+        <p class="hint">Each verifier has their own key. It decides whose name goes on the checklists you save from this phone. Get it from the Admin. Your Survey Unit key (Unit Desk, Time Log, Databases) works here too.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Save and connect</button><span id="c-msg" class="sub" style="align-self:center"></span></div>` : ""}
       </form></div></section>
-    ${admin ? `<section class="panel"><div class="panel-head"><h2>Add a verifier</h2><span class="sub">Admin only · needs internet</span></div>
-      <div class="panel-body"><form class="form" id="addv">
-        <div class="field"><label for="v-name">Full name</label><input id="v-name" required maxlength="80" placeholder="JUAN D. DELA CRUZ"></div>
-        <div><button class="btn primary" type="submit">Add verifier</button></div>
-        <div id="v-msg"></div>
-        <p class="hint">Current verifiers: ${state.verifiers.map(esc).join(", ") || "none loaded"}.</p>
-      </form></div></section>` : ""}
+    ${admin ? `<section class="panel"><div class="panel-head"><h2>Verifiers</h2><span class="sub">Admin only</span></div>
+      <div class="panel-body"><p class="hint">Add people in Unit Desk or Time Log (Settings, Admin). Their one key opens every app, SR Desk included, and every active member may verify. Current verifiers: ${state.verifiers.map(esc).join(", ") || "none loaded"}.</p></div></section>` : ""}
     <p class="sub" style="margin:0">New here? The Guide tab explains how saving and sync work, and has a practice SR.</p>`;
   view.querySelector("#cfg").onsubmit = async e => {
-    e.preventDefault();
+    e.preventDefault(); if (!HOSTED) return;
     const msg = view.querySelector("#c-msg");
     const url = HOSTED ? HOSTED.url : view.querySelector("#c-url").value.trim(), key = view.querySelector("#c-key").value.trim();
     const old = { url: state.cfg.url, key: state.cfg.key };
@@ -2458,7 +2453,7 @@ function nextStep(s) {
   const c = CL[s.route], t = tally(s), a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {};
   const dl = (DATE_LABEL[s.survey] || "Date of this status").replace(/^D/, "d"), cut = x => x.length > 48 ? x.slice(0, 46).trim() + "…" : x;
   if (s.conflict) return { step: "details", text: "Your change was refused. Read the message below, then dismiss it." };
-  if (!canEdit(s)) return { step: "details", text: state.me ? `Held by ${s.verifier}. You can read this SR but not change it.` : "Connect in Settings to work on this SR." };
+  if (!canEdit(s)) return { step: "details", text: state.me ? `Held by ${s.verifier}. You can read this SR but not change it.` : (HOSTED ? "Connect in Settings to work on this SR." : "Sign in from the panel's top bar to work on this SR.") };
   const tn = !isPractice(s.seq) && state.records[s.seq] && state.records[s.seq].tracker_note, tq = state.queue[s.seq];
   if (tn && tn.result === "changed" && !(tq && tq.data && typeof tq.data.trackerAck === "string"))
     return { step: "details", focus: "dw-track-ack", text: "The tracker was changed by hand. Check with whoever changed it, then write over it or leave it." };
@@ -2721,7 +2716,7 @@ function histHtml(s) {
     rows.push(`<div class="hist-row">${dateCell(x.survey, x.status_date)}<span><b>${esc(x.survey || NOT_SET)}</b>${x.status ? " · " + esc(x.status) : ""}</span><span class="sub">${x.status_date ? esc(DATE_LABEL[x.survey] || "Date") + " · " : ""}changed ${fmtTime(x.at)} by ${esc(x.by)}${t ? " · " + esc(t) : ""}</span></div>`); });
   const start = s.kind === "No batch tracker" ? `<p class="readonly-note">In no batch tracker. Survey whereabouts in MASBATE CCLOA ACCOUNTING: ${esc(s.surveyStatus || "blank")}.</p>`
     : `<p class="readonly-note">Now in the ${s.own ? "SR Desk own list (" + esc(s.kind) + ")" : esc(s.kind) + " tracker"}: <b>${esc(trackerNow(s) || "blank")}</b>. Changes made in the tracker by hand are not listed here.</p>`;
-  const note = !state.cfg.url ? "Shown when this PC is connected to the Sheet (Settings)." : !h ? "Loading…" : h.error ? `Could not load the history: ${esc(h.error)}` : "";
+  const note = !state.cfg.url ? "Shown when this PC is signed in (panel's top bar)." : !h ? "Loading…" : h.error ? `Could not load the history: ${esc(h.error)}` : "";
   return `${rows.length ? `<div class="hist">${rows.join("")}</div>` : ""}${note ? `<p class="readonly-note">${note}</p>` : ""}${h && h.list ? start : ""}
     ${h && h.list && !h.list.length && !(q && q.data) ? `<p class="readonly-note">No status change saved in the SR Desk yet.</p>` : ""}`;
 }
@@ -2997,7 +2992,7 @@ function downloadBackup(auto) {
    The panel's Sign in keeps {url, key, name, role} in localStorage "aw.signin" (the Survey Unit web app and the person's
    key) and this desk's own address in "aw.sr". The SR Desk web app accepts that same key, so when this page is opened
    from the same place as the panel it uses them and nobody types a second key. cfg.shared marks a key that came from
-   the panel: signing out there clears it here. A PC that never signed in through the panel keeps its own Settings.
+   the panel: signing out there clears it here. Since 2026-11-22 the PC page has no sign-in of its own: the panel's Sign in is the only one (a key typed earlier in Settings stays until the panel signs in or out).
    Not used by the phone version served by the web app (another site, so it cannot see the panel's sign-in). */
 const okAddr = u => /^https:\/\/script\.google\.com\/(a\/macros\/[\w.-]+|macros)\/s\/[\w-]+\/(exec|dev)$/.test(String(u || "")) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(String(u || ""));
 async function adoptSignin() {

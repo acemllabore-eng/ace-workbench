@@ -309,7 +309,7 @@ function render() {
 function renderSync() {
   const n = state.outbox.length;
   let c = "", text;
-  if (!state.cfg.url || !state.cfg.key) text = "Not connected. Sign in from the panel or in Settings.";
+  if (!state.cfg.url || !state.cfg.key) text = "Not connected. Sign in from the panel's top bar.";
   else if (syncing) { c = "on"; text = "Syncing…"; }
   else if (lastError) { c = "err"; text = lastError; }
   else if (!online) { c = "off"; text = "Offline · " + (n ? n + (n === 1 ? " change" : " changes") + " kept on this device, will send when online" : "showing the copy on this device"); }
@@ -326,7 +326,7 @@ function problemsHtml() {
       <button class="btn sm ghost" data-act="dismiss" data-i="${i}">Dismiss</button></div>`).join("")}</div></div>`;
 }
 function connectHint() {
-  return state.cfg.key ? "" : `<div class="empty" style="margin-bottom:16px"><b>Not signed in</b>Sign in once from the panel (top right), or in Settings here. Activities you add are kept on this device until then.</div>`;
+  return state.cfg.key ? "" : `<div class="empty" style="margin-bottom:16px"><b>Not signed in</b>Sign in once from the panel (top right). Activities you add are kept on this device until then.</div>`;
 }
 function monthHtml() {
   const first = new Date(month + "-01T00:00:00"), title = first.toLocaleDateString("en-PH", { month: "long", year: "numeric" });
@@ -388,10 +388,7 @@ function shareHtml() {
     <section class="panel"><h2>One activity</h2><p>Open an activity and use "Add to my calendar" to save just that one to this phone or PC.</p></section>`;
 }
 function settingsHtml() {
-  return `<section class="panel"><h2>Connection</h2><p>Same web app address and key as every Survey Unit app. Signing in here signs in the others too.</p>
-      <div class="row"><label class="f"><span>Web app address</span><input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https:&#47;&#47;script.google.com/macros/s/…/exec"></label>
-      <label class="f" style="max-width:220px"><span>Your key</span><input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
-      <button class="btn primary" id="cSave">Save and connect</button></div>
+  return `<section class="panel"><h2>Sign-in</h2><p>One sign-in for every app: <b>Sign in</b> in the Survey Unit panel's top bar. Sign out there too.</p>
       <p style="margin:12px 0 0">This device: <span class="mono">${esc(state.cfg.device)}</span>${state.me ? ` · Signed in as <b>${esc(state.me.name)}</b> (${esc(state.me.role)})` : ""}</p></section>
     <section class="panel"><h2>On this device</h2><p>${Object.keys(state.items).length} activities kept here · ${state.outbox.length} waiting to send${state.lastSync ? " · last synced " + esc(fmtTime(state.lastSync)) : ""}.</p>
       <button class="btn" id="cForget">Remove this device's copy</button></section>`;

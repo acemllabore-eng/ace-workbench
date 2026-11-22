@@ -265,7 +265,7 @@ td { font-family: var(--mono); }
     </div>
     <div class="controls">
       <div class="seg" role="group" aria-label="Commitment for registration" id="commit"><button data-c="all">All LHs</button><button data-c="in">Commitment</button><button data-c="out">Not commitment</button></div>
-      <div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div><button class="btn order-reset" id="order-reset" hidden title="Put the kinds of survey back in order by name">Reset order</button>
+      <div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div><button class="btn" id="export-xlsx" title="Download the SRs shown (Commitment filter applied) as an Excel file: SRs, Summary, Missing documents">Export to Excel</button><button class="btn order-reset" id="order-reset" hidden title="Put the kinds of survey back in order by name">Reset order</button>
     </div>
   </header>
   <div id="banner"></div>
@@ -533,7 +533,7 @@ function render() {
   $("live").classList.toggle("off", raw.sample);
   $("src").innerHTML = raw.sample ? "Sample data · no SR Desk copy found on this PC"
     : `${all.length.toLocaleString()} SRs from this PC's SR Desk copy${ui.commit === "all" ? "" : ` · showing ${list.length.toLocaleString()} ${ui.commit === "in" ? "committed for registration" : "not committed for registration"}`} · register pulled ${esc(raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : "—")}${raw.pending ? ` · ${raw.pending} change${raw.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
-  $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Open the SR Verification Desk from this same place, connect it in Settings and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
+  $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Sign in from the Survey Unit panel's top bar, open the SR Verification Desk and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
   document.querySelectorAll("#metric button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === ui.metric)));
   document.querySelectorAll("#commit button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.c === ui.commit)));
   const byName = [...new Set(list.map(s => s.kind || NOT_SET))].sort(kindSort), rcats = loadRcats();
@@ -727,6 +727,112 @@ window.addEventListener("message", e => { if (e.data && e.data.type === "aw-them
 document.querySelectorAll("#commit button").forEach(b => b.onclick = () => { ui.commit = b.dataset.c; try { localStorage.setItem("srdash-commit", ui.commit); } catch (e) {} render(); });
 document.querySelectorAll("#metric button").forEach(b => b.onclick = () => { ui.metric = b.dataset.m; try { localStorage.setItem("srdash-metric", ui.metric); } catch (e) {} render(); });
 $("order-reset").onclick = () => { saveOrder(null); render(); };
+/* ---------- Export to Excel (2026-11-22, user: "make a export option to SR Flow Dashboard to excel file for data analysis") ----------
+   Writes an .xlsx in the browser (no internet needed): SRs (one row per SR shown, with the Commitment filter applied),
+   Summary (kind x survey status: SRs and area), Missing documents (one row per SR and missing document, with its remark and
+   remark category), About. Dates are real Excel dates, Area a number; each table has a header filter and a frozen top row. */
+const XL_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function xlCrc(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = XL_CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function xlZip(files) { // stored (no compression), same as the SR Desk's Excel backup; files: [[name, string]]
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  files.forEach(([name, text]) => {
+    const n = enc.encode(name), d = enc.encode(text), crc = xlCrc(d);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+    h.setUint32(14, crc, true); h.setUint32(18, d.length, true); h.setUint32(22, d.length, true); h.setUint16(26, n.length, true);
+    parts.push(new Uint8Array(h.buffer), n, d);
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(8, 0x0800, true);
+    cd.setUint32(16, crc, true); cd.setUint32(20, d.length, true); cd.setUint32(24, d.length, true); cd.setUint16(28, n.length, true); cd.setUint32(42, off, true);
+    central.push(new Uint8Array(cd.buffer), n);
+    off += 30 + n.length + d.length;
+  });
+  const csize = central.reduce((m, p) => m + p.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+/* sheets: [{ name, rows, table }]; a cell is a string, a number, or { date: "YYYY-MM-DD" }. table = header row, filter, frozen top row.
+   Styles: 0 plain, 1 header (bold), 2 date (yyyy-mm-dd), 3 number 0.00. */
+function xlBook(sheets) {
+  const x = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+  const col = i => { let s = ""; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  const serial = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ""); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5 + 25569 : null; };
+  const cell = (v, ref, hdr, w) => {
+    if (v && typeof v === "object" && "date" in v) { const n = serial(v.date); return n == null ? `<c r="${ref}"/>` : `<c r="${ref}" s="2"><v>${n}</v></c>`; }
+    if (typeof v === "number" && isFinite(v)) return `<c r="${ref}"${w ? ' s="3"' : ""}><v>${v}</v></c>`;
+    if (v == null || v === "") return `<c r="${ref}"${hdr ? ' s="1"' : ""}/>`;
+    return `<c r="${ref}" t="inlineStr"${hdr ? ' s="1"' : ""}><is><t xml:space="preserve">${x(v)}</t></is></c>`;
+  };
+  const sheetXml = s => {
+    const rows = s.rows, ncol = Math.max(1, ...rows.map(r => r.length)), dec = s.decimals || [];
+    const widths = Array.from({ length: ncol }, (_, c) => Math.min(60, Math.max(8, ...rows.slice(0, 500).map(r => { const v = r[c]; return v && typeof v === "object" ? 11 : String(v ?? "").length + 2; }))));
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+      (s.table ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` : "") +
+      `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData>` +
+      rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => cell(v, col(ci) + (ri + 1), s.table && ri === 0, dec.includes(ci))).join("") + `</row>`).join("") +
+      `</sheetData>` + (s.table && rows.length > 1 ? `<autoFilter ref="A1:${col(ncol - 1)}${rows.length}"/>` : "") + `</worksheet>`;
+  };
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+    `<numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/></numFmts>` +
+    `<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>` +
+    `<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>` +
+    `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
+    `<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
+    `<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const files = [
+    ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
+      sheets.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("") + `</Types>`],
+    ["_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>` +
+      sheets.map((s, i) => `<sheet name="${x(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("") + `</sheets>` +
+      (sheets.some(s => s.table && s.rows.length > 1) ? `<definedNames>${sheets.map((s, i) => s.table && s.rows.length > 1 ? `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${x(s.name)}'!$A$1:$${col(Math.max(1, ...s.rows.map(r => r.length)) - 1)}$${s.rows.length}</definedName>` : "").join("")}</definedNames>` : "") + `</workbook>`],
+    ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("") +
+      `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ["xl/styles.xml", styles]
+  ];
+  sheets.forEach((s, i) => files.push([`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s)]));
+  return xlZip(files);
+}
+function exportExcel() {
+  const raw = readDesk() || sampleDesk(), all = raw.list;
+  const list = (ui.commit === "all" ? all : all.filter(s => (commitQ(s) !== undefined) === (ui.commit === "in"))).slice().sort(bySeq);
+  const D = v => isIso(v) ? { date: String(v).slice(0, 10) } : (v || ""), rcats = loadRcats();
+  const attOf = s => { const docs = docList(s.route), a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {};
+    const marked = docs.filter(d => a[d.key]), missing = docs.filter(d => a[d.key] === "missing");
+    const group = !docs.length || !marked.length ? UNCHECKED : missing.length ? "Missing documents" : docs.every(d => d.asNeeded || a[d.key]) ? COMPLETE : PARTLY;
+    return { group, missing: missing.map(d => ({ text: d.text, remark: String(nt[d.key] || "").trim() })) }; };
+  const catOf = (label, remark) => { const cats = rcats[label] || {}, k = remKey(remark || "Missing (no remark)"); return Object.keys(cats).find(c => cats[c].includes(k)) || ""; };
+  const srRows = [["SeqNo", "Kind of survey", "Title No.", "LO / Claimant", "Lot No.", "DARMO", "MARPO", "Area (ha)", "Survey status", "DARPO status", "Status date",
+    "Received at DARPO", "Decided", "RPMO received", "Round", "Verifier", "Commitment", "Commitment quarter", "For", "Attachments", "Missing documents (count)", "Missing documents"]];
+  const missRows = [["SeqNo", "Kind of survey", "Survey status", "DARPO status", "DARMO", "Commitment", "Missing document", "Remark", "Remark category"]];
+  const sum = new Map();
+  list.forEach(s => {
+    const at = attOf(s), q = commitQ(s), kind = s.kind || NOT_SET, st = statusOf(s), seqN = Number(s.seq);
+    srRows.push([isFinite(seqN) && String(seqN) === String(s.seq) ? seqN : s.seq, kind, s.title, s.claimant, s.lot, s.darmo, s.marpo, s.area == null ? "" : s.area, st, s.status,
+      D(s.statusDate), D(s.received), D(s.decided), D(s.rpmoReceived), Number(s.round) || 1, s.verifier, q === undefined ? "No" : "Yes", q === undefined || q === "0" ? "" : Number(q),
+      s.route, at.group, at.missing.length, at.missing.map(m => m.text).join("; ")]);
+    at.missing.forEach(m => missRows.push([srRows[srRows.length - 1][0], kind, st, s.status, s.darmo, q === undefined ? "No" : "Yes", m.text, m.remark, catOf(missLabel(m.text), m.remark)]));
+    const k = kind + "\u0000" + st, o = sum.get(k) || { kind, st, n: 0, ha: 0, noArea: 0, cm: 0 };
+    o.n++; if (s.area == null) o.noArea++; else o.ha += s.area; if (q !== undefined) o.cm++; sum.set(k, o);
+  });
+  const sumRows = [["Kind of survey", "Survey status", "SRs", "Area (ha)", "SRs with no area", "Committed for registration"]]
+    .concat([...sum.values()].sort((a, b) => kindSort(a.kind, b.kind) || sortStatus(a.st, b.st)).map(o => [o.kind, o.st, o.n, Math.round(o.ha * 1e4) / 1e4, o.noArea, o.cm]));
+  const filt = ui.commit === "all" ? "All LHs" : ui.commit === "in" ? "Commitment only" : "Not commitment only";
+  const about = [["SR Flow Dashboard export"], ["Saved", new Date().toLocaleString("en-PH")],
+    ["Data", raw.sample ? "SAMPLE DATA, made up (no SR Desk copy on this PC)" : "This PC's SR Desk copy"],
+    ["Register pulled", raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : ""], ["Changes not yet synced (included)", raw.pending || 0],
+    ["Filter", filt], ["SRs exported", list.length], ["Commitment list", COMMIT_SRC],
+    ["Attachments", "Complete = every required document marked Present or N/A; Partly marked; Missing documents = at least one marked Missing; Attachments not marked yet"],
+    ["Note", "Read from the SR Desk on this PC; the Sheet is the record. Dates are Excel dates (yyyy-mm-dd)."]];
+  const blob = xlBook([{ name: "SRs", rows: srRows, table: true, decimals: [7] }, { name: "Summary", rows: sumRows, table: true, decimals: [3] },
+    { name: "Missing documents", rows: missRows, table: true }, { name: "About", rows: about }]);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `SR-Flow-Dashboard-${raw.sample ? "SAMPLE-" : ""}${todayIso()}.xlsx`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  return { srs: list.length, missing: missRows.length - 1, summary: sumRows.length - 1 };
+}
+$("export-xlsx").onclick = () => { try { exportExcel(); } catch (e) { alert("Could not make the Excel file: " + e.message); } };
 addEventListener("storage", e => { if (e.key === STORE || e.key === RCAT_STORE || e.key === ORDER_STORE) render(); }); // the SR Desk synced, or changed categories, in another tab
 render();
 </script>

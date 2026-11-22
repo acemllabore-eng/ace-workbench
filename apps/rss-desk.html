@@ -516,7 +516,7 @@ function render() {
 function renderSync() {
   const n = state.outbox.length;
   let cls = "", text;
-  if (!state.cfg.url || !state.cfg.key) text = "Not connected. Sign in from the panel, or add the address and your key in Settings.";
+  if (!state.cfg.url || !state.cfg.key) text = window.RSS_HOSTED ? "Not connected. Add your key in Settings." : "Not connected. Sign in from the panel's top bar.";
   else if (syncing) { cls = "on"; text = "Syncing…"; }
   else if (lastError) { cls = "err"; text = lastError; }
   else if (!online) { cls = "off"; text = "Offline · " + (n ? n + (n === 1 ? " change" : " changes") + " kept on this device, will send when online" : "showing the copy on this device"); }
@@ -652,7 +652,7 @@ function lhStatusCell(id) {
 }
 function regHtml() {
   if (!regRows.length) {
-    return `<div class="empty"><b>No register on this device yet</b>${state.cfg.key ? "It is read from LAD BAL (MOD) at the first sync. Press Sync now." : "Sign in from the Survey Unit panel (top bar), or add the address and your key in Settings."}</div>`;
+    return `<div class="empty"><b>No register on this device yet</b>${state.cfg.key ? "It is read from LAD BAL (MOD) at the first sync. Press Sync now." : (window.RSS_HOSTED ? "Add your key in Settings." : "Sign in from the Survey Unit panel (top bar).")}</div>`;
   }
   const nIn = regRows.filter(r => r.inside).length;
   const base = regRows.filter(r => fBal === "all" || (fBal === "in") === r.inside);
@@ -821,11 +821,11 @@ function dashHtml() {
 
 function settingsHtml() {
   const s = awSignin(), shared = !!(s && s.key && s.key === state.cfg.key);
-  return `<div class="panel"><h2>Connection</h2>
-      <p>${shared ? "Signed in through the Survey Unit panel" + (state.me ? " as " + esc(state.me.name) + " (" + esc(state.me.role) + ")" : "") + ". The one key opens every app." : "Use the Survey Unit web app address and your one key (the same key as Unit Desk and Time Log)."}</p>
-      <div class="row"><label class="f"><span>Web app address</span><input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https:&#47;&#47;script.google.com/macros/s/…/exec" ${window.RSS_HOSTED ? "readonly" : ""}></label>
+  return `<div class="panel"><h2>Sign-in</h2>
+      ${window.RSS_HOSTED ? `<p>Your one key (the same key as Unit Desk and Time Log).</p>
+      <div class="row"><input id="cUrl" type="hidden" value="${esc(state.cfg.url)}">
         <label class="f" style="max-width:200px"><span>Your key</span><input id="cKey" value="${esc(state.cfg.key)}" autocomplete="off" spellcheck="false" class="mono"></label>
-        <button class="btn primary" id="cSave">Connect</button></div>
+        <button class="btn primary" id="cSave">Connect</button></div>` : `<p>One sign-in for every app: <b>Sign in</b> in the Survey Unit panel's top bar. Sign out there too. ${shared && state.me ? "Signed in as <b>" + esc(state.me.name) + "</b> (" + esc(state.me.role) + ")." : "<b>Not signed in.</b>"}</p>`}
       <p class="note">Device ${esc(state.cfg.device)} · ${state.outbox.length} change(s) waiting · ${regRows.length.toLocaleString()} LHs in the register on this device</p></div>
     <div class="panel"><h2>Printing</h2><p>Blank checklist (page 1 of DARMSBT-LTISUR-F-01) for paper use, for example during an outage.</p>
       <button class="btn" id="pBlank">Print a blank checklist</button></div>
