@@ -381,7 +381,7 @@ html.peek body::before, html.peek body::after { display: none !important; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dm { --scan-f: invert(.88) hue-rotate(180deg); } }
 :root[data-theme="dark"] .dm { --scan-f: invert(.88) hue-rotate(180deg); }
 .dm-scan { filter: var(--scan-f); transition: filter .3s ease; }
-.dm.is-scan.has-focus .dm-scan:not(.dm-sharp) { filter: var(--scan-f) blur(1.6px) brightness(.42); }
+.dm.is-scan.has-focus .dm-scan:not(.dm-sharp) { filter: var(--scan-f) brightness(.7); }
 .dm-sharp { pointer-events: none; }
 .dm-r.is-scan { padding: 0 .3cqw; } .dm-r.is-scan .v { background: var(--paper); padding: 0 .4cqw; border-radius: 2px; font-size: clamp(7px, 1.6cqw, 13px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper-val) 35%, transparent); }
 .dm.is-scan .dm-r:not(.on) { border-color: transparent; } .dm.is-scan .dm-r.st-pass { border-color: color-mix(in srgb, var(--pass) 70%, transparent); } .dm.is-scan .dm-r.st-fail { border-color: var(--fail); }
@@ -1643,8 +1643,8 @@ function dmZoom(page, box) {
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, tx = Math.min(0, Math.max(100 - 100 * k, 50 - cx * k)), ty = Math.min(0, Math.max(100 - 100 * k, 50 - cy * k));
   inn.style.transform = `translate(${tx}%, ${ty}%) scale(${k})`;
 }
-// Light the given spots on one page. On a scan the page goes dark and blurred, and a sharp copy of the scan shows through each
-// spot (user, 2026-11-22: "make it glow ... the highlight is only readable and the background is blur"); nothing covers the text.
+// Light the given spots on one page. On a scan the rest of the page is darkened a little (no blur, so the spot can still be
+// located on the form; user, 2026-11-22) and an undimmed copy of the scan shows through each spot; nothing covers the text.
 function dmLight(page, regs) {
   page.querySelectorAll(".dm-sharp").forEach(x => x.remove());
   if (!regs.length) { page.classList.remove("has-focus"); dmZoom(page, null); return; }
