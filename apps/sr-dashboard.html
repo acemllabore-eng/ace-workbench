@@ -206,6 +206,13 @@ td { font-family: var(--mono); }
 .kindp.moved { animation: kmoved .7s ease-out; }
 @keyframes kmoved { from { box-shadow: 0 0 0 3px var(--kc); } to { box-shadow: 0 0 0 0 transparent; } }
 .order-reset { margin-left: 8px; }
+/* ALL kinds panel (2026-11-23): above the kinds, with each kind's share of it as chips under the header. */
+.kinds-all { margin-bottom: 22px; }
+.kinds-all:empty { display: none; }
+.kind-split { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: -2px 0 12px; font-size: 12px; color: var(--muted); }
+.kind-split span { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--chip-bg); }
+.kind-split i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.kind-split b { color: var(--fg); font-family: var(--mono); font-weight: 600; }
 .lh tbody tr[data-seq] { cursor: pointer; }
 .lh tbody tr[data-seq]:hover td { background: var(--hi); }
 .lh .open { color: var(--cyan); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
@@ -270,6 +277,8 @@ td { font-family: var(--mono); }
   </header>
   <div id="banner"></div>
   <!-- One panel per kind of survey: survey status pie; a status click opens the attachments pie of its SRs; a missing document opens its remark categories. -->
+  <!-- ALL kinds together (2026-11-23): one survey status pie of every SR shown, whatever its kind; always first, not dragged. -->
+  <section class="kinds kinds-all" id="kinds-all"></section>
   <section class="kinds" id="kinds"></section>
   <div class="notes" id="notes"></div>
 </div>
@@ -525,6 +534,8 @@ let sampleOn = false;
 // One colour per kind of survey, in the order the kinds are listed (a band and badge only; status colours stay the same in every pie).
 const KIND_COLORS = ["#1f9fc4", "#8a63e8", "#d9821a", "#24a274", "#d9487a", "#6b8e23", "#3f6fd8", "#b5651d"];
 let firstPaint = true;
+let kindColor = {}; // kind -> its colour, in the order shown (set by render)
+const ALL_KINDS = "All kinds", ALL_COLOR = "#22c3e6"; // the consolidated panel; its picks are kept under this name, like a kind's
 
 function render() {
   const raw = readDesk() || sampleDesk(), all = raw.list, AREA = ui.metric === "area"; sampleOn = !!raw.sample;
@@ -542,14 +553,26 @@ function render() {
     <div class="kind-head"><h2><button class="grip" type="button" aria-label="Move ${esc(k)}: drag, or use the arrow keys" title="Drag to move this kind up or down (or focus and press ↑ / ↓)">⠿</button><span class="kind-badge">${esc(k)}</span>survey statuses${AREA ? " by area (ha)" : ""}</h2><div class="right"><div class="cover" id="kc-${i}"></div><button class="btn" data-print="${i}" title="Print this kind of survey as shown: its pie, and the attachments, categories and list now open">Print</button></div></div>
     <div class="legend big" id="kl-${i}" aria-label="Show or hide a status"></div><div class="chart" id="kpie-${i}"></div><p class="hint" id="kh-${i}"></p><div class="att" id="katt-${i}"></div></section>`).join("")
     || `<div class="panel"><p class="read">No SRs.</p></div>`;
+  // ALL kinds (2026-11-23, user: "add another pie chart for consolidation of ALL kinds of survey then inside of pie chart is the status of survey"):
+  // the same status pie, attachments and categories as a kind's panel, over every SR shown; the chips give each kind's part of it.
+  const allHa = list.reduce((t, s) => t + (s.area || 0), 0);
+  kindColor = {}; kinds.forEach(k => { kindColor[k] = colorOf(k); });
+  $("kinds-all").innerHTML = kinds.length > 1 ? `<section class="panel kindp" id="kp-all" data-kind="${esc(ALL_KINDS)}" style="--kc:${ALL_COLOR}" aria-label="${esc(ALL_KINDS)}">
+    <div class="kind-head"><h2><span class="kind-badge">${esc(ALL_KINDS.toUpperCase())}</span>survey statuses, every kind together${AREA ? " by area (ha)" : ""}</h2><div class="right"><div class="cover" id="kc-all"></div><button class="btn" data-print="all" title="Print the ALL kinds pie as shown: its pie, and the attachments, categories and list now open">Print</button></div></div>
+    <div class="kind-split" aria-label="Each kind's part">${kinds.map(k => { const ks = list.filter(s => (s.kind || NOT_SET) === k), n = ks.length, ha = ks.reduce((t, s) => t + (s.area || 0), 0), v = AREA ? ha : n, of = AREA ? allHa : list.length;
+      return `<span title="${esc(k)}: ${n.toLocaleString()} SRs · ${fmtHa(ha)} ha"><i style="background:${colorOf(k)}"></i>${esc(k)} <b>${AREA ? fmtHa(ha) + " ha" : n.toLocaleString()}</b>${of ? ` · ${Math.round(v / of * 100)}%` : ""}</span>`; }).join("")}</div>
+    <div class="legend big" id="kl-all" aria-label="Show or hide a status"></div><div class="chart" id="kpie-all"></div><p class="hint" id="kh-all"></p><div class="att" id="katt-all"></div></section>` : "";
+  if (kinds.length > 1) renderKind(ALL_KINDS, "all", list, SER, AREA, rcats);
   kinds.forEach((k, i) => renderKind(k, i, list.filter(s => (s.kind || NOT_SET) === k), SER, AREA, rcats));
-  $("kinds").querySelectorAll("[data-print]").forEach(b => b.onclick = () => printKind(+b.dataset.print));
+  [$("kinds-all"), $("kinds")].forEach(box => box.querySelectorAll("[data-print]").forEach(b => b.onclick = () => printKind(b.dataset.print)));
+  bindRows($("kinds-all"));
   $("kinds").querySelectorAll(".grip").forEach(bindGrip);
   $("order-reset").hidden = !loadOrder().length;
   bindRows($("kinds"));
   firstPaint = false;
   const noArea = list.filter(s => s.area == null).length;
   $("notes").innerHTML = `<b>How these are counted</b><ul>
+    <li><b>All kinds</b> (first panel): every SR shown, whatever its kind, at its current survey status. The chips under its header give each kind's part (SRs, or hectares with <b>Area (ha)</b>). Click a status to split its SRs <b>by kind of survey</b>, then a kind to list them; attachments are in each kind's own panel.</li>
     <li>One pie per <b>kind of survey</b>: every SR of that kind at its current survey status, from this PC's SR Desk copy. The outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance).</li>
     <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. The status tables show both. <b>SRs</b> / <b>Area (ha)</b> at the top picks what the pie and the Share column measure.</li>
     <li>Click a status (or a DARPO status in the outer ring) to open the <b>attachments</b> of those SRs, from the SR Desk's Attachments tab. Each missing document counts every SR that lacks it, so an SR lacking two documents is in both slices. An SR with nothing missing is <b>Complete</b> (every required document marked Present or N/A), <b>Partly marked</b>, or <b>not marked yet</b>.</li>
@@ -583,9 +606,35 @@ function renderKind(kind, i, srs, SER, AREA, rcats) {
       delete ui.att[kind]; delete ui.cat[kind]; savePick(); ui.anim = ui.pick[kind] ? kind : null; render(); ui.anim = null;
       const a = $("katt-" + i); if (a && ui.pick[kind]) a.scrollIntoView({ block: "nearest", behavior: "smooth" }); },
     extra: z => `<div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px"><span>All ${esc(kind)} SRs</span><b>${z.total} · ${fmtHa(z.totalHa)} ha</b></div>` });
-  $("kh-" + i).textContent = pick ? "" : "Click a status to see the attachments of its SRs: what each one lacks and which are complete.";
+  $("kh-" + i).textContent = pick ? "" : kind === ALL_KINDS ? "Click a status to see its SRs by kind of survey." : "Click a status to see the attachments of its SRs: what each one lacks and which are complete.";
   if (!pick) { $("katt-" + i).innerHTML = ""; return; }
-  renderAtt(kind, i, srs, pick, rcats);
+  kind === ALL_KINDS ? renderByKind(i, srs, pick, AREA) : renderAtt(kind, i, srs, pick, rcats);
+}
+
+/* All kinds panel (2026-11-23, user: "make this in the red box the attachments into kinds of survey"): a status click opens a pie of
+   that status's SRs by kind of survey, in each kind's colour; a click on a kind lists its SRs at that status. Attachments stay in each kind's panel. */
+function renderByKind(i, srs, pick, AREA) {
+  const kind = ALL_KINDS, set = srs.filter(s => keyOf(statusOf(s)) === pick.st && (!pick.sub || (s.status || NOT_SET) === pick.sub));
+  const name = (pick.st === OTHER ? "Other statuses" : pick.st) + (pick.sub ? " › " + pick.sub : "");
+  const names = Object.keys(kindColor), row = { now: true }, by = {};
+  names.forEach(k => { row[k] = 0; row[k + HA] = 0; row[k + CM] = 0; by[k] = []; });
+  set.forEach(s => { const k = s.kind || NOT_SET; if (!(k in by)) return; by[k].push(s); row[k]++; row[k + HA] += s.area || 0; if (commitQ(s) !== undefined) row[k + CM]++; });
+  const ha = set.reduce((t, s) => t + (s.area || 0), 0);
+  const series = names.filter(k => row[k]).map(k => ({ key: AREA ? k + HA : k, status: k, name: k, color: kindColor[k] }));
+  let a = ui.att[kind]; if (a && !by[a]) a = ui.att[kind] = null;
+  const box = $("katt-" + i);
+  box.innerHTML = `<div class="${ui.anim === kind ? "att-in" : ""}"><div class="chart-head"><div><h3>By kind of survey · ${esc(name)}</h3>
+      <p class="read"><b>${set.length}</b> SR${set.length === 1 ? "" : "s"} · <b>${fmtHa(ha)}</b> ha at this status, split by kind of survey. Click a kind to list its SRs; each kind's own panel below shows their attachments.</p></div>
+      <button class="btn" id="kx-${i}">Close</button></div>
+    <div class="chart" id="kap-${i}"></div><div id="kd-${i}"></div></div>`;
+  $("kx-" + i).onclick = () => { delete ui.pick[kind]; delete ui.att[kind]; savePick(); render(); };
+  pieChart($("kap-" + i), row, null, { label: `SRs at ${name} by kind of survey`, spin: ui.anim === kind, series, col: "Kind of survey",
+    num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs", center: AREA ? fmtHa(ha) : set.length, cw: "at this status", tipTitle: name,
+    empty: "No SRs at this status.", pick: a, both: { n: s => row[s.status] || 0, ha: s => row[s.status + HA] || 0 },
+    onPick: st => { ui.att[kind] = ui.att[kind] === st ? null : st; render(); } });
+  if (!a) return;
+  $("kd-" + i).innerHTML = `<div class="cat att-in"><div class="chart-head"><h3>${esc(a)} · ${esc(name)} · ${by[a].length} SR${by[a].length === 1 ? "" : "s"}</h3></div>${by[a].length ? lhTable(by[a]) : `<p class="read">None.</p>`}</div>`;
+  bindRows($("kd-" + i));
 }
 
 function renderAtt(kind, i, srs, pick, rcats) {
