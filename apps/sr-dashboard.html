@@ -570,6 +570,18 @@ const commitLabel = q => q === undefined ? "" : q === "0" ? "Commitment" : `Comm
 const CM = " cm"; // suffix of the commitment count next to each status's count
 const hidden = new Set();
 try { (JSON.parse(localStorage.getItem("srdash-hidden")) || []).forEach(k => hidden.add(k)); } catch (e) {}
+/* Show / hide key on the sub pies (2026-11-23, user, on the status key of a kind panel: "add this ... to the sub pie charts"): By kind of survey,
+   Attachments and Remark categories. One saved set; keys carry the pie as a prefix ("kind:", "att:", "cat:<document>:"). Returns the series still shown. */
+const subHidden = new Set();
+try { (JSON.parse(localStorage.getItem("srdash-subhidden")) || []).forEach(k => subHidden.add(k)); } catch (e) {}
+function subKey(el, pfx, series) {
+  if (!el) return series;
+  el.innerHTML = series.filter(x => !x.srs || x.srs.length).map(x => `<button aria-pressed="${!subHidden.has(pfx + x.status)}" data-k="${esc(x.status)}"><i style="background:${x.color};color:${x.color}"></i>${esc(x.name)}</button>`).join("");
+  el.querySelectorAll("button").forEach(b => b.onclick = () => { const k = pfx + b.dataset.k; subHidden.has(k) ? subHidden.delete(k) : subHidden.add(k);
+    try { localStorage.setItem("srdash-subhidden", JSON.stringify([...subHidden])); } catch (e) {} render(); });
+  return series.filter(x => !subHidden.has(pfx + x.status));
+}
+const SUB_EMPTY = "Everything is hidden. Click one in the key to show it.";
 
 // Attachments pie: up to 7 missing documents by colour, the rest folded into one grey slice, then the SRs with nothing missing.
 const ATT_COLORS = ["#d95926", "#d55181", "#c98500", "#9085e9", "#3987e5", "#e66767", "#22c3e6"], ATT_MAX = 7, OTHER_MISS = "Other missing documents";
@@ -691,11 +703,14 @@ function renderByKind(i, srs, pick, AREA) {
   box.innerHTML = `<div class="${ui.anim === kind ? "att-in" : ""}"><div class="chart-head"><div><h3>By kind of survey · ${esc(name)}</h3>
       <p class="read"><b>${set.length}</b> SR${set.length === 1 ? "" : "s"} · <b>${fmtHa(ha)}</b> ha at this status, split by kind of survey. Click a kind to list its SRs; each kind's own panel below shows their attachments.</p></div>
       <button class="btn" id="kx-${i}">Close</button></div>
-    <div class="chart" id="kap-${i}"></div><div id="kd-${i}"></div></div>`;
+    <div class="legend big" id="kapl-${i}" aria-label="Show or hide a kind of survey"></div><div class="chart" id="kap-${i}"></div><div id="kd-${i}"></div></div>`;
   $("kx-" + i).onclick = () => { delete ui.pick[kind]; delete ui.att[kind]; savePick(); render(); };
-  pieChart($("kap-" + i), row, null, { label: `SRs at ${name} by kind of survey`, spin: ui.anim === kind, series, col: "Kind of survey",
-    num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs", center: AREA ? fmtHa(ha) : set.length, cw: "at this status", tipTitle: name,
-    empty: "No SRs at this status.", pick: a, both: { n: s => row[s.status] || 0, ha: s => row[s.status + HA] || 0 },
+  const vis = subKey($("kapl-" + i), "kind:", series), off = series.length - vis.length;
+  const visN = vis.reduce((t, x) => t + row[x.status], 0), visHa = vis.reduce((t, x) => t + row[x.status + HA], 0);
+  if (off) box.querySelector(".chart-head .read").insertAdjacentHTML("beforeend", ` Shown: <b>${visN}</b> of ${set.length} SRs · <b>${fmtHa(visHa)}</b> ha (${off} kind${off === 1 ? "" : "s"} hidden).`);
+  pieChart($("kap-" + i), row, null, { label: `SRs at ${name} by kind of survey`, spin: ui.anim === kind, series: vis, col: "Kind of survey",
+    num: AREA ? fmtHa : v => v.toLocaleString(), unit: AREA ? "hectares" : "SRs", center: AREA ? fmtHa(visHa) : visN, cw: "at this status", tipTitle: name,
+    empty: off ? SUB_EMPTY : "No SRs at this status.", pick: vis.some(x => x.status === a) ? a : null, both: { n: s => row[s.status] || 0, ha: s => row[s.status + HA] || 0 },
     onPick: st => { ui.att[kind] = ui.att[kind] === st ? null : st; render(); } });
   if (!a) return;
   $("kd-" + i).innerHTML = `<div class="cat att-in"><div class="chart-head"><h3>${esc(a)} · ${esc(name)} · ${by[a].length} SR${by[a].length === 1 ? "" : "s"}</h3></div>${by[a].length ? lhTable(by[a]) : `<p class="read">None.</p>`}</div>`;
@@ -718,10 +733,12 @@ function renderAtt(kind, i, srs, pick, rcats) {
   box.innerHTML = `<div class="${ui.anim === kind ? "att-in" : ""}"><div class="chart-head"><div><h3>Attachments · ${esc(kind)} · ${esc(name)}</h3>
       <p class="read"><b>${set.length}</b> SR${set.length === 1 ? "" : "s"}: <b>${lacking}</b> lacking at least one document, <b>${groups[COMPLETE].length}</b> complete, ${groups[PARTLY].length} partly marked, ${groups[UNCHECKED].length} not marked yet. Share is of the slice totals: an SR lacking two documents counts in both. Click a missing document to sort its remarks into categories; click Complete or another group to list its SRs.</p></div>
       <button class="btn" id="kx-${i}">Close</button></div>
-    <div class="chart" id="kap-${i}"></div><div id="kd-${i}"></div></div>`;
+    <div class="legend big" id="kapl-${i}" aria-label="Show or hide an attachment group"></div><div class="chart" id="kap-${i}"></div><div id="kd-${i}"></div></div>`;
   $("kx-" + i).onclick = () => { delete ui.pick[kind]; delete ui.att[kind]; delete ui.cat[kind]; savePick(); render(); };
-  pieChart($("kap-" + i), row, null, { label: `Attachments of ${kind} SRs at ${name}`, spin: ui.anim === kind, series, num: v => v.toLocaleString(), unit: "SRs", col: "Attachment", center: set.length,
-    cw: "at this status", empty: "No SRs at this status.", pick: a ? (folded.includes(a) ? OTHER_MISS : a) : null,
+  const vis = subKey($("kapl-" + i), "att:", series), off = series.length - vis.length, aSl = a ? (folded.includes(a) ? OTHER_MISS : a) : null;
+  pieChart($("kap-" + i), row, null, { label: `Attachments of ${kind} SRs at ${name}`, spin: ui.anim === kind, series: vis, num: v => v.toLocaleString(), unit: "SRs", col: "Attachment",
+    center: off ? uniq(vis.map(x => x.srs)).length : set.length, cw: off ? "in the shown slices" : "at this status", empty: off ? SUB_EMPTY : "No SRs at this status.",
+    pick: vis.some(x => x.key === aSl) ? aSl : null,
     tipFor: (o, p) => `<div class="t">${esc(name)}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${p}</b></div><div class="r"><span>SRs</span><b>${o.v}</b></div>`,
     onPick: st => { ui.att[kind] = ui.att[kind] === st ? null : st; delete ui.cat[kind]; render(); } });
   const d = $("kd-" + i);
@@ -752,7 +769,7 @@ function catPanel(kind, i, label, srs, rm, rcats, d) {
   let pc = ui.cat[kind]; if (pc && !cs.some(x => x.key === pc)) pc = ui.cat[kind] = null;
   const picked = pc ? cs.find(x => x.key === pc).srs : [];
   d.innerHTML = `<div class="cat att-in"><div class="chart-head"><div><h3>Remark categories</h3><p class="read">${esc(label)} · ${srs.length} SR${srs.length === 1 ? "" : "s"}</p></div><button class="btn" id="kcx-${i}">Close</button></div>
-    ${cs.length ? `<div class="chart" id="kcp-${i}"></div><p class="read">${srs.length - inCat} of ${srs.length} SRs not in a category yet. Click a category to list its SRs.</p>`
+    ${cs.length ? `<div class="legend big" id="kcpl-${i}" aria-label="Show or hide a category"></div><div class="chart" id="kcp-${i}"></div><p class="read">${srs.length - inCat} of ${srs.length} SRs not in a category yet. Click a category to list its SRs.</p>`
       : `<div class="rem-empty">No categories yet for this document. Tick the remarks that mean the same thing, name the category, then press Combine. The pie starts with your first category.</div>`}
     ${picked.length ? `<h3 style="margin-top:10px">${picked.length} SR${picked.length === 1 ? "" : "s"} in ${esc(pc)}</h3>${lhTable(picked, s => rm[s.seq] || "")}` : ""}
     <div class="cat-edit">
@@ -763,8 +780,10 @@ function catPanel(kind, i, label, srs, rm, rcats, d) {
         <button class="btn primary" id="kadd-${i}">Combine</button></div>
       <p class="read" style="margin:0">Typing an existing name adds to it. Categories are saved on this device only, shared with the SR Desk dashboard.</p></div></div>`;
   $("kcx-" + i).onclick = () => { ui.att[kind] = null; delete ui.cat[kind]; render(); };
-  if (cs.length) pieChart($("kcp-" + i), row, null, { label: `Remark categories of ${label}`, spin: true, series: cs, num: v => v.toLocaleString(), unit: "SRs", col: "Category", center: inCat, cw: "in a category",
-    pick: pc, tipFor: (o, p) => `<div class="t">${esc(label)}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${p}</b></div><div class="r"><span>SRs</span><b>${o.v}</b></div><div class="r"><span>Remarks</span><b>${o.s.n}</b></div>`,
+  const csVis = cs.length ? subKey($("kcpl-" + i), "cat:" + label + ":", cs) : cs, csOff = cs.length - csVis.length;
+  if (cs.length) pieChart($("kcp-" + i), row, null, { label: `Remark categories of ${label}`, spin: true, series: csVis, num: v => v.toLocaleString(), unit: "SRs", col: "Category",
+    center: csOff ? uniq(csVis.map(x => x.srs)).length : inCat, cw: csOff ? "in the shown categories" : "in a category", empty: SUB_EMPTY,
+    pick: csVis.some(x => x.key === pc) ? pc : null, tipFor: (o, p) => `<div class="t">${esc(label)}</div><div class="r"><span><i style="background:${o.s.color}"></i>${esc(o.s.name)}</span><b>${p}</b></div><div class="r"><span>SRs</span><b>${o.v}</b></div><div class="r"><span>Remarks</span><b>${o.s.n}</b></div>`,
     onPick: st => { ui.cat[kind] = ui.cat[kind] === st ? null : st; render(); } });
   d.querySelectorAll("[data-uncat]").forEach(b => b.onclick = () => { const r = loadRcats(), c = catNames[+b.dataset.uncat]; if (r[label]) { delete r[label][c]; if (!Object.keys(r[label]).length) delete r[label]; } saveRcats(r); render(); });
   const q = $("kq-" + i); q.oninput = () => { const words = q.value.toLowerCase().split(/\s+/).filter(Boolean), rows = [...d.querySelectorAll(".cat-pick label")];
