@@ -121,6 +121,24 @@ td.who { min-width: 160px; }
 .sdk .kind-head h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sdk .kind-badge { font-size: 13px; font-weight: 700; letter-spacing: .04em; padding: 3px 10px; border-radius: 6px; background: var(--kc); color: #fff; }
 .sdk-ctl { display: flex; gap: 8px; flex-wrap: wrap; }
+.msel { position: relative; font-size: 12.5px; }
+.msel summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: var(--radius); padding: 6px 10px; max-width: 300px; white-space: nowrap; user-select: none; }
+.msel summary::-webkit-details-marker { display: none; }
+.msel .ms-l { color: var(--muted); }
+.msel .ms-v { overflow: hidden; text-overflow: ellipsis; font-weight: 600; min-width: 0; }
+.msel .ms-n { color: var(--muted); font-weight: 400; }
+.msel .ms-c { color: var(--muted); font-size: 10px; }
+.msel.on summary { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.msel.off summary { opacity: .5; cursor: not-allowed; }
+.msel .ms-pop { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; width: max-content; min-width: 260px; max-width: min(380px, calc(100vw - 16px)); max-height: 340px; overflow: auto;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 28px rgba(0,0,0,.28); padding: 6px; }
+.msel .ms-act { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 2px 4px 6px; margin-bottom: 4px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11.5px; }
+.msel .ms-act button { border: 0; background: none; color: var(--accent); cursor: pointer; font: inherit; padding: 2px 4px; }
+.msel .ms-act button[disabled] { color: var(--muted); opacity: .5; cursor: default; }
+.msel .ms-pop label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px; border-radius: 6px; cursor: pointer; }
+.msel .ms-pop label:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.msel .ms-pop input { accent-color: var(--accent); margin: 0; }
+.msel .ms-pop b { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 500; }
 .pill.commit { margin-top: 3px; font-size: 11px; padding: 1px 7px; background: var(--accent-bg); color: var(--fg); box-shadow: inset 0 0 0 1px var(--accent); font-family: inherit; }
 .sdk .cover { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .sdk .cover b { color: var(--fg); }
@@ -1858,7 +1876,7 @@ function edit(seq, mutate) {
 let syncing = false, syncTimer = null;
 function scheduleSync(ms = 1500) { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); }
 async function api(method, payload) {
-  if (!state.cfg.url || !state.cfg.key) throw new Error((HOSTED ? "Not set up: add your key in Settings" : "Not signed in: use Sign in in the Survey Unit panel's top bar"));
+  if (!state.cfg.url || !state.cfg.key) throw new Error((HOSTED ? "Not set up: add your key in Settings" : "Not signed in: use Sign in in the top bar of the Survey Unit panel"));
   let r;
   if (method === "GET") r = await fetch(state.cfg.url + "?action=" + payload + "&key=" + encodeURIComponent(state.cfg.key), { redirect: "follow" });
   else r = await fetch(state.cfg.url, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ key: state.cfg.key, device: state.cfg.device }, payload)) });
@@ -1987,7 +2005,7 @@ function render() {
 
 function renderRegister(opts = {}) {
   const list = allSRs();
-  if (!list.length) { view.innerHTML = `<div class="panel empty">No SRs on this PC yet. Sign in from the Survey Unit panel's top bar, then press Sync now while online.</div>`; return; }
+  if (!list.length) { view.innerHTML = `<div class="panel empty">No SRs on this PC yet. Sign in from the top bar of the Survey Unit panel, then press Sync now while online.</div>`; return; }
   const counts = { Open: list.filter(isOpen).length, All: list.length, Mine: state.me ? list.filter(s => s.verifier === state.me.name).length : 0, Attention: list.filter(s => s.conflict).length };
   Object.keys(STATUS_CLASS).forEach(s => counts[s] = list.filter(r => r.status === s).length);
   const chips = ["Open", ...SUBS, "Mine", "All"].concat(counts.Attention ? ["Attention"] : []);
@@ -2223,7 +2241,39 @@ const sdBySeq = (a, b) => (Number(a.seq) - Number(b.seq)) || String(a.seq).local
 const sdLoad = (k, d) => { try { const v = JSON.parse(localStorage.getItem(STORE + k)); return v == null ? d : v; } catch (e) { return d; } };
 const sdSave = (k, v) => { try { localStorage.setItem(STORE + k, JSON.stringify(v)); } catch (e) {} };
 const SD_COMMITS = { all: "All LHs", in: "Commitment", out: "Not commitment" };
+// ODC status (MASBATE CCLOA ACCOUNTING column P "ODC Status") and ALI case status (column CA "OnALI 1"), from the register (2026-11-23).
+// "" = every value. ODC is upper-cased so "With ODC" and "WITH ODC" are one value; a blank cell is "Not set".
+const sdOdc = s => String(s.odc || "").replace(/\s+/g, " ").trim().toUpperCase() || NOT_SET;
+const sdAli = s => String(s.ali || "").replace(/\s+/g, " ").trim() || NOT_SET;
+/* Multi-select dropdown (2026-11-23, user: "enable the multiple selection in the filter"): a <details> with a tick box per value;
+   nothing ticked = every value. Stays open while boxes are ticked (the page redraws behind it); a click outside or Esc closes it. */
+let mselOpen = "";
+const mselSort = (a, b) => (a === NOT_SET) - (b === NOT_SET) || a.localeCompare(b, undefined, { numeric: true });
+const mselArr = v => Array.isArray(v) ? v.map(String) : v ? [String(v)] : [];
+function mselHtml(id, label, counts, total, sel, off) {
+  sel.forEach(v => { if (!(v in counts)) counts[v] = 0; });
+  const vals = Object.keys(counts).sort(mselSort);
+  const sum = !sel.length ? `All <span class="ms-n">(${total.toLocaleString()})</span>` : sel.length === 1 ? esc(sel[0]) : `${sel.length} selected`;
+  return `<details class="msel${sel.length ? " on" : ""}${off ? " off" : ""}" id="${id}"${mselOpen === id && !off ? " open" : ""}>
+    <summary aria-label="${esc(label)}${sel.length ? ": " + esc(sel.join(", ")) : ": all"}" title="${esc(off || (sel.length ? sel.join("\n") : "All values"))}"><span class="ms-l">${esc(label)}</span><span class="ms-v">${sum}</span><span class="ms-c" aria-hidden="true">▾</span></summary>
+    <div class="ms-pop" role="group" aria-label="${esc(label)}"><div class="ms-act"><span>Tick one or more</span><button type="button" data-a="clear"${sel.length ? "" : " disabled"}>Clear · show all</button></div>
+    ${vals.map(v => `<label><input type="checkbox" value="${esc(v)}"${sel.includes(v) ? " checked" : ""}><span>${esc(v)}</span><b>${counts[v].toLocaleString()}</b></label>`).join("")}</div></details>`;
+}
+function mselBind(el, onSet) {
+  if (!el) return;
+  if (el.classList.contains("off")) { el.querySelector("summary").onclick = e => e.preventDefault(); return; }
+  const fit = () => { const p = el.querySelector(".ms-pop"); p.style.left = "0px"; const r = p.getBoundingClientRect(), over = r.right - (document.documentElement.clientWidth - 8);
+    if (over > 0) p.style.left = -Math.min(over, r.left - 8) + "px"; };
+  el.querySelector("summary").onclick = () => { mselOpen = el.open ? "" : el.id; }; // before the (async) toggle event, so a quick tick keeps it open
+  el.ontoggle = () => { if (el.open) { mselOpen = el.id; fit(); } else if (mselOpen === el.id) mselOpen = ""; };
+  if (el.open) fit();
+  el.querySelectorAll("input").forEach(c => c.onchange = () => onSet([...el.querySelectorAll("input:checked")].map(x => x.value)));
+  el.querySelector("[data-a=clear]").onclick = () => onSet([]);
+}
+document.addEventListener("click", e => { if (!e.target.isConnected) return; document.querySelectorAll("details.msel[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") document.querySelectorAll("details.msel[open]").forEach(d => { d.open = false; }); });
 const sd = { metric: sdLoad("-dash-metric", "count") === "area" ? "area" : "count", commit: SD_COMMITS[sdLoad("-dash-commit", "all")] ? sdLoad("-dash-commit", "all") : "all", pick: sdLoad("-dash-pick", {}) || {}, att: {}, anim: null, first: true,
+  odc: mselArr(sdLoad("-dash-odc", [])), ali: mselArr(sdLoad("-dash-ali", [])),
   hidden: new Set(sdLoad("-dash-hidden", []) || []) };
 let sdKeyOf = st => st;
 
@@ -2307,22 +2357,29 @@ const sdRedraw = () => { const y = scrollY; renderDashboard(); scrollTo(0, y); }
 
 function renderDashboard() {
   const all = allSRs().filter(s => s && inBatch(s)), AREA = sd.metric === "area", SER = sdSeries(all);
-  const every = sd.commit === "all" ? all : all.filter(s => (commitQ(s) !== undefined) === (sd.commit === "in"));
+  const byCommit = sd.commit === "all" ? all : all.filter(s => (commitQ(s) !== undefined) === (sd.commit === "in"));
+  const every = byCommit.filter(s => (!sd.odc.length || sd.odc.includes(sdOdc(s))) && (!sd.ali.length || sd.ali.includes(sdAli(s))));
+  const hasAli = all.some(s => String(s.ali || "").trim());
+  const pickSel = (id, label, fn, cur, off) => { const n = {}; byCommit.forEach(s => { const v = fn(s); n[v] = (n[v] || 0) + 1; }); return mselHtml(id, label, n, byCommit.length, cur, off); };
+  const filt = [sd.odc.length && "ODC: " + sd.odc.join(", "), sd.ali.length && "ALI: " + sd.ali.join(", ")].filter(Boolean);
   view.innerHTML = `<div class="sdk">
-    <div class="sdk-top"><div><h2>Survey status</h2><div class="sub">${SD_KINDS.map(esc).join(" and ")} · ${sd.commit === "all" ? "every SR of the kind" : sd.commit === "in" ? "only the LHs committed for registration" : "only the LHs not committed for registration"} at its current survey status, from this ${HOSTED ? "phone" : "PC"}'s copy</div></div>
+    <div class="sdk-top"><div><h2>Survey status</h2><div class="sub">${SD_KINDS.map(esc).join(" and ")} · ${sd.commit === "all" ? "every SR of the kind" : sd.commit === "in" ? "only the LHs committed for registration" : "only the LHs not committed for registration"}${filt.length ? ` · ${esc(filt.join(" · "))} (${every.length.toLocaleString()} SRs)` : ""} at its current survey status, from this ${HOSTED ? "phone" : "PC"}'s copy</div></div>
       <div class="sdk-ctl"><div class="seg" role="group" aria-label="Commitment for registration" id="sd-commit">${Object.entries(SD_COMMITS).map(([k, l]) => `<button type="button" data-c="${k}" aria-pressed="${sd.commit === k}">${l}</button>`).join("")}</div>
-      <div class="seg" role="group" aria-label="Measure" id="sd-metric"><button type="button" data-m="count" aria-pressed="${!AREA}">SRs</button><button type="button" data-m="area" aria-pressed="${AREA}">Area (ha)</button></div></div></div>
+      <div class="seg" role="group" aria-label="Measure" id="sd-metric"><button type="button" data-m="count" aria-pressed="${!AREA}">SRs</button><button type="button" data-m="area" aria-pressed="${AREA}">Area (ha)</button></div>
+      ${pickSel("sd-odc", "ODC status", sdOdc, sd.odc)}${pickSel("sd-ali", "ALI case status", sdAli, sd.ali, hasAli ? "" : "Not in this PC's register yet: it arrives with the next register rebuild after the SR Desk web app update")}</div></div>
     ${SD_KINDS.map((k, i) => `<section class="panel sdk-kind" style="--kc:${SD_KIND_COLOR[k] || "var(--accent)"}" aria-label="${esc(k)}">
       <div class="kind-head"><h2><span class="kind-badge">${esc(k)}</span>survey statuses${AREA ? " by area (ha)" : ""}</h2><div class="cover" id="sd-kc-${i}"></div></div>
       <div class="sdk-body"><div class="legend" id="sd-kl-${i}" aria-label="Show or hide a status"></div><div class="chart" id="sd-pie-${i}"></div><p class="hint" id="sd-kh-${i}"></p><div class="att" id="sd-att-${i}"></div></div></section>`).join("")}
     <div class="sdk-notes"><b>How these are counted</b><ul>
       <li><b>Commitment</b> marks the ${COMMIT.size.toLocaleString()} LHs committed for registration in ${esc(COMMIT_SRC)} (by Seq No, with the New Milestone quarter). <b>Commitment</b> / <b>Not commitment</b> limits both pies to them; with <b>All LHs</b>, each status's tooltip and the SR lists still show which are committed.</li>
+      <li><b>ODC status</b> and <b>ALI case status</b> come from MASBATE CCLOA ACCOUNTING › MASBATE, columns P (ODC Status) and CA (OnALI 1), as of the last register rebuild. They limit both pies, together with the commitment switch; the numbers in each list are SRs of ${SD_KINDS.map(esc).join(" and ")} within the commitment choice.</li>
       <li>The outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance).</li>
       <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction is used); an SR with no area adds 0 ha. The tables show both; <b>SRs</b> / <b>Area (ha)</b> picks what the pie and Share measure.</li>
       <li>Click a status (or a DARPO status in the outer ring) to open the <b>survey matrix</b> of its SRs: the SURVEY MATRIX column of the 2025-A and SBA 2026 trackers, as of the last register rebuild (every 15 minutes). Click a slice to list its SRs.</li></ul></div></div>`;
   SD_KINDS.forEach((k, i) => sdKind(k, i, every.filter(s => s.kind === k), SER, AREA));
   view.querySelectorAll("#sd-metric button").forEach(b => b.onclick = () => { sd.metric = b.dataset.m; sdSave("-dash-metric", sd.metric); sdRedraw(); });
   view.querySelectorAll("#sd-commit button").forEach(b => b.onclick = () => { sd.commit = b.dataset.c; sdSave("-dash-commit", sd.commit); sdRedraw(); });
+  [["sd-odc", "odc"], ["sd-ali", "ali"]].forEach(([id, f]) => mselBind(document.getElementById(id), v => { sd[f] = v; sdSave("-dash-" + f, v); sdRedraw(); }));
   view.querySelectorAll(".lh tr[data-seq]").forEach(tr => { tr.onclick = () => openSR(tr.dataset.seq); tr.onkeydown = e => { if (e.key === "Enter") openSR(tr.dataset.seq); }; });
   sd.first = false;
 }
@@ -2404,7 +2461,7 @@ function renderSettings() {
     <section class="panel"><div class="panel-head"><h2>Sign-in</h2><span class="sub">${HOSTED ? "This phone" : "This PC"}: <span class="mono">${esc(state.cfg.device)}</span></span></div>
       <div class="panel-body"><form class="form" id="cfg">
         ${HOSTED ? `<p class="hint"><b>Phone version: needs internet.</b> Each change goes to the Sheet at once and is not kept on the phone. With no signal, a change is refused. No Excel backup is made here; the PCs make them.</p>`
-          : `<p class="hint">One sign-in for every app: <b>Sign in</b> in the Survey Unit panel's top bar. Sign out there too. The key decides whose name goes on the checklists you save from this PC.</p>
+          : `<p class="hint">One sign-in for every app: <b>Sign in</b> in the top bar of the Survey Unit panel. Sign out there too. The key decides whose name goes on the checklists you save from this PC.</p>
         <p class="readonly-note">${state.cfg.key && state.me ? "Signed in as <b>" + esc(state.me.name) + "</b>." : "<b>Not signed in.</b>"}</p>`}
         ${HOSTED ? `<div class="field"><label for="c-key">Your verifier key</label><input id="c-key" required autocomplete="off" spellcheck="false" placeholder="ABCDE-12345" value="${esc(state.cfg.key)}"></div>
         <p class="hint">Each verifier has their own key. It decides whose name goes on the checklists you save from this phone. Get it from the Admin. Your Survey Unit key (Unit Desk, Time Log, Databases) works here too.</p>
@@ -2453,7 +2510,7 @@ function nextStep(s) {
   const c = CL[s.route], t = tally(s), a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {};
   const dl = (DATE_LABEL[s.survey] || "Date of this status").replace(/^D/, "d"), cut = x => x.length > 48 ? x.slice(0, 46).trim() + "…" : x;
   if (s.conflict) return { step: "details", text: "Your change was refused. Read the message below, then dismiss it." };
-  if (!canEdit(s)) return { step: "details", text: state.me ? `Held by ${s.verifier}. You can read this SR but not change it.` : (HOSTED ? "Connect in Settings to work on this SR." : "Sign in from the panel's top bar to work on this SR.") };
+  if (!canEdit(s)) return { step: "details", text: state.me ? `Held by ${s.verifier}. You can read this SR but not change it.` : (HOSTED ? "Connect in Settings to work on this SR." : "Sign in from the top bar of the panel to work on this SR.") };
   const tn = !isPractice(s.seq) && state.records[s.seq] && state.records[s.seq].tracker_note, tq = state.queue[s.seq];
   if (tn && tn.result === "changed" && !(tq && tq.data && typeof tq.data.trackerAck === "string"))
     return { step: "details", focus: "dw-track-ack", text: "The tracker was changed by hand. Check with whoever changed it, then write over it or leave it." };
@@ -2543,7 +2600,7 @@ function openSR(seq) {
     [inTracker ? "Survey status (tracker)" : "Survey whereabouts (accounting)", trackerNow(s)], ["DARMO / MARPO", [s.darmo, s.marpo].filter(Boolean).join(" · ")]]
     .concat([["Status date (tracker)", fmtDate(s.orig.statusDate)], ["Team", s.team, "team"], ["Schedule of survey", fmtDate(s.schedule), "schedule"], ["Fieldwork completed", fmtDate(s.fwc)],
       ["Preliminary check", s.prelim], ["SR received (tracker)", fmtDate(s.srReceived)], ["SR hardcopy at DARPO", fmtDate(s.darpoReceived)],
-      ["Date transmitted", fmtDate(s.transmitted)], ["Verifier (tracker)", s.trackerVerifier], ["Survey matrix", s.surveyMatrix], ["Commitment for registration", commitQ(s) === undefined ? "" : commitQ(s) === "0" ? `Yes (${COMMIT_SRC})` : `Yes · CY 2026 Q${commitQ(s)} target (${COMMIT_SRC})`], ["In-house", s.inHouse], ["Source (own list)", s.ownSource], ["Notes (own list)", s.ownNote]].filter(([, v]) => v !== "" && v !== undefined && v !== null));
+      ["Date transmitted", fmtDate(s.transmitted)], ["Verifier (tracker)", s.trackerVerifier], ["Survey matrix", s.surveyMatrix], ["ALI case status", s.ali], ["Commitment for registration", commitQ(s) === undefined ? "" : commitQ(s) === "0" ? `Yes (${COMMIT_SRC})` : `Yes · CY 2026 Q${commitQ(s)} target (${COMMIT_SRC})`], ["In-house", s.inHouse], ["Source (own list)", s.ownSource], ["Notes (own list)", s.ownNote]].filter(([, v]) => v !== "" && v !== undefined && v !== null));
   const dlRows = list => list.map(([k, v, f]) => `<div><dt>${esc(k)}</dt><dd ${/No\.|Area/.test(k) ? 'class="mono"' : ""}>${esc(v) || '<span class="sub">—</span>'}${f ? ed(f) : ""}</dd></div>`).join("");
   const hid = p => ui.step === p ? "" : "hidden";
   const stepDefs = [["details", "Details"]].concat(isOpen(s) ? [["xc", "Cross-check"]] : [], [["attach", "Attachments"], ["checks", "Document checks"], ["notice", "Notice"]]);
@@ -2716,7 +2773,7 @@ function histHtml(s) {
     rows.push(`<div class="hist-row">${dateCell(x.survey, x.status_date)}<span><b>${esc(x.survey || NOT_SET)}</b>${x.status ? " · " + esc(x.status) : ""}</span><span class="sub">${x.status_date ? esc(DATE_LABEL[x.survey] || "Date") + " · " : ""}changed ${fmtTime(x.at)} by ${esc(x.by)}${t ? " · " + esc(t) : ""}</span></div>`); });
   const start = s.kind === "No batch tracker" ? `<p class="readonly-note">In no batch tracker. Survey whereabouts in MASBATE CCLOA ACCOUNTING: ${esc(s.surveyStatus || "blank")}.</p>`
     : `<p class="readonly-note">Now in the ${s.own ? "SR Desk own list (" + esc(s.kind) + ")" : esc(s.kind) + " tracker"}: <b>${esc(trackerNow(s) || "blank")}</b>. Changes made in the tracker by hand are not listed here.</p>`;
-  const note = !state.cfg.url ? "Shown when this PC is signed in (panel's top bar)." : !h ? "Loading…" : h.error ? `Could not load the history: ${esc(h.error)}` : "";
+  const note = !state.cfg.url ? "Shown when this PC is signed in (Sign in in the panel)." : !h ? "Loading…" : h.error ? `Could not load the history: ${esc(h.error)}` : "";
   return `${rows.length ? `<div class="hist">${rows.join("")}</div>` : ""}${note ? `<p class="readonly-note">${note}</p>` : ""}${h && h.list ? start : ""}
     ${h && h.list && !h.list.length && !(q && q.data) ? `<p class="readonly-note">No status change saved in the SR Desk yet.</p>` : ""}`;
 }

@@ -55,6 +55,24 @@ header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content:
 h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em; }
 .src { color: var(--muted); font-size: 12.5px; }
 .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.msel { position: relative; font-size: 12.5px; }
+.msel summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--ctrl-bg); color: var(--fg); border-radius: 8px; padding: 6px 10px; max-width: 300px; white-space: nowrap; user-select: none; }
+.msel summary::-webkit-details-marker { display: none; }
+.msel .ms-l { color: var(--muted); }
+.msel .ms-v { overflow: hidden; text-overflow: ellipsis; font-weight: 600; min-width: 0; }
+.msel .ms-n { color: var(--muted); font-weight: 400; }
+.msel .ms-c { color: var(--muted); font-size: 10px; }
+.msel.on summary { border-color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan); }
+.msel.off summary { opacity: .5; cursor: not-allowed; }
+.msel .ms-pop { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; width: max-content; min-width: 260px; max-width: min(380px, calc(100vw - 16px)); max-height: 340px; overflow: auto;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.28); padding: 6px; }
+.msel .ms-act { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 2px 4px 6px; margin-bottom: 4px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11.5px; }
+.msel .ms-act button { border: 0; background: none; color: var(--cyan); cursor: pointer; font: inherit; padding: 2px 4px; }
+.msel .ms-act button[disabled] { color: var(--muted); opacity: .5; cursor: default; }
+.msel .ms-pop label { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px; border-radius: 6px; cursor: pointer; }
+.msel .ms-pop label:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.msel .ms-pop input { accent-color: var(--cyan); margin: 0; }
+.msel .ms-pop b { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 500; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--ctrl-bg); }
 .seg button { border: 0; background: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 12px; }
 .seg button[aria-pressed="true"] { background: rgba(34,195,230,.14); color: var(--fg); box-shadow: inset 0 0 0 1px rgba(34,195,230,.45); }
@@ -272,6 +290,7 @@ td { font-family: var(--mono); }
     </div>
     <div class="controls">
       <div class="seg" role="group" aria-label="Commitment for registration" id="commit"><button data-c="all">All LHs</button><button data-c="in">Commitment</button><button data-c="out">Not commitment</button></div>
+      <span id="f-odc-box"></span><span id="f-ali-box"></span>
       <div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div><button class="btn" id="export-xlsx" title="Download the SRs shown (Commitment filter applied) as an Excel file: SRs, Summary, Missing documents">Export to Excel</button><button class="btn order-reset" id="order-reset" hidden title="Put the kinds of survey back in order by name">Reset order</button>
     </div>
   </header>
@@ -324,7 +343,8 @@ function readDesk() {
       rpmoReceived: d.rpmoReceived || "", round: d.round || 1, area: toHa(ov.area ?? reg.area),
       // Attachment marks and notes, for the attachments pie (same places sr-desk.html reads them)
       route: d.route || (rec && rec.route) || "", ans: d.ans || (rec && rec.data && rec.data.ans) || {}, notes: d.notes || (rec && rec.data && rec.data.notes) || {},
-      claimant: ov.claimant ?? reg.claimant ?? "", title: ov.title ?? reg.title ?? "", lot: ov.lot ?? reg.lot ?? "", verifier: d.verifier || "" };
+      claimant: ov.claimant ?? reg.claimant ?? "", title: ov.title ?? reg.title ?? "", lot: ov.lot ?? reg.lot ?? "", verifier: d.verifier || "",
+      odc: ov.odc ?? reg.odc ?? "", ali: reg.ali ?? "" }; // MASBATE CCLOA ACCOUNTING columns P (ODC Status) and CA (OnALI 1), via the register
   });
   return { list, pulledAt: s.pulledAt || "", lastSync: s.lastSync || "", pending: Object.keys(queue).length, sample: false };
 }
@@ -480,7 +500,48 @@ function pieChart(el, r, prev, opt) {
    opens the attachments pie of that kind's SRs at that status; a click on a missing document opens its remark categories, shared with the SR Desk dashboard. */
 const NOT_SET = "Not set";
 const $ = id => document.getElementById(id);
-let ui = { metric: "count", commit: "all", pick: {}, att: {}, cat: {}, anim: null };
+let ui = { metric: "count", commit: "all", odc: [], ali: [], pick: {}, att: {}, cat: {}, anim: null };
+/* Multi-select dropdown (2026-11-23, user: "enable the multiple selection in the filter"): a <details> with a tick box per value;
+   nothing ticked = every value. Stays open while boxes are ticked (the page redraws behind it); a click outside or Esc closes it. */
+let mselOpen = "";
+const mselSort = (a, b) => (a === NOT_SET) - (b === NOT_SET) || a.localeCompare(b, undefined, { numeric: true });
+const mselArr = v => Array.isArray(v) ? v.map(String) : v ? [String(v)] : [];
+function mselHtml(id, label, counts, total, sel, off) {
+  sel.forEach(v => { if (!(v in counts)) counts[v] = 0; });
+  const vals = Object.keys(counts).sort(mselSort);
+  const sum = !sel.length ? `All <span class="ms-n">(${total.toLocaleString()})</span>` : sel.length === 1 ? esc(sel[0]) : `${sel.length} selected`;
+  return `<details class="msel${sel.length ? " on" : ""}${off ? " off" : ""}" id="${id}"${mselOpen === id && !off ? " open" : ""}>
+    <summary aria-label="${esc(label)}${sel.length ? ": " + esc(sel.join(", ")) : ": all"}" title="${esc(off || (sel.length ? sel.join("\n") : "All values"))}"><span class="ms-l">${esc(label)}</span><span class="ms-v">${sum}</span><span class="ms-c" aria-hidden="true">▾</span></summary>
+    <div class="ms-pop" role="group" aria-label="${esc(label)}"><div class="ms-act"><span>Tick one or more</span><button type="button" data-a="clear"${sel.length ? "" : " disabled"}>Clear · show all</button></div>
+    ${vals.map(v => `<label><input type="checkbox" value="${esc(v)}"${sel.includes(v) ? " checked" : ""}><span>${esc(v)}</span><b>${counts[v].toLocaleString()}</b></label>`).join("")}</div></details>`;
+}
+function mselBind(el, onSet) {
+  if (!el) return;
+  if (el.classList.contains("off")) { el.querySelector("summary").onclick = e => e.preventDefault(); return; }
+  const fit = () => { const p = el.querySelector(".ms-pop"); p.style.left = "0px"; const r = p.getBoundingClientRect(), over = r.right - (document.documentElement.clientWidth - 8);
+    if (over > 0) p.style.left = -Math.min(over, r.left - 8) + "px"; };
+  el.querySelector("summary").onclick = () => { mselOpen = el.open ? "" : el.id; }; // before the (async) toggle event, so a quick tick keeps it open
+  el.ontoggle = () => { if (el.open) { mselOpen = el.id; fit(); } else if (mselOpen === el.id) mselOpen = ""; };
+  if (el.open) fit();
+  el.querySelectorAll("input").forEach(c => c.onchange = () => onSet([...el.querySelectorAll("input:checked")].map(x => x.value)));
+  el.querySelector("[data-a=clear]").onclick = () => onSet([]);
+}
+document.addEventListener("click", e => { if (!e.target.isConnected) return; document.querySelectorAll("details.msel[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") document.querySelectorAll("details.msel[open]").forEach(d => { d.open = false; }); });
+["odc", "ali"].forEach(f => { try { const v = localStorage.getItem("srdash-" + f); if (v) { let a; try { a = JSON.parse(v); } catch (e) { a = v; } ui[f] = mselArr(a); } } catch (e) {} });
+// ODC status / ALI case status filter (2026-11-23). ODC is upper-cased so "With ODC" and "WITH ODC" are one value; blank is "Not set".
+const odcOf = s => String(s.odc || "").replace(/\s+/g, " ").trim().toUpperCase() || NOT_SET;
+const aliOf = s => String(s.ali || "").replace(/\s+/g, " ").trim() || NOT_SET;
+const byCommit = all => ui.commit === "all" ? all : all.filter(s => (commitQ(s) !== undefined) === (ui.commit === "in"));
+const shownList = all => byCommit(all).filter(s => (!ui.odc.length || ui.odc.includes(odcOf(s))) && (!ui.ali.length || ui.ali.includes(aliOf(s))));
+function fillPicks(all) {
+  const base = byCommit(all), hasAli = all.some(s => String(s.ali || "").trim());
+  [["f-odc", "odc", odcOf, ""], ["f-ali", "ali", aliOf, hasAli ? "" : "Not in this PC's register yet: it arrives with the next register rebuild after the SR Desk web app update"]].forEach(([id, f, fn, off]) => {
+    const n = {}; base.forEach(s => { const v = fn(s); n[v] = (n[v] || 0) + 1; });
+    $(id + "-box").innerHTML = mselHtml(id, f === "odc" ? "ODC status" : "ALI case status", n, base.length, ui[f], off);
+    mselBind($(id), v => { ui[f] = v; try { localStorage.setItem("srdash-" + f, JSON.stringify(v)); } catch (e) {} render(); });
+  });
+}
 try { const c = localStorage.getItem("srdash-commit"); if (c === "in" || c === "out") ui.commit = c; } catch (e) {}
 try { if (localStorage.getItem("srdash-metric") === "area") ui.metric = "area"; } catch (e) {}
 try { const p = JSON.parse(localStorage.getItem("srdash-pick")); if (p && typeof p === "object") ui.pick = p; } catch (e) {}
@@ -540,10 +601,11 @@ const ALL_KINDS = "All kinds", ALL_COLOR = "#22c3e6"; // the consolidated panel;
 function render() {
   const raw = readDesk() || sampleDesk(), all = raw.list, AREA = ui.metric === "area"; sampleOn = !!raw.sample;
   const SER = seriesFor(all); // colours come from every SR, so a status keeps its colour whichever LHs are shown
-  const list = ui.commit === "all" ? all : all.filter(s => (commitQ(s) !== undefined) === (ui.commit === "in"));
+  const list = shownList(all); fillPicks(all);
+  const filt = [ui.odc.length && "ODC: " + ui.odc.join(", "), ui.ali.length && "ALI: " + ui.ali.join(", ")].filter(Boolean);
   $("live").classList.toggle("off", raw.sample);
   $("src").innerHTML = raw.sample ? "Sample data · no SR Desk copy found on this PC"
-    : `${all.length.toLocaleString()} SRs from this PC's SR Desk copy${ui.commit === "all" ? "" : ` · showing ${list.length.toLocaleString()} ${ui.commit === "in" ? "committed for registration" : "not committed for registration"}`} · register pulled ${esc(raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : "—")}${raw.pending ? ` · ${raw.pending} change${raw.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
+    : `${all.length.toLocaleString()} SRs from this PC's SR Desk copy${ui.commit === "all" ? "" : ` · showing ${list.length.toLocaleString()} ${ui.commit === "in" ? "committed for registration" : "not committed for registration"}`}${filt.length ? ` · ${esc(filt.join(" · "))} (${list.length.toLocaleString()} SRs)` : ""} · register pulled ${esc(raw.pulledAt ? raw.pulledAt.replace("T", " ").slice(0, 16) : "—")}${raw.pending ? ` · ${raw.pending} change${raw.pending > 1 ? "s" : ""} not yet synced (included)` : ""}`;
   $("banner").innerHTML = raw.sample ? `<div class="banner"><b>SAMPLE DATA, made up.</b> This PC has no SR Desk data yet. Sign in from the top bar of the Survey Unit panel, open the SR Verification Desk and let it sync; this page then shows the real SRs and updates on its own.</div>` : "";
   document.querySelectorAll("#metric button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === ui.metric)));
   document.querySelectorAll("#commit button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.c === ui.commit)));
@@ -854,7 +916,7 @@ function xlBook(sheets) {
 }
 function exportExcel() {
   const raw = readDesk() || sampleDesk(), all = raw.list;
-  const list = (ui.commit === "all" ? all : all.filter(s => (commitQ(s) !== undefined) === (ui.commit === "in"))).slice().sort(bySeq);
+  const list = shownList(all).slice().sort(bySeq);
   const D = v => isIso(v) ? { date: String(v).slice(0, 10) } : (v || ""), rcats = loadRcats();
   const attOf = s => { const docs = docList(s.route), a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {};
     const marked = docs.filter(d => a[d.key]), missing = docs.filter(d => a[d.key] === "missing");
