@@ -646,8 +646,11 @@ function render() {
 function renderKind(kind, i, srs, SER, AREA, rcats) {
   const r = { now: true, total: srs.length, totalHa: 0, cm: 0 }; SER.forEach(x => { r[x.key] = 0; r[x.key + HA] = 0; r[x.key + CM] = 0; });
   srs.forEach(s => { const k = keyOf(statusOf(s)); r[k]++; r[k + HA] += s.area || 0; r.totalHa += s.area || 0; if (commitQ(s) !== undefined) { r[k + CM]++; r.cm++; } });
-  $("kc-" + i).innerHTML = `pie shows ${ui.commit === "all" ? "all" : ui.commit === "in" ? "the commitment" : "the not-commitment"} <b>${srs.length.toLocaleString()}</b> SRs · <b>${fmtHa(r.totalHa)}</b> ha${ui.commit === "all" ? ` · <b>${r.cm.toLocaleString()}</b> commitment` : ""}`;
   const present = SER.filter(x => r[x.key]);
+  /* Header follows the key (2026-11-23, user: unselecting FOR REPLACEMENT "should change this area and count"): a hidden status leaves the SR count, hectares and commitment count. */
+  const off = present.filter(x => hidden.has(x.key)), vis = { n: r.total, ha: r.totalHa, cm: r.cm };
+  off.forEach(x => { vis.n -= r[x.key]; vis.ha -= r[x.key + HA]; vis.cm -= r[x.key + CM]; });
+  $("kc-" + i).innerHTML = `pie shows ${ui.commit === "all" ? "all" : ui.commit === "in" ? "the commitment" : "the not-commitment"} <b>${vis.n.toLocaleString()}</b>${off.length ? ` of ${r.total.toLocaleString()}` : ""} SRs · <b>${fmtHa(vis.ha)}</b> ha${ui.commit === "all" ? ` · <b>${vis.cm.toLocaleString()}</b> commitment` : ""}${off.length ? ` · ${off.length} status${off.length === 1 ? "" : "es"} hidden` : ""}`;
   $("kl-" + i).innerHTML = present.map(x => `<button aria-pressed="${!hidden.has(x.key)}" data-k="${esc(x.key)}" title="${esc(x.members ? x.members.join(", ") : x.key)}"><i style="background:${x.color};color:${x.color}"></i>${esc(x.name)}</button>`).join("");
   $("kl-" + i).querySelectorAll("button").forEach(b => b.onclick = () => { const k = b.dataset.k; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
     try { localStorage.setItem("srdash-hidden", JSON.stringify([...hidden])); } catch (e) {} render(); });
