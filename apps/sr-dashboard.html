@@ -377,6 +377,7 @@ td { font-family: var(--mono); }
 .sr .sv { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 .sr .sc { grid-column: 2 / -1; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr .pill-commit { margin: 0 0 0 6px; font-size: 9.5px; vertical-align: 2px; }
+.sr .mc { margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 600; vertical-align: 2px; color: #e66767; background: color-mix(in srgb, #e66767 16%, transparent); }
 .dkey { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
 .dkey span { display: inline-flex; gap: 5px; align-items: center; }
 .dkey i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -930,9 +931,10 @@ function renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats) {
   const fillList = () => {
     const words = ui.supQ.toLowerCase().split(/\s+/).filter(Boolean), hit = s => words.every(w => [s.seq, s.claimant, s.title, s.lot, s.darmo, s.marpo].join(" ").toLowerCase().includes(w));
     const got = words.length ? supSet.filter(hit) : supSet, MAX = 300;
-    $("srlist").innerHTML = got.slice(0, MAX).map(s => { const st = ATT_STATE[attState(s)], q = commitQ(s);
-      return `<button class="sr" data-seq="${esc(s.seq)}" title="SR ${esc(s.seq)} · ${esc(s.survey || NOT_SET)}${s.status ? " · " + esc(s.status) : ""} · ${esc(st[0])}"><i class="dot" style="background:${st[1]}"></i>
-        <span class="sq">${esc(s.seq)}${q !== undefined ? `<span class="pill-commit">${esc(q === "0" ? "C" : "Q" + q)}</span>` : ""}</span><span class="sv">${s.area == null ? "no area" : fmtHa(s.area) + " ha"}</span>
+    /* Missing count on each card (2026-11-26, user, on the Support list: "add here in the box how many missing attachments are in the LH"). */
+    $("srlist").innerHTML = got.slice(0, MAX).map(s => { const st = ATT_STATE[attState(s)], q = commitQ(s), a = (s.ans || {})[s.route] || {}, nm = docList(s.route).filter(d => a[d.key] === "missing").length;
+      return `<button class="sr" data-seq="${esc(s.seq)}" title="SR ${esc(s.seq)} · ${esc(s.survey || NOT_SET)}${s.status ? " · " + esc(s.status) : ""} · ${esc(st[0])}${nm ? ` · ${nm} missing` : ""}"><i class="dot" style="background:${st[1]}"></i>
+        <span class="sq">${esc(s.seq)}${q !== undefined ? `<span class="pill-commit">${esc(q === "0" ? "C" : "Q" + q)}</span>` : ""}${nm ? `<span class="mc">${nm} missing</span>` : ""}</span><span class="sv">${s.area == null ? "no area" : fmtHa(s.area) + " ha"}</span>
         <span class="sc">${esc(s.claimant || "—")} · ${esc(s.title || "")}${ui.kset.length !== 1 ? " · " + esc(s.kind || NOT_SET) : ""}${sel ? "" : " · " + esc(stag(statusOf(s)))}</span></button>`; }).join("")
       + (got.length > MAX ? `<p class="read" style="grid-column:1/-1">Showing ${MAX} of ${got.length.toLocaleString()}. Search or pick a status to narrow it.</p>` : "")
       || `<p class="empty" style="grid-column:1/-1">${words.length ? "No SR matches the search." : "No SRs here."}</p>`;
