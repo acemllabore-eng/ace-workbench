@@ -365,11 +365,8 @@ td { font-family: var(--mono); }
 .ktile[aria-pressed="true"] { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 10px 26px rgba(242,118,46,.16); }
 .ktile.all { grid-column: 1 / -1; min-height: 0; flex-direction: row; align-items: center; justify-content: space-between; }
 .ktile.all .kv { margin: 0; }
-.sup { grid-area: sup; display: grid; grid-template-columns: minmax(170px, 210px) 1px minmax(0, 1fr); gap: 16px; }
-.sup .gauge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
-.sup .gauge svg { width: 100%; max-width: 190px; height: auto; }
-.sup .gauge .cap { font-size: 12px; color: var(--muted); }
-.sup .div { background: var(--line); }
+.sup { grid-area: sup; display: flex; flex-direction: column; }
+.sup .srlist { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
 .sup-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .sup-head input { flex: 1 1 140px; max-width: 220px; min-width: 0; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: var(--ctrl-bg); color: var(--fg); font: 12.5px var(--body); }
 .srlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; max-height: 330px; overflow: auto; align-content: start; padding-right: 4px; }
@@ -434,7 +431,7 @@ td { font-family: var(--mono); }
 @media (max-width: 720px) {
   .board { grid-template-columns: minmax(0, 1fr); grid-template-areas: "frow" "hero" "stat" "flow" "kt" "att" "sup"; }
   .frow { grid-template-columns: repeat(2, minmax(0, 1fr)); } .frow .fcard:last-child { grid-column: 1 / -1; }
-  .sup { grid-template-columns: minmax(0, 1fr); } .sup .div { display: none; } .srlist { grid-template-columns: minmax(0, 1fr); }
+  .sup .srlist { grid-template-columns: minmax(0, 1fr); }
   .hero-chips { grid-template-columns: minmax(0, 1fr); }
 }
 @media print { body.print-one .board, body.print-one #bdetail, body.print-one .classic > summary { display: none !important; } }
@@ -925,17 +922,8 @@ function renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats) {
   /* Support list (blue): the SRs behind the current pick (kind, status, attachment), with a gauge of their share. Dot = attachment state. */
   const apSet = !ap ? null : miss[ap] ? miss[ap] : ap === OTHER_MISS ? uniq(folded.map(l => miss[l])) : groups[ap] || [];
   const supSet = (apSet || focus).slice().sort(bySeq), apName = ap ? ap.replace(/^Missing: /, "") : "";
-  const gv = AREA ? haSum(supSet) : supSet.length, gof = AREA ? haSum(shown) : shown.length, pc = gof ? gv / gof : 0;
-  const C = 2 * Math.PI * 70, arcLen = Math.max(0, Math.min(1, pc)) * C;
-  $("sup").innerHTML = `<div class="gauge"><h2 style="align-self:flex-start">Support list</h2>
-      <svg viewBox="0 0 180 180" role="img" aria-label="${Math.round(pc * 100)}% of ${esc(scopeName)}"><circle cx="90" cy="90" r="70" fill="none" stroke="var(--grid)" stroke-width="12"/>
-        <circle cx="90" cy="90" r="70" fill="none" stroke="var(--cyan)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${arcLen.toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 90 90)"/>
-        <circle cx="90" cy="90" r="82" fill="none" stroke="color-mix(in srgb, var(--cyan) 40%, transparent)" stroke-width="1"/>
-        <text x="90" y="74" text-anchor="middle" style="fill:var(--cyan);font-size:13px;font-family:var(--body)">${esc((apName ? "Selected" : sel ? stag(sel.st) : "All statuses").slice(0, 22))}</text>
-        <text x="90" y="104" text-anchor="middle" style="fill:var(--fg);font-size:${AREA ? 24 : 32}px;font-weight:600;font-family:var(--body)">${AREA ? fmtHa(gv) : gv.toLocaleString()}</text>
-        <text x="90" y="124" text-anchor="middle" style="fill:var(--muted);font-size:11.5px;font-family:var(--body)">${AREA ? "ha" : "SRs"} · ${Math.round(pc * 100)}%</text></svg>
-      <div class="cap">${Math.round(pc * 100)}% of ${esc(scopeName)}${AREA ? " area" : " SRs"}${sel ? " · at " + esc(selName) : ""}${apName ? " · " + esc(apName) : ""}</div></div>
-    <div class="div"></div>
+  // Gauge removed (2026-11-25, user, on the ring: "delete this support list"); the list takes the whole card.
+  $("sup").innerHTML = `<div class="chart-head"><div><h2>Support list</h2><p class="read">${esc(scopeName)} · ${sel ? "at " + esc(selName) : "all statuses"}${apName ? " · " + esc(apName) : ""} · <b>${supSet.length.toLocaleString()}</b> SRs · <b>${fmtHa(haSum(supSet))}</b> ha</p></div></div>
     <div id="supr"><div class="lhd" id="lhd" hidden></div><div class="sup-head"><span class="read" style="margin:0">${supSet.length.toLocaleString()} SR${supSet.length === 1 ? "" : "s"} · click one to see its missing documents</span><input id="sup-q" type="search" placeholder="Search SeqNo, claimant, title" aria-label="Search the support list" autocomplete="off" value="${esc(ui.supQ)}"></div>
       <div class="srlist" id="srlist"></div>
       <div class="dkey">${Object.values(ATT_STATE).map(([l, c]) => `<span><i style="background:${c}"></i>${esc(l)}</span>`).join("")}</div></div>`;
