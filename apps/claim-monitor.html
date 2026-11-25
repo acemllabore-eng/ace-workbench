@@ -262,8 +262,8 @@ const APP = "claim", LS = "claim.v1";
 const RATES = { ORGANIC: 450, TSS: 100 };
 // Shown until the web app answers; the web app sends the same list.
 const SOURCES0 = [
-  { key: "A2025", name: "2025-A", activity: "Survey by Contract 2025-A/Assist in Survey", memo: "Memorandum 198-A dated June 18, 2026" },
-  { key: "B2025", name: "2025-B", activity: "Survey by Contract 2025-B/Assist in Survey", memo: "Memorandum 198-A dated June 18, 2026" },
+  { key: "A2025", name: "2025-A", activity: "Survey by Contract 2025-A/Assist in Survey", memo: "Memorandum 146-A dated May 1, 2026" },
+  { key: "B2025", name: "2025-B", activity: "Survey by Contract 2025-B/Assist in Survey", memo: "Memorandum 146-A dated May 1, 2026" },
   { key: "SBA4", name: "SBA Batch 4 (2026)", activity: "Survey by Admin Batch 4/Assist in Survey", memo: "Memorandum 149 dated May 4, 2026" }
 ];
 // Signatories come from the web app after sign-in (names are not kept in this public page); typed changes stay on this device.
@@ -635,7 +635,7 @@ function printCurrent() {
 function reprint(id) {
   const c = (data() || { claims: [] }).claims.find(x => x.claim_id === id); if (!c) return;
   const s = state.sources.find(x => x.key === c.source) || src();
-  printForm({ src: c.source, kind: c.type, darmo: c.darmo, srcName: s.name, activity: s.activity, cost: c.rate + " pesos/has as per " + s.memo + ".", target: +c.target_ha, claimed: +c.claimed_before_ha,
+  printForm({ src: c.source, kind: c.type, darmo: c.darmo, srcName: s.name, activity: s.activity, cost: c.cost_text || (c.rate + " pesos/has as per " + s.memo + "."), target: +c.target_ha, claimed: +c.claimed_before_ha,
     claim: +c.claim_ha, cdate: c.claim_date, claimant: c.claimant, amount: +c.amount || 0, lhs: c.lhs, id: c.claim_id });
 }
 
