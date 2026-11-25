@@ -397,6 +397,28 @@ td { font-family: var(--mono); }
 .aaxis span:nth-child(2) { display: flex; justify-content: space-between; }
 .att2 .foot { margin-top: auto; padding-top: 10px; font-size: 11.5px; color: var(--faint); }
 .empty { padding: 30px 0; text-align: center; color: var(--muted); font-size: 13px; }
+.lhd { display: flex; flex-direction: column; gap: 6px; min-height: 100%; }
+.lhd[hidden], #supr > [hidden] { display: none; }
+.lhd-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.lhd-top .btn[disabled] { opacity: .45; cursor: default; }
+.lhd-id { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lhd-id .dot { width: 12px; height: 12px; border-radius: 50%; }
+.lhd-seq { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.lhd-id .pill-commit { margin: 0; }
+.lhd-ha { margin-left: auto; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lhd-who { font-size: 15px; font-weight: 600; }
+.lhd-meta { font-size: 12.5px; color: var(--muted); }
+.lhd-sum { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 2px; }
+.lhd-sum span { border: 1px solid var(--line); background: var(--chip-bg); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); }
+.lhd-sum b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.lhd-sum .m { border-color: rgba(230,103,103,.55); background: rgba(230,103,103,.12); }
+.lhd h3 { margin: 8px 0 2px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.mdocs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 280px; overflow: auto; counter-reset: md; }
+.mdocs li { counter-increment: md; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 8px; padding: 8px 10px; border-radius: 10px; background: var(--sunk); border-left: 3px solid #e66767; }
+.mdocs li::before { content: counter(md); grid-row: 1 / 3; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; background: #e66767; }
+.mdocs .mt { font-size: 13px; }
+.mdocs .mr { font-size: 12px; color: var(--cyan); }
+.mdocs .mr.none { color: var(--faint); font-style: italic; }
 #bdetail:empty { display: none; }
 #bdetail { margin-top: 16px; }
 #bdetail .cat { margin-top: 0; background: var(--panel-bg); border-radius: 18px; }
@@ -434,7 +456,7 @@ td { font-family: var(--mono); }
     <section class="hero" id="hero" aria-label="Area"></section>
     <section class="frow" id="frow" aria-label="Filters">
       <div class="fcard"><span class="fi" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9l8-3 8 3 8-3v17l-8 3-8-3-8 3z"/><path d="M12 6v17M20 9v17"/></svg></span>
-        <span class="fl">Kind of survey</span><select id="f-kind" aria-label="Kind of survey"></select></div>
+        <span class="fl">Kind of survey</span><span id="f-kind-box"></span></div>
       <div class="fcard"><span class="fi" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4h10l6 6v18H9z"/><path d="M19 4v6h6M13 17l3 3 5-6"/></svg></span>
         <span class="fl">ODC status</span><span id="f-odc-box"></span></div>
       <div class="fcard"><span class="fi" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M16 5v22M8 27h16M6 10h20M6 10l-3 8h6zM26 10l-3 8h6z"/></svg></span>
@@ -790,10 +812,12 @@ function attState(s) {
   if (docs.some(d => a[d.key] === "missing")) return "missing";
   return docs.every(d => d.asNeeded || a[d.key]) ? "complete" : "partly";
 }
-ui.scope = ""; ui.sel = null; ui.supQ = "";
-try { ui.scope = localStorage.getItem("srdash-scope") || ""; } catch (e) {}
+/* Kinds shown (2026-11-25, user: "i want to be able to unselect any kind of survey here. make it multiple selection"): a list, none = every kind.
+   An old single saved kind is read as a one-item list. */
+ui.kset = []; ui.sel = null; ui.supQ = "";
+try { const v = localStorage.getItem("srdash-scope"); if (v) { let a; try { a = JSON.parse(v); } catch (e) { a = v; } ui.kset = mselArr(a); } } catch (e) {}
 try { const f = JSON.parse(localStorage.getItem("srdash-focus")); if (f && f.st) ui.sel = { st: String(f.st), sub: f.sub ? String(f.sub) : null }; } catch (e) {}
-const saveBoard = () => { try { localStorage.setItem("srdash-scope", ui.scope || ""); localStorage.setItem("srdash-focus", JSON.stringify(ui.sel)); } catch (e) {} };
+const saveBoard = () => { try { localStorage.setItem("srdash-scope", JSON.stringify(ui.kset)); localStorage.setItem("srdash-focus", JSON.stringify(ui.sel)); } catch (e) {} };
 const odcAli = s => (!ui.odc.length || ui.odc.includes(odcOf(s))) && (!ui.ali.length || ui.ali.includes(aliOf(s)));
 const niceMax = m => { if (m <= 0) return 1; const p = 10 ** Math.floor(Math.log10(m)), f = m / p; return ([1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(x => f <= x)) * p; };
 const wrap2 = t => { const w = t.split(" "), out = [""]; w.forEach(x => { const l = out.length - 1; if (out[l] && (out[l] + " " + x).length > 13 && out.length < 2) out.push(x); else out[l] = out[l] ? out[l] + " " + x : x; }); return out; };
@@ -802,8 +826,9 @@ const IC_PIN = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stro
 const IC_LAND = `<svg viewBox="0 0 92 64" fill="none" aria-hidden="true"><path d="M6 18l24-9 32 9 24-9v40l-24 9-32-9-24 9z" fill="rgba(255,255,255,.22)" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="M30 9v40M62 18v40" stroke="#fff" stroke-width="3"/><path d="M38 30l8 6 10-12" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 function renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats) {
-  if (ui.scope && !kinds.includes(ui.scope)) ui.scope = "";
-  const scopeName = ui.scope || ALL_KINDS, inScope = s => !ui.scope || (s.kind || NOT_SET) === ui.scope, visSt = s => !hidden.has(keyOf(statusOf(s)));
+  ui.kset = ui.kset.filter(k => kinds.includes(k));
+  const scopeName = !ui.kset.length ? ALL_KINDS : ui.kset.length <= 3 ? ui.kset.join(" + ") : ui.kset.length + " kinds of survey",
+    inScope = s => !ui.kset.length || ui.kset.includes(s.kind || NOT_SET), visSt = s => !hidden.has(keyOf(statusOf(s)));
   const scoped = list.filter(inScope), shown = scoped.filter(visSt);
   const rows = SER.map(x => { const ss = scoped.filter(s => keyOf(statusOf(s)) === x.key); return { x, n: ss.length, ha: haSum(ss), srs: ss }; }).filter(r => r.n);
   if (ui.sel && !rows.some(r => r.x.key === ui.sel.st && !hidden.has(r.x.key))) ui.sel = null;
@@ -814,9 +839,9 @@ function renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats) {
   const refresh = () => { saveBoard(); render(); };
 
   /* Filters (green): kind of survey select; the ODC / ALI lists and the measure are filled by fillPicks and render. */
-  const fk = $("f-kind");
-  fk.innerHTML = [`<option value="">${esc(ALL_KINDS)} (${list.length.toLocaleString()})</option>`].concat(kinds.map(k => `<option value="${esc(k)}">${esc(k)} (${list.filter(s => (s.kind || NOT_SET) === k).length.toLocaleString()})</option>`)).join("");
-  fk.value = ui.scope; fk.classList.toggle("on", !!ui.scope);
+  const kc = {}; kinds.forEach(k => { kc[k] = list.filter(s => (s.kind || NOT_SET) === k).length; });
+  $("f-kind-box").innerHTML = mselHtml("f-kind", "Kind of survey", kc, list.length, ui.kset, "");
+  mselBind($("f-kind"), v => { ui.kset = v; refresh(); });
 
   /* Area (yellow) */
   const offN = rows.filter(r => hidden.has(r.x.key)).length, cm = shown.filter(s => commitQ(s) !== undefined).length, noA = shown.filter(s => s.area == null).length;
@@ -874,12 +899,12 @@ function renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats) {
 
   /* Kinds of survey (red): one tile per kind; a click scopes the whole board to it, again to go back to every kind. */
   const tiles = (kinds.length > 1 ? [""] : []).concat(kinds);
-  $("ktiles").innerHTML = tiles.map(k => { const ks = list.filter(s => (!k || (s.kind || NOT_SET) === k) && visSt(s) && atSel(s)), n = ks.length, ha = haSum(ks), on = (ui.scope || "") === k;
-    return `<button class="ktile${k ? "" : " all"}" data-kind="${esc(k)}" aria-pressed="${on}" title="${k ? "Show only " + esc(k) + " on the board" : "Show every kind of survey"}">
+  $("ktiles").innerHTML = tiles.map(k => { const ks = list.filter(s => (!k || (s.kind || NOT_SET) === k) && visSt(s) && atSel(s)), n = ks.length, ha = haSum(ks), on = k ? ui.kset.includes(k) : !ui.kset.length;
+    return `<button class="ktile${k ? "" : " all"}" data-kind="${esc(k)}" aria-pressed="${on}" title="${k ? (on ? "Click to leave out " : "Click to add ") + esc(k) + " (several can be picked)" : "Show every kind of survey"}">
       <span class="kn"><i style="background:${k ? colorOf(k) : "var(--cyan)"}"></i><span>${esc(k || ALL_KINDS)}</span></span>
       <span class="kv">${AREA ? fmtHa(ha) + "<small>ha</small>" : n.toLocaleString() + "<small>SRs</small>"}</span>
       <span class="ks">${AREA ? n.toLocaleString() + " SRs" : fmtHa(ha) + " ha"}${sel ? " · " + esc(selName) : ""}</span></button>`; }).join("") || `<div class="card"><p class="empty">No SRs.</p></div>`;
-  $("ktiles").querySelectorAll(".ktile").forEach(b => b.onclick = () => { const k = b.dataset.kind; ui.scope = k && ui.scope !== k ? k : ""; refresh(); });
+  $("ktiles").querySelectorAll(".ktile").forEach(b => b.onclick = () => { const k = b.dataset.kind; ui.kset = !k ? [] : ui.kset.includes(k) ? ui.kset.filter(x => x !== k) : ui.kset.concat(k); refresh(); });
 
   /* Attachments & remarks (pink): what the focused SRs lack, as bars; Complete / Partly marked / Not marked yet after them. */
   const { miss, rem, groups } = attachStats(focus);
@@ -911,7 +936,7 @@ function renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats) {
         <text x="90" y="124" text-anchor="middle" style="fill:var(--muted);font-size:11.5px;font-family:var(--body)">${AREA ? "ha" : "SRs"} · ${Math.round(pc * 100)}%</text></svg>
       <div class="cap">${Math.round(pc * 100)}% of ${esc(scopeName)}${AREA ? " area" : " SRs"}${sel ? " · at " + esc(selName) : ""}${apName ? " · " + esc(apName) : ""}</div></div>
     <div class="div"></div>
-    <div><div class="sup-head"><span class="read" style="margin:0">${supSet.length.toLocaleString()} SR${supSet.length === 1 ? "" : "s"}${sampleOn ? " (sample, do not open)" : " · click one to open it in the SR Desk"}</span><input id="sup-q" type="search" placeholder="Search SeqNo, claimant, title" aria-label="Search the support list" autocomplete="off" value="${esc(ui.supQ)}"></div>
+    <div id="supr"><div class="lhd" id="lhd" hidden></div><div class="sup-head"><span class="read" style="margin:0">${supSet.length.toLocaleString()} SR${supSet.length === 1 ? "" : "s"} · click one to see its missing documents</span><input id="sup-q" type="search" placeholder="Search SeqNo, claimant, title" aria-label="Search the support list" autocomplete="off" value="${esc(ui.supQ)}"></div>
       <div class="srlist" id="srlist"></div>
       <div class="dkey">${Object.values(ATT_STATE).map(([l, c]) => `<span><i style="background:${c}"></i>${esc(l)}</span>`).join("")}</div></div>`;
   const fillList = () => {
@@ -920,12 +945,35 @@ function renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats) {
     $("srlist").innerHTML = got.slice(0, MAX).map(s => { const st = ATT_STATE[attState(s)], q = commitQ(s);
       return `<button class="sr" data-seq="${esc(s.seq)}" title="SR ${esc(s.seq)} · ${esc(s.survey || NOT_SET)}${s.status ? " · " + esc(s.status) : ""} · ${esc(st[0])}"><i class="dot" style="background:${st[1]}"></i>
         <span class="sq">${esc(s.seq)}${q !== undefined ? `<span class="pill-commit">${esc(q === "0" ? "C" : "Q" + q)}</span>` : ""}</span><span class="sv">${s.area == null ? "no area" : fmtHa(s.area) + " ha"}</span>
-        <span class="sc">${esc(s.claimant || "—")} · ${esc(s.title || "")}${!ui.scope ? " · " + esc(s.kind || NOT_SET) : ""}${sel ? "" : " · " + esc(stag(statusOf(s)))}</span></button>`; }).join("")
+        <span class="sc">${esc(s.claimant || "—")} · ${esc(s.title || "")}${ui.kset.length !== 1 ? " · " + esc(s.kind || NOT_SET) : ""}${sel ? "" : " · " + esc(stag(statusOf(s)))}</span></button>`; }).join("")
       + (got.length > MAX ? `<p class="read" style="grid-column:1/-1">Showing ${MAX} of ${got.length.toLocaleString()}. Search or pick a status to narrow it.</p>` : "")
       || `<p class="empty" style="grid-column:1/-1">${words.length ? "No SR matches the search." : "No SRs here."}</p>`;
-    $("srlist").querySelectorAll(".sr").forEach(b => b.onclick = () => openInDesk(b.dataset.seq));
+    $("srlist").querySelectorAll(".sr").forEach(b => b.onclick = () => { ui.supSeq = b.dataset.seq; showLh(); });
   };
-  fillList();
+  /* One LH (2026-11-25, user, on the Support list: "take all this area and show the missing docs of this LH. only 1 LH should appear here only the selected LH"):
+     a click on an SR replaces the list with that SR alone: who and where, its attachment counts, and each missing document with the verifier's remark. */
+  const showLh = () => {
+    const s = ui.supSeq == null ? null : supSet.find(x => String(x.seq) === String(ui.supSeq)), box = $("lhd");
+    $("supr").querySelectorAll(":scope > :not(.lhd)").forEach(n => { n.hidden = !!s; });
+    box.hidden = !s;
+    if (!s) { if (ui.supSeq != null && $("srlist")) ui.supSeq = null; return; }
+    const docs = docList(s.route), a = (s.ans || {})[s.route] || {}, nt = (s.notes || {})[s.route] || {}, st = ATT_STATE[attState(s)], q = commitQ(s);
+    const miss = docs.filter(d => a[d.key] === "missing"), pres = docs.filter(d => a[d.key] === "present").length, na = docs.filter(d => a[d.key] === "na").length;
+    const unm = docs.filter(d => !a[d.key] && !d.asNeeded).length;
+    box.innerHTML = `<div class="lhd-top"><button class="linkbtn" id="lhd-back">‹ All ${supSet.length.toLocaleString()} SR${supSet.length === 1 ? "" : "s"}</button>
+        <button class="btn primary" id="lhd-open"${sampleOn ? ' disabled title="Sample SRs do not open"' : ' title="Open this SR in the SR Verification Desk"'}>Open in SR Desk</button></div>
+      <div class="lhd-id"><i class="dot" style="background:${st[1]}" title="${esc(st[0])}"></i><span class="lhd-seq">${esc(s.seq)}</span>${q !== undefined ? `<span class="pill-commit">${esc(commitLabel(q))}</span>` : ""}<span class="lhd-ha">${s.area == null ? "no area" : fmtHa(s.area) + " ha"}</span></div>
+      <div class="lhd-who">${esc(s.claimant || "—")}</div>
+      <div class="lhd-meta">${[s.title, s.lot && "Lot " + s.lot, s.kind, s.darmo, s.marpo].filter(Boolean).map(esc).join(" · ")}</div>
+      <div class="lhd-meta">${esc(s.survey || NOT_SET)}${s.status ? " · " + esc(s.status) : ""}${s.route ? " · for " + esc(s.route) : ""}</div>
+      <div class="lhd-sum"><span class="m"><b>${miss.length}</b> missing</span><span><b>${pres}</b> present</span><span><b>${na}</b> N/A</span><span><b>${unm}</b> not marked</span></div>
+      <h3>Missing documents</h3>
+      ${miss.length ? `<ol class="mdocs">${miss.map(d => { const r = String(nt[d.key] || "").trim(); return `<li><span class="mt">${esc(d.text)}</span><span class="mr${r ? "" : " none"}">${r ? esc(r) : "No remark"}</span></li>`; }).join("")}</ol>`
+        : `<p class="empty">${docs.length && docs.some(d => a[d.key]) ? "Nothing marked missing." : "Attachments not marked yet in the SR Desk."}</p>`}`;
+    $("lhd-back").onclick = () => { ui.supSeq = null; showLh(); };
+    $("lhd-open").onclick = () => openInDesk(s.seq);
+  };
+  fillList(); showLh();
   $("sup-q").oninput = e => { ui.supQ = e.target.value; fillList(); };
 
   /* Remark categories of the picked missing document (or the folded documents to choose from), under the board. */
@@ -974,7 +1022,7 @@ function render() {
   firstPaint = false;
   const noArea = list.filter(s => s.area == null).length;
   $("notes").innerHTML = `<b>How these are counted</b><ul>
-    <li><b>Board</b>: the orange card is the <b>area</b> (Area Validated, ha) of the SRs shown, with the commitment choice; the top cards are the <b>filters</b>; <b>Survey status flow</b> and <b>Status of survey</b> count the SRs at each status (dot hides a status, name or point focuses it); the tiles are the <b>kinds of survey</b> (click one to show only it); <b>Support list</b> lists the SRs behind the current pick (dot = attachment state); <b>Attachments &amp; remarks</b> shows what they lack. The detailed pies are in the fold below.</li>
+    <li><b>Board</b>: the orange card is the <b>area</b> (Area Validated, ha) of the SRs shown, with the commitment choice; the top cards are the <b>filters</b>; <b>Survey status flow</b> and <b>Status of survey</b> count the SRs at each status (dot hides a status, name or point focuses it); the tiles are the <b>kinds of survey</b> (click to add or leave one out; several can be picked); <b>Support list</b> lists the SRs behind the current pick (dot = attachment state); <b>Attachments &amp; remarks</b> shows what they lack. The detailed pies are in the fold below.</li>
     <li><b>All kinds</b> (first panel): every SR shown, whatever its kind, at its current survey status. The chips under its header give each kind's part (SRs, or hectares with <b>Area (ha)</b>). Click a status to split its SRs <b>by kind of survey</b>, then a kind to list them; attachments are in each kind's own panel.</li>
     <li>One pie per <b>kind of survey</b>: every SR of that kind at its current survey status, from this PC's SR Desk copy. The outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance).</li>
     <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. The status tables show both. <b>SRs</b> / <b>Area (ha)</b> at the top picks what the pie and the Share column measure.</li>
@@ -1196,7 +1244,6 @@ function printKind(i) {
 /* Light / dark: follows the Survey Unit panel ("aw-theme" message, sent when the page loads and when the theme changes; aw.theme on this device). */
 try { const th = localStorage.getItem("aw.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch (e) {}
 window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
-$("f-kind").onchange = e => { ui.scope = e.target.value; saveBoard(); render(); };
 try { $("classic").open = localStorage.getItem("srdash-classic") === "1"; } catch (e) {}
 $("classic").ontoggle = () => { try { localStorage.setItem("srdash-classic", $("classic").open ? "1" : "0"); } catch (e) {} };
 document.querySelectorAll("#metric button").forEach(b => b.onclick = () => { ui.metric = b.dataset.m; try { localStorage.setItem("srdash-metric", ui.metric); } catch (e) {} render(); });
