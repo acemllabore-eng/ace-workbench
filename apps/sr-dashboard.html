@@ -13,32 +13,33 @@
 -->
 <style>
 :root {
-  --bg: #070b14; --surface: #0d1424; --surface-2: #121b30; --line: #1d2a44; --grid: #16213a;
-  --fg: #e6eefc; --muted: #8b9bb8; --faint: #5d6c88;
-  --cyan: #22c3e6; --in: #3987e5; --out: #d95926; --endorse: #199e70; --comply: #c98500; --days: #9085e9;
+  /* Orange design (2026-11-25, user's weather-dashboard picture): near-black cards, orange accent (--cyan keeps its name so older rules follow). */
+  --bg: #0b0b0e; --surface: #17171c; --surface-2: #1f1f26; --line: #2a2a31; --grid: #222229;
+  --fg: #f4f1ee; --muted: #a59e97; --faint: #726b65;
+  --cyan: #f2762e; --in: #3987e5; --out: #d95926; --endorse: #199e70; --comply: #c98500; --days: #9085e9;
   --good: #0ca30c; --warn: #fab219; --crit: #e66767;
   --mono: "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
   --body: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --panel-bg: linear-gradient(180deg, rgba(18,27,48,.85), rgba(13,20,36,.85)); --ctrl-bg: rgba(13,20,36,.7); --chip-bg: rgba(7,11,20,.6);
-  --tip-bg: rgba(7,11,20,.94); --sunk: rgba(7,11,20,.35); --banner-fg: #f6d58a; --hi: rgba(34,195,230,.07); --hi-2: rgba(34,195,230,.12);
-  --grid-line: rgba(34,195,230,.035); --glow-a: rgba(34,195,230,.13); --glow-b: rgba(144,133,233,.10);
+  --panel-bg: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025)); --ctrl-bg: rgba(255,255,255,.04); --chip-bg: rgba(255,255,255,.05);
+  --tip-bg: rgba(18,18,22,.96); --sunk: rgba(0,0,0,.25); --banner-fg: #f6d58a; --hi: rgba(242,118,46,.08); --hi-2: rgba(242,118,46,.14);
+  --grid-line: transparent; --glow-a: rgba(242,118,46,.16); --glow-b: rgba(70,90,190,.12);
   color-scheme: dark;
 }
 /* Light theme (2026-11-20): follows the Survey Unit panel's choice (message "aw-theme", or aw.theme on this device), else the system setting. */
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
-  --bg: #f3f6fb; --surface: #ffffff; --surface-2: #eef2f8; --line: #d3dbe8; --grid: #e2e8f1; --fg: #142033; --muted: #52627c; --faint: #7d8ca5; --cyan: #0a87a8;
-  --panel-bg: #ffffff; --ctrl-bg: #ffffff; --chip-bg: #f6f8fc; --tip-bg: rgba(255,255,255,.97); --sunk: #f7f9fc; --banner-fg: #6b4a00; --hi: rgba(10,135,168,.07); --hi-2: rgba(10,135,168,.12);
-  --grid-line: rgba(10,135,168,.05); --glow-a: rgba(10,135,168,.08); --glow-b: rgba(144,133,233,.07); color-scheme: light; } }
+  --bg: #f6f4f1; --surface: #ffffff; --surface-2: #f3eee9; --line: #e5ddd5; --grid: #efe8e1; --fg: #1d1a17; --muted: #6b625a; --faint: #958b82; --cyan: #c4540f;
+  --panel-bg: #ffffff; --ctrl-bg: #ffffff; --chip-bg: #faf7f4; --tip-bg: rgba(255,255,255,.97); --sunk: #faf7f4; --banner-fg: #6b4a00; --hi: rgba(196,84,15,.07); --hi-2: rgba(196,84,15,.12);
+  --grid-line: transparent; --glow-a: rgba(242,118,46,.10); --glow-b: rgba(70,90,190,.06); color-scheme: light; } }
 :root[data-theme="light"] {
-  --bg: #f3f6fb; --surface: #ffffff; --surface-2: #eef2f8; --line: #d3dbe8; --grid: #e2e8f1; --fg: #142033; --muted: #52627c; --faint: #7d8ca5; --cyan: #0a87a8;
-  --panel-bg: #ffffff; --ctrl-bg: #ffffff; --chip-bg: #f6f8fc; --tip-bg: rgba(255,255,255,.97); --sunk: #f7f9fc; --banner-fg: #6b4a00; --hi: rgba(10,135,168,.07); --hi-2: rgba(10,135,168,.12);
-  --grid-line: rgba(10,135,168,.05); --glow-a: rgba(10,135,168,.08); --glow-b: rgba(144,133,233,.07); color-scheme: light; }
+  --bg: #f6f4f1; --surface: #ffffff; --surface-2: #f3eee9; --line: #e5ddd5; --grid: #efe8e1; --fg: #1d1a17; --muted: #6b625a; --faint: #958b82; --cyan: #c4540f;
+  --panel-bg: #ffffff; --ctrl-bg: #ffffff; --chip-bg: #faf7f4; --tip-bg: rgba(255,255,255,.97); --sunk: #faf7f4; --banner-fg: #6b4a00; --hi: rgba(196,84,15,.07); --hi-2: rgba(196,84,15,.12);
+  --grid-line: transparent; --glow-a: rgba(242,118,46,.10); --glow-b: rgba(70,90,190,.06); color-scheme: light; }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.45; min-height: 100vh;
   background-image:
-    radial-gradient(900px 500px at 85% -10%, var(--glow-a), transparent 60%),
-    radial-gradient(700px 500px at -10% 110%, var(--glow-b), transparent 60%),
+    radial-gradient(900px 600px at -5% -10%, var(--glow-a), transparent 60%),
+    radial-gradient(900px 600px at 105% 110%, var(--glow-b), transparent 60%),
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: auto, auto, 32px 32px, 32px 32px; background-attachment: fixed; }
@@ -75,7 +76,7 @@ h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em
 .msel .ms-pop b { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 500; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--ctrl-bg); }
 .seg button { border: 0; background: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 12px; }
-.seg button[aria-pressed="true"] { background: rgba(34,195,230,.14); color: var(--fg); box-shadow: inset 0 0 0 1px rgba(34,195,230,.45); }
+.seg button[aria-pressed="true"] { background: rgba(242,118,46,.14); color: var(--fg); box-shadow: inset 0 0 0 1px rgba(242,118,46,.45); }
 .btn { border: 1px solid var(--line); background: var(--ctrl-bg); padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
 .btn:hover, .seg button:hover { color: var(--fg); }
 
@@ -87,12 +88,12 @@ h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em
   padding: 7px 28px 7px 10px; width: 100%; min-width: 0; appearance: none; cursor: pointer;
   background-image: linear-gradient(45deg, transparent 50%, var(--cyan) 50%), linear-gradient(135deg, var(--cyan) 50%, transparent 50%);
   background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
-.filters select.on { border-color: rgba(34,195,230,.7); box-shadow: 0 0 0 1px rgba(34,195,230,.35), 0 0 14px rgba(34,195,230,.18); }
+.filters select.on { border-color: rgba(242,118,46,.7); box-shadow: 0 0 0 1px rgba(242,118,46,.35), 0 0 14px rgba(242,118,46,.18); }
 .filters option { background: var(--surface); color: var(--fg); }
 .filters .btn[disabled] { opacity: .4; cursor: default; }
 .chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
 .chips:empty { display: none; }
-.chip { font-family: var(--mono); font-size: 11.5px; color: var(--fg); background: rgba(34,195,230,.12); border: 1px solid rgba(34,195,230,.4); border-radius: 999px; padding: 2px 4px 2px 10px; display: inline-flex; align-items: center; gap: 4px; }
+.chip { font-family: var(--mono); font-size: 11.5px; color: var(--fg); background: rgba(242,118,46,.12); border: 1px solid rgba(242,118,46,.4); border-radius: 999px; padding: 2px 4px 2px 10px; display: inline-flex; align-items: center; gap: 4px; }
 .chip button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1; }
 .chip button:hover { color: var(--fg); }
 .snap { display: grid; gap: 8px; }
@@ -111,19 +112,19 @@ h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em
 .legend button[aria-pressed="false"] { color: var(--faint); }
 .legend button[aria-pressed="false"] i { opacity: .25; box-shadow: none; }
 .legend.big { margin: 4px 0 10px; }
-.pill-commit { display: inline-block; margin-top: 3px; font-family: var(--mono); font-size: 10.5px; padding: 1px 7px; border-radius: 999px; color: var(--fg); background: rgba(34,195,230,.14); box-shadow: inset 0 0 0 1px rgba(34,195,230,.45); white-space: nowrap; }
+.pill-commit { display: inline-block; margin-top: 3px; font-family: var(--mono); font-size: 10.5px; padding: 1px 7px; border-radius: 999px; color: var(--fg); background: rgba(242,118,46,.14); box-shadow: inset 0 0 0 1px rgba(242,118,46,.45); white-space: nowrap; }
 .cover { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .cover b { color: var(--cyan); }
 
 /* Panels */
 .panel { position: relative; background: var(--panel-bg); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px); }
-.panel::before, .panel::after { content: ""; position: absolute; width: 14px; height: 14px; border-color: rgba(34,195,230,.6); border-style: solid; pointer-events: none; }
+.panel::before, .panel::after { content: ""; position: absolute; width: 14px; height: 14px; border-color: rgba(242,118,46,.6); border-style: solid; pointer-events: none; }
 .panel::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; border-top-left-radius: 12px; }
 .panel::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; border-bottom-right-radius: 12px; }
 
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
 .kpi .k { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-.kpi .v { font-family: var(--mono); font-size: 34px; font-weight: 600; margin: 6px 0 2px; letter-spacing: -.02em; text-shadow: 0 0 18px rgba(34,195,230,.25); }
+.kpi .v { font-family: var(--mono); font-size: 34px; font-weight: 600; margin: 6px 0 2px; letter-spacing: -.02em; text-shadow: 0 0 18px rgba(242,118,46,.25); }
 .kpi .v small { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 4px; }
 .kpi .s { color: var(--muted); font-size: 12.5px; }
 .delta { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
@@ -145,8 +146,8 @@ h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 600; letter-spacing: .01em
 .chart svg { display: block; width: 100%; overflow: visible; }
 .chart text { fill: var(--faint); font-family: var(--mono); font-size: 11px; }
 .chart .end-label { fill: var(--fg); font-size: 12px; font-weight: 600; }
-.tip { position: absolute; pointer-events: none; background: var(--tip-bg); border: 1px solid rgba(34,195,230,.5); border-radius: 8px; padding: 8px 10px;
-  font-size: 12px; min-width: 150px; box-shadow: 0 0 24px rgba(34,195,230,.18); opacity: 0; transition: opacity .12s; z-index: 5; }
+.tip { position: absolute; pointer-events: none; background: var(--tip-bg); border: 1px solid rgba(242,118,46,.5); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; min-width: 150px; box-shadow: 0 0 24px rgba(242,118,46,.18); opacity: 0; transition: opacity .12s; z-index: 5; }
 .tip .t { font-family: var(--mono); color: var(--cyan); font-size: 11px; letter-spacing: .08em; margin-bottom: 4px; }
 .tip .r { display: flex; justify-content: space-between; gap: 14px; color: var(--muted); }
 .tip .r b { font-family: var(--mono); color: var(--fg); font-weight: 600; }
@@ -250,7 +251,7 @@ td { font-family: var(--mono); }
 }
 .hint { font-family: var(--mono); font-size: 11.5px; color: var(--faint); margin: 10px 0 0; }
 .pie .slice, .pie-list .pr[data-k], .pie-list .pr[data-s] { cursor: pointer; }
-.pie-list .pr.pick { background: var(--hi-2); border-color: rgba(34,195,230,.5); }
+.pie-list .pr.pick { background: var(--hi-2); border-color: rgba(242,118,46,.5); }
 .att { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 14px; }
 .att:empty { display: none; }
 .att-in { animation: attIn .45s cubic-bezier(.2,.8,.2,1) both; transform-origin: top center; }
@@ -278,6 +279,143 @@ td { font-family: var(--mono); }
 @media (max-width: 600px) { .pie { grid-template-columns: 1fr; } .pie-list .pr { grid-template-columns: 10px minmax(0, 1fr) auto 40px 64px; gap: 8px; } .snap .row { grid-template-columns: minmax(0, 1fr) auto; } .snap .track { grid-column: 1 / -1; grid-row: 2; } }
 @media (max-width: 480px) { .filters { grid-template-columns: 1fr; } .kpi .v { font-size: 28px; } h1 { font-size: 22px; } .panel { padding: 14px; } }
 @media print { body { background: #fff; color: #000; } .controls { display: none; } }
+/* ---------- Board (2026-11-25, user: "change the SR Flow Dashboard into this image", orange design) ----------
+   Hero = area · top cards = filters · Survey status flow + Status of survey · tiles = kinds of survey · Support list · Attachments & remarks. */
+.panel { border-radius: 18px; }
+.panel::before, .panel::after { display: none; }
+.board { display: grid; grid-template-columns: minmax(290px, 1fr) minmax(0, 1.75fr) minmax(270px, 1fr); grid-template-areas: "hero frow frow" "hero flow stat" "kt sup att"; gap: 16px; }
+.card { background: var(--panel-bg); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; min-width: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+.card h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.card .read { margin: 2px 0 10px; }
+.hero { grid-area: hero; position: relative; overflow: hidden; border-radius: 22px; padding: 22px 22px 18px; color: #fff; display: flex; flex-direction: column; gap: 10px;
+  background: radial-gradient(120% 80% at 0% 0%, rgba(255,176,110,.55), transparent 60%), linear-gradient(155deg, #f68a3a 0%, #ee6a22 48%, #d4470e 100%);
+  box-shadow: 0 18px 50px rgba(238,106,34,.30); }
+.hero::after { content: ""; position: absolute; right: -60px; bottom: -80px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255,255,255,.08); pointer-events: none; }
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; font-weight: 600; position: relative; z-index: 1; }
+.hero-top .loc { display: flex; gap: 8px; align-items: center; font-size: 17px; min-width: 0; }
+.hero-top .loc svg { flex: none; }
+.hero-top .upd { font-size: 12.5px; opacity: .92; text-align: right; }
+.hero-ic { width: 92px; margin-top: 8px; }
+.hero-big { font-size: clamp(40px, 4.6vw, 58px); font-weight: 600; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.hero-big small { font-size: .4em; font-weight: 500; margin-left: 8px; letter-spacing: 0; }
+.hero-sub { font-size: 16px; font-weight: 600; margin-top: 6px; }
+.hero-meta { font-size: 12.5px; opacity: .92; margin-top: 2px; }
+.hero-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 8px; margin-top: auto; padding-top: 10px; position: relative; z-index: 1; }
+.hero-chips button { border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.16); color: #fff; border-radius: 14px; padding: 9px 10px; text-align: left; cursor: pointer; font-size: 11.5px; line-height: 1.35; min-width: 0; }
+.hero-chips button b { display: block; font-size: 12.5px; }
+.hero-chips button:hover { background: rgba(255,255,255,.24); }
+.hero-chips button[aria-pressed="true"] { background: rgba(255,255,255,.06); border-color: #fff; box-shadow: inset 0 0 0 1px #fff; }
+.hero :focus-visible { outline-color: #fff; }
+.frow { grid-area: frow; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.fcard { background: var(--panel-bg); border: 1px solid var(--line); border-radius: 16px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; min-width: 0; }
+.fcard .fi { width: 30px; height: 30px; color: var(--cyan); }
+.fcard .fi svg { width: 100%; height: 100%; }
+.fcard .fl { font-size: 12px; color: var(--muted); }
+.fcard .msel summary { border-color: transparent; background: none; justify-content: center; padding: 3px 6px; max-width: 100%; }
+.fcard .msel .ms-l { display: none; }
+.fcard .msel, .fcard > span { max-width: 100%; min-width: 0; }
+.fcard select { font: 600 12.5px var(--body); color: var(--fg); background: none; border: 1px solid transparent; border-radius: 8px; padding: 3px 22px 3px 6px; max-width: 100%; cursor: pointer; appearance: none; text-align: center;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 11px) 55%, calc(100% - 7px) 55%; background-size: 4px 4px; background-repeat: no-repeat; }
+.fcard select.on, .fcard .msel.on summary { border-color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan); }
+.fcard select option { background: var(--surface); color: var(--fg); }
+.fcard .seg button { padding: 4px 9px; }
+.fcard .btn { padding: 5px 10px; }
+.flow { grid-area: flow; }
+.flow .fwrap { overflow-x: auto; }
+.flow svg { display: block; width: 100%; height: auto; }
+@media (max-width: 720px) { .flow svg { min-width: 520px; } }
+.flow text { font-family: var(--body); }
+.flow .ax { fill: var(--muted); font-size: 12px; }
+.flow .yl { fill: var(--faint); font-size: 11px; }
+.flow .vl rect { fill: var(--surface-2); stroke: color-mix(in srgb, var(--cyan) 35%, transparent); }
+.flow .vl text { fill: var(--fg); font-size: 11.5px; font-weight: 600; }
+.flow .fp { cursor: pointer; }
+.flow .fp:hover circle.d, .flow .fp.on circle.d { r: 7; }
+.flow .fp.on .vl rect { fill: var(--cyan); stroke: var(--cyan); }
+.flow .fp.on .vl text { fill: #fff; }
+.flow .fp.on .ax { fill: var(--fg); font-weight: 600; }
+.stat { grid-area: stat; display: flex; flex-direction: column; }
+.srows { display: grid; gap: 2px; }
+.srow { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 6px 6px; border-radius: 10px; border: 1px solid transparent; }
+.srow:hover { background: var(--hi); }
+.srow.on { background: var(--hi-2); border-color: color-mix(in srgb, var(--cyan) 50%, transparent); }
+.srow .eye { width: 22px; height: 22px; border-radius: 50%; border: 0; background: none; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.srow .eye i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+.srow .eye[aria-pressed="false"] i { opacity: .2; }
+.srow.off .nm, .srow.off .v { color: var(--faint); text-decoration: line-through; }
+.srow .nm { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+.srow .v { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; text-align: right; }
+.srow .v small { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.srow .bar { grid-column: 2 / -1; height: 3px; border-radius: 2px; background: var(--grid); overflow: hidden; }
+.srow .bar i { display: block; height: 100%; border-radius: 2px; }
+.darpo { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); align-items: center; }
+.darpo button, .linkbtn { border: 1px solid var(--line); background: var(--chip-bg); color: var(--fg); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+.darpo button[aria-pressed="true"] { border-color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan); }
+.darpo b { font-variant-numeric: tabular-nums; }
+.stat .foot { margin-top: auto; padding-top: 10px; display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.kt { grid-area: kt; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; }
+.ktile { background: var(--panel-bg); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; cursor: pointer; text-align: left; color: var(--fg); display: flex; flex-direction: column; gap: 6px; min-height: 100px; min-width: 0; }
+.ktile:hover { border-color: color-mix(in srgb, var(--cyan) 45%, var(--line)); }
+.ktile .kn { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); min-width: 0; }
+.ktile .kn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ktile .kn i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.ktile .kv { font-size: 22px; font-weight: 600; text-align: center; margin-top: auto; font-variant-numeric: tabular-nums; }
+.ktile .kv small { font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 3px; }
+.ktile .ks { font-size: 11.5px; color: var(--muted); text-align: center; }
+.ktile[aria-pressed="true"] { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 10px 26px rgba(242,118,46,.16); }
+.ktile.all { grid-column: 1 / -1; min-height: 0; flex-direction: row; align-items: center; justify-content: space-between; }
+.ktile.all .kv { margin: 0; }
+.sup { grid-area: sup; display: grid; grid-template-columns: minmax(170px, 210px) 1px minmax(0, 1fr); gap: 16px; }
+.sup .gauge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.sup .gauge svg { width: 100%; max-width: 190px; height: auto; }
+.sup .gauge .cap { font-size: 12px; color: var(--muted); }
+.sup .div { background: var(--line); }
+.sup-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.sup-head input { flex: 1 1 140px; max-width: 220px; min-width: 0; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: var(--ctrl-bg); color: var(--fg); font: 12.5px var(--body); }
+.srlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; max-height: 330px; overflow: auto; align-content: start; padding-right: 4px; }
+.sr { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; border: 0; background: none; text-align: left; padding: 7px 8px; border-radius: 10px; cursor: pointer; color: var(--fg); min-width: 0; }
+.sr:hover { background: var(--hi); }
+.sr .dot { width: 11px; height: 11px; border-radius: 50%; grid-row: 1 / 3; }
+.sr .sq { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sr .sv { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.sr .sc { grid-column: 2 / -1; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr .pill-commit { margin: 0 0 0 6px; font-size: 9.5px; vertical-align: 2px; }
+.dkey { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+.dkey span { display: inline-flex; gap: 5px; align-items: center; }
+.dkey i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.att2 { grid-area: att; display: flex; flex-direction: column; }
+.arows { display: grid; gap: 4px; }
+.arow { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(60px, 1fr) 30px; gap: 10px; align-items: center; border: 1px solid transparent; background: none; color: var(--fg); padding: 5px 6px; border-radius: 10px; cursor: pointer; text-align: right; font-size: 12.5px; }
+.arow:hover { background: var(--hi); }
+.arow[aria-pressed="true"] { background: var(--hi-2); border-color: color-mix(in srgb, var(--cyan) 50%, transparent); }
+.arow .al { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arow .tr { height: 9px; border-radius: 5px; border: 1px solid color-mix(in srgb, var(--cyan) 55%, transparent); overflow: hidden; }
+.arow .tr i { display: block; height: 100%; border-radius: 4px; }
+.arow .an { font-variant-numeric: tabular-nums; font-weight: 600; text-align: left; }
+.arow.gap { margin-top: 6px; }
+.aaxis { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(60px, 1fr) 30px; gap: 10px; font-size: 11px; color: var(--muted); padding: 4px 6px 0; }
+.aaxis span:nth-child(2) { display: flex; justify-content: space-between; }
+.att2 .foot { margin-top: auto; padding-top: 10px; font-size: 11.5px; color: var(--faint); }
+.empty { padding: 30px 0; text-align: center; color: var(--muted); font-size: 13px; }
+#bdetail:empty { display: none; }
+#bdetail { margin-top: 16px; }
+#bdetail .cat { margin-top: 0; background: var(--panel-bg); border-radius: 18px; }
+.classic { margin-top: 22px; }
+.classic > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-bg); font-weight: 600; }
+.classic > summary::-webkit-details-marker { display: none; }
+.classic > summary::before { content: "▸"; color: var(--cyan); transition: transform .15s; }
+.classic[open] > summary::before { transform: rotate(90deg); }
+.classic > summary small { color: var(--muted); font-weight: 400; }
+.classic > summary .btn { margin-left: auto; }
+.classic-in { margin-top: 16px; }
+@media (max-width: 1180px) { .board { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "frow frow" "hero stat" "flow flow" "kt att" "sup sup"; } }
+@media (max-width: 720px) {
+  .board { grid-template-columns: minmax(0, 1fr); grid-template-areas: "frow" "hero" "stat" "flow" "kt" "att" "sup"; }
+  .frow { grid-template-columns: repeat(2, minmax(0, 1fr)); } .frow .fcard:last-child { grid-column: 1 / -1; }
+  .sup { grid-template-columns: minmax(0, 1fr); } .sup .div { display: none; } .srlist { grid-template-columns: minmax(0, 1fr); }
+  .hero-chips { grid-template-columns: minmax(0, 1fr); }
+}
+@media print { body.print-one .board, body.print-one #bdetail, body.print-one .classic > summary { display: none !important; } }
 </style>
 </head>
 <body>
@@ -288,17 +426,40 @@ td { font-family: var(--mono); }
       <h1>Where the SRs are</h1>
       <div class="src" id="src">Loading…</div>
     </div>
-    <div class="controls">
-      <div class="seg" role="group" aria-label="Commitment for registration" id="commit"><button data-c="all">All LHs</button><button data-c="in">Commitment</button><button data-c="out">Not commitment</button></div>
-      <span id="f-odc-box"></span><span id="f-ali-box"></span>
-      <div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div><button class="btn" id="export-xlsx" title="Download the SRs shown (Commitment filter applied) as an Excel file: SRs, Summary, Missing documents">Export to Excel</button><button class="btn order-reset" id="order-reset" hidden title="Put the kinds of survey back in order by name">Reset order</button>
-    </div>
   </header>
   <div id="banner"></div>
-  <!-- One panel per kind of survey: survey status pie; a status click opens the attachments pie of its SRs; a missing document opens its remark categories. -->
-  <!-- ALL kinds together (2026-11-23): one survey status pie of every SR shown, whatever its kind; always first, not dragged. -->
-  <section class="kinds kinds-all" id="kinds-all"></section>
-  <section class="kinds" id="kinds"></section>
+  <!-- Board (2026-11-25): hero = area; top cards = filters; survey status flow and status of survey; tiles = kinds of survey;
+       support list = the SRs behind the current pick; attachments & remarks. The detailed pies per kind stay below, folded. -->
+  <main class="board" id="board">
+    <section class="hero" id="hero" aria-label="Area"></section>
+    <section class="frow" id="frow" aria-label="Filters">
+      <div class="fcard"><span class="fi" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9l8-3 8 3 8-3v17l-8 3-8-3-8 3z"/><path d="M12 6v17M20 9v17"/></svg></span>
+        <span class="fl">Kind of survey</span><select id="f-kind" aria-label="Kind of survey"></select></div>
+      <div class="fcard"><span class="fi" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4h10l6 6v18H9z"/><path d="M19 4v6h6M13 17l3 3 5-6"/></svg></span>
+        <span class="fl">ODC status</span><span id="f-odc-box"></span></div>
+      <div class="fcard"><span class="fi" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M16 5v22M8 27h16M6 10h20M6 10l-3 8h6zM26 10l-3 8h6z"/></svg></span>
+        <span class="fl">ALI case status</span><span id="f-ali-box"></span></div>
+      <div class="fcard"><span class="fi" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 26V14M13 26V7M20 26v-9M27 26V11"/></svg></span>
+        <span class="fl">Measure</span><div class="seg" role="group" aria-label="Measure" id="metric"><button data-m="count">SRs</button><button data-m="area">Area (ha)</button></div></div>
+      <div class="fcard"><span class="fi" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M16 5v14M10 13l6 6 6-6M6 23v4h20v-4"/></svg></span>
+        <span class="fl">Data</span><button class="btn" id="export-xlsx" title="Download the SRs shown (commitment, ODC and ALI filters applied; not the kind tile) as an Excel file: SRs, Summary, Missing documents">Export to Excel</button></div>
+    </section>
+    <section class="card flow" id="flow" aria-label="Survey status flow"></section>
+    <section class="card stat" id="stat" aria-label="Status of survey"></section>
+    <section class="kt" id="ktiles" aria-label="Kinds of survey"></section>
+    <section class="card sup" id="sup" aria-label="Support list"></section>
+    <section class="card att2" id="att2" aria-label="Attachments and remarks"></section>
+  </main>
+  <div id="bdetail"></div>
+  <details class="classic" id="classic">
+    <summary>Detailed pies by kind of survey <small>All kinds pie, one pie per kind, drag to reorder, print</small><button class="btn order-reset" id="order-reset" hidden title="Put the kinds of survey back in order by name">Reset order</button></summary>
+    <div class="classic-in">
+      <!-- One panel per kind of survey: survey status pie; a status click opens the attachments pie of its SRs; a missing document opens its remark categories. -->
+      <!-- ALL kinds together (2026-11-23): one survey status pie of every SR shown, whatever its kind; always first, not dragged. -->
+      <section class="kinds kinds-all" id="kinds-all"></section>
+      <section class="kinds" id="kinds"></section>
+    </div>
+  </details>
   <div class="notes" id="notes"></div>
 </div>
 
@@ -441,7 +602,7 @@ function pieChart(el, r, prev, opt) {
   const pct = v => { const p = v / sum * 100; return p > 0 && p < 1 ? "<1%" : Math.round(p) + "%"; };
   const sign = d => d > 0 ? "+" + opt.num(d) : d < 0 ? "−" + opt.num(-d) : "±0";
   let g = `<defs><filter id="${id}-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    <radialGradient id="${id}-core"><stop offset="0" stop-color="rgba(34,195,230,.12)"/><stop offset="1" stop-color="rgba(34,195,230,0)"/></radialGradient></defs>
+    <radialGradient id="${id}-core"><stop offset="0" stop-color="rgba(242,118,46,.12)"/><stop offset="1" stop-color="rgba(242,118,46,0)"/></radialGradient></defs>
     <circle cx="${C}" cy="${C}" r="${RS1 + 6}" fill="none" stroke="var(--grid)" stroke-dasharray="2 4"/>
     <circle cx="${C}" cy="${C}" r="${R0 - 9}" fill="url(#${id}-core)" stroke="var(--line)"/>
     <g class="${opt.spin ? "grow" : ""}" filter="url(#${id}-glow)">${sl.map((o, k) => `<path class="slice" data-k="${k}" d="${arc(o.a0, o.a1)}" fill="${o.s.color}" fill-opacity=".9" stroke="var(--surface)" stroke-width="2"/>`).join("")}
@@ -608,7 +769,173 @@ let sampleOn = false;
 const KIND_COLORS = ["#1f9fc4", "#8a63e8", "#d9821a", "#24a274", "#d9487a", "#6b8e23", "#3f6fd8", "#b5651d"];
 let firstPaint = true;
 let kindColor = {}; // kind -> its colour, in the order shown (set by render)
-const ALL_KINDS = "All kinds", ALL_COLOR = "#22c3e6"; // the consolidated panel; its picks are kept under this name, like a kind's
+const ALL_KINDS = "All kinds", ALL_COLOR = "#f2762e"; // the consolidated panel; its picks are kept under this name, like a kind's
+
+/* ---------- Board (2026-11-25, user, on a weather-dashboard picture: "change the SR Flow Dashboard into this image ... use this with orange as the design") ----------
+   Yellow (big card) = the area; green (top cards) = the filters; orange = status of survey (flow line and status list); red (tiles) = kinds of survey;
+   blue = support list (the SRs behind the current pick); pink = attachments and remarks. A kind tile scopes the whole board; a status (line point or
+   list row) focuses the support list and attachments; an attachment row narrows the support list and, for a missing document, opens its remark
+   categories (catPanel, shared with the SR Desk dashboard). Hidden statuses are the same set as in the detailed pies. */
+const BOARD = "\u0000board"; // key in ui.att / ui.cat for the board's attachment pick
+const STAG = { "CONDUCTED INITIAL PULONG PULONG": "Pulong-pulong", "COMPLETED FIELDWORK": "Fieldwork done", "SR AT DARPO": "At DARPO", "SR RECEIVED BY RPMO": "RPMO received",
+  "SR TRANSMITTED TO LMS FOR IVAS": "To LMS (IVAS)", "SR TRANSMITTED TO CPMO FOR LRA APPROVAL": "To CPMO", "SR TRANSMITTED TO LRA FOR APPROVAL": "To LRA",
+  "ASP FROM LMS RECEIVED BY RPMO": "ASP LMS › RPMO", "ASP FROM LMS RECEIVED BY CPMO": "ASP LMS › CPMO", "ASP FROM LRA RECEIVED BY CPMO": "ASP LRA › CPMO",
+  "ASP FROM LRA RECEIVED BY RPMO": "ASP LRA › RPMO", "ASP FROM LMS RECEIVED BY PPMO": "ASP LMS › PPMO", "ASP FROM LRA RECEIVED BY PPMO": "ASP LRA › PPMO",
+  "FOR REPLACEMENT": "For replacement", [OTHER]: "Other statuses" };
+const stag = st => STAG[st] || short(st);
+const ATT_STATE = { missing: ["Missing a document", "#e66767"], complete: [COMPLETE, "#0ca30c"], partly: [PARTLY, "#fab219"], unchecked: [UNCHECKED, "#726b65"] };
+function attState(s) {
+  const docs = docList(s.route), a = (s.ans || {})[s.route] || {};
+  if (!docs.length || !docs.some(d => a[d.key])) return "unchecked";
+  if (docs.some(d => a[d.key] === "missing")) return "missing";
+  return docs.every(d => d.asNeeded || a[d.key]) ? "complete" : "partly";
+}
+ui.scope = ""; ui.sel = null; ui.supQ = "";
+try { ui.scope = localStorage.getItem("srdash-scope") || ""; } catch (e) {}
+try { const f = JSON.parse(localStorage.getItem("srdash-focus")); if (f && f.st) ui.sel = { st: String(f.st), sub: f.sub ? String(f.sub) : null }; } catch (e) {}
+const saveBoard = () => { try { localStorage.setItem("srdash-scope", ui.scope || ""); localStorage.setItem("srdash-focus", JSON.stringify(ui.sel)); } catch (e) {} };
+const odcAli = s => (!ui.odc.length || ui.odc.includes(odcOf(s))) && (!ui.ali.length || ui.ali.includes(aliOf(s)));
+const niceMax = m => { if (m <= 0) return 1; const p = 10 ** Math.floor(Math.log10(m)), f = m / p; return ([1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(x => f <= x)) * p; };
+const wrap2 = t => { const w = t.split(" "), out = [""]; w.forEach(x => { const l = out.length - 1; if (out[l] && (out[l] + " " + x).length > 13 && out.length < 2) out.push(x); else out[l] = out[l] ? out[l] + " " + x : x; }); return out; };
+const haSum = a => a.reduce((t, s) => t + (s.area || 0), 0);
+const IC_PIN = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6"/></svg>`;
+const IC_LAND = `<svg viewBox="0 0 92 64" fill="none" aria-hidden="true"><path d="M6 18l24-9 32 9 24-9v40l-24 9-32-9-24 9z" fill="rgba(255,255,255,.22)" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="M30 9v40M62 18v40" stroke="#fff" stroke-width="3"/><path d="M38 30l8 6 10-12" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats) {
+  if (ui.scope && !kinds.includes(ui.scope)) ui.scope = "";
+  const scopeName = ui.scope || ALL_KINDS, inScope = s => !ui.scope || (s.kind || NOT_SET) === ui.scope, visSt = s => !hidden.has(keyOf(statusOf(s)));
+  const scoped = list.filter(inScope), shown = scoped.filter(visSt);
+  const rows = SER.map(x => { const ss = scoped.filter(s => keyOf(statusOf(s)) === x.key); return { x, n: ss.length, ha: haSum(ss), srs: ss }; }).filter(r => r.n);
+  if (ui.sel && !rows.some(r => r.x.key === ui.sel.st && !hidden.has(r.x.key))) ui.sel = null;
+  const sel = ui.sel, selName = sel ? stag(sel.st) + (sel.sub ? " › " + sel.sub : "") : "";
+  const atSel = s => !sel || (keyOf(statusOf(s)) === sel.st && (!sel.sub || (s.status || NOT_SET) === sel.sub));
+  const focus = shown.filter(atSel);
+  const val = r => AREA ? r.ha : r.n, num = AREA ? fmtHa : v => v.toLocaleString();
+  const refresh = () => { saveBoard(); render(); };
+
+  /* Filters (green): kind of survey select; the ODC / ALI lists and the measure are filled by fillPicks and render. */
+  const fk = $("f-kind");
+  fk.innerHTML = [`<option value="">${esc(ALL_KINDS)} (${list.length.toLocaleString()})</option>`].concat(kinds.map(k => `<option value="${esc(k)}">${esc(k)} (${list.filter(s => (s.kind || NOT_SET) === k).length.toLocaleString()})</option>`)).join("");
+  fk.value = ui.scope; fk.classList.toggle("on", !!ui.scope);
+
+  /* Area (yellow) */
+  const offN = rows.filter(r => hidden.has(r.x.key)).length, cm = shown.filter(s => commitQ(s) !== undefined).length, noA = shown.filter(s => s.area == null).length;
+  const pre = all.filter(s => odcAli(s) && inScope(s) && visSt(s)), inC = pre.filter(s => commitQ(s) !== undefined), outC = pre.filter(s => commitQ(s) === undefined);
+  const upd = raw.sample ? "Sample data" : raw.pulledAt ? "Last updated, " + esc(raw.pulledAt.replace("T", " ").slice(0, 16)) : "Not pulled yet";
+  $("hero").innerHTML = `<div class="hero-top"><span class="loc">${IC_PIN}<span>${esc(scopeName)}</span></span><span class="upd">${upd}</span></div>
+    <div class="hero-ic">${IC_LAND}</div>
+    <div><div class="hero-big">${fmtHa(haSum(shown))}<small>ha</small></div><div class="hero-sub">Area validated</div>
+      <div class="hero-meta">${shown.length.toLocaleString()} SRs · ${cm.toLocaleString()} commitment${noA ? ` · ${noA.toLocaleString()} with no area` : ""}${offN ? ` · ${offN} status${offN === 1 ? "" : "es"} hidden` : ""}</div></div>
+    <div class="hero-chips" id="commit" role="group" aria-label="Commitment for registration">${[["all", "All LHs", pre], ["in", "Commitment", inC], ["out", "Not commitment", outC]].map(([c, l, a]) =>
+      `<button data-c="${c}" aria-pressed="${ui.commit === c}" title="${esc(l)}: ${a.length.toLocaleString()} SRs · ${fmtHa(haSum(a))} ha"><b>${l}</b>${fmtHa(haSum(a))} ha · ${a.length.toLocaleString()}</button>`).join("")}</div>`;
+  $("hero").querySelectorAll("[data-c]").forEach(b => b.onclick = () => { ui.commit = b.dataset.c; try { localStorage.setItem("srdash-commit", ui.commit); } catch (e) {} render(); });
+
+  /* Survey status flow (orange): the statuses in flow order, a point per status; click a point to focus it. */
+  const vr = rows.filter(r => !hidden.has(r.x.key));
+  let fl = `<div class="chart-head"><div><h2>Survey status flow</h2><p class="read">${esc(scopeName)} · ${AREA ? "hectares" : "SRs"} at each status, in the order an SR moves. Click a point to focus it.</p></div></div>`;
+  if (!vr.length) fl += `<p class="empty">Every status is hidden. Show one in Status of survey.</p>`;
+  else {
+    const W = 640, H = 300, L = 44, R = 30, T = 40, B = 54, mx = niceMax(Math.max(...vr.map(val)));
+    const xs = i => vr.length === 1 ? (L + W - R) / 2 : L + i * (W - L - R) / (vr.length - 1), ys = v => T + (1 - v / mx) * (H - T - B);
+    const P = vr.map((r, i) => [xs(i), ys(val(r))]);
+    let d = `M${P[0][0].toFixed(1)},${P[0][1].toFixed(1)}`;
+    for (let i = 0; i < P.length - 1; i++) { const p0 = P[i - 1] || P[i], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2] || p2;
+      d += `C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)},${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)},${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`; }
+    const base = H - B, area = `${d}L${P[P.length - 1][0].toFixed(1)},${base}L${P[0][0].toFixed(1)},${base}Z`;
+    const grid = [0, .5, 1].map(f => `<line x1="${L}" x2="${W - R + 10}" y1="${ys(mx * f)}" y2="${ys(mx * f)}" stroke="var(--grid)" ${f ? 'stroke-dasharray="3 5"' : ""}/><text class="yl" x="${L - 8}" y="${ys(mx * f) + 4}" text-anchor="end">${AREA ? Math.round(mx * f).toLocaleString() : (mx * f).toLocaleString()}</text>`).join("");
+    const pts = vr.map((r, i) => { const [x, y] = P[i], lab = num(val(r)), w = lab.length * 7 + 14, on = sel && sel.st === r.x.key, ly = y - 30;
+      return `<g class="fp${on ? " on" : ""}" data-k="${esc(r.x.key)}" tabindex="0" role="button" aria-pressed="${!!on}" aria-label="${esc(r.x.key)}: ${r.n} SRs, ${fmtHa(r.ha)} ha"><title>${esc(r.x.key)}: ${r.n.toLocaleString()} SRs · ${fmtHa(r.ha)} ha</title>
+        <rect x="${x - 40}" y="${T - 30}" width="80" height="${H - T + 30}" fill="transparent"/>
+        <g class="vl"><rect x="${(x - w / 2).toFixed(1)}" y="${ly.toFixed(1)}" width="${w}" height="20" rx="5"/><text x="${x.toFixed(1)}" y="${(ly + 14).toFixed(1)}" text-anchor="middle">${lab}</text></g>
+        <circle class="d" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${r.x.color}" stroke="var(--surface)" stroke-width="2"/>
+        ${wrap2(stag(r.x.key)).map((t, j) => `<text class="ax" x="${x.toFixed(1)}" y="${base + 20 + j * 15}" text-anchor="middle">${esc(t)}</text>`).join("")}</g>`; }).join("");
+    fl += `<div class="fwrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Survey status flow, ${esc(scopeName)}"><defs><linearGradient id="flow-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--cyan)" stop-opacity=".32"/><stop offset="1" stop-color="var(--cyan)" stop-opacity="0"/></linearGradient></defs>
+      ${grid}<path d="${area}" fill="url(#flow-fill)"/><path d="${d}" fill="none" stroke="var(--cyan)" stroke-width="2.5" stroke-linecap="round"/>${pts}</svg></div>`;
+  }
+  $("flow").innerHTML = fl;
+  const pickSt = (st, sub) => { ui.sel = ui.sel && ui.sel.st === st && (ui.sel.sub || null) === (sub || null) ? null : { st, sub: sub || null }; delete ui.att[BOARD]; delete ui.cat[BOARD]; refresh(); };
+  $("flow").querySelectorAll(".fp").forEach(g => { g.onclick = () => pickSt(g.dataset.k); g.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickSt(g.dataset.k); } }; });
+
+  /* Status of survey (orange): every status in the scope; the dot shows / hides it (same as the pies' key), the name focuses it. */
+  const tot = vr.reduce((t, r) => t + val(r), 0) || 1;
+  const dp = {}; scoped.filter(s => statusOf(s) === AT_DARPO).forEach(s => { const k = s.status || NOT_SET; (dp[k] = dp[k] || []).push(s); });
+  const dOrder = ["Pending", "Ongoing Verification", "Compliance"], dKeys = Object.keys(dp).sort((a, b) => ((dOrder.indexOf(a) + 1) || 9) - ((dOrder.indexOf(b) + 1) || 9));
+  $("stat").innerHTML = `<div class="chart-head"><div><h2>Status of survey</h2><p class="read">${esc(scopeName)} · dot shows or hides a status, name focuses it</p></div></div>
+    <div class="srows">${rows.map(r => { const off = hidden.has(r.x.key), on = sel && sel.st === r.x.key && !sel.sub;
+      return `<div class="srow${off ? " off" : ""}${on ? " on" : ""}" title="${esc(r.x.members ? r.x.members.join(", ") : r.x.key)}"><button class="eye" data-h="${esc(r.x.key)}" aria-pressed="${!off}" aria-label="${off ? "Show" : "Hide"} ${esc(r.x.key)}"><i style="background:${r.x.color}"></i></button>
+        <button class="nm" data-k="${esc(r.x.key)}" aria-pressed="${!!on}">${esc(stag(r.x.key))}</button><span class="v">${num(val(r))}<small>${AREA ? r.n.toLocaleString() + " SRs" : fmtHa(r.ha) + " ha"}</small></span>
+        <span class="bar"><i style="width:${off ? 0 : (val(r) / tot * 100).toFixed(1)}%;background:${r.x.color}"></i></span></div>`; }).join("") || `<p class="empty">No SRs.</p>`}</div>
+    ${dKeys.length && !hidden.has(keyOf(AT_DARPO)) && keyOf(AT_DARPO) === AT_DARPO ? `<div class="darpo"><span>At DARPO:</span>${dKeys.map(k => `<button data-sub="${esc(k)}" aria-pressed="${!!(sel && sel.st === AT_DARPO && sel.sub === k)}">${esc(k)} <b>${AREA ? fmtHa(haSum(dp[k])) : dp[k].length}</b></button>`).join("")}</div>` : ""}
+    <div class="foot"><span>${sel ? `Focus: <b>${esc(selName)}</b>` : "No status focused"}</span>${sel ? `<button class="linkbtn" id="sel-clear">Clear focus</button>` : ""}</div>`;
+  $("stat").querySelectorAll("[data-h]").forEach(b => b.onclick = () => { const k = b.dataset.h; hidden.has(k) ? hidden.delete(k) : hidden.add(k); try { localStorage.setItem("srdash-hidden", JSON.stringify([...hidden])); } catch (e) {} render(); });
+  $("stat").querySelectorAll(".nm[data-k]").forEach(b => b.onclick = () => pickSt(b.dataset.k));
+  $("stat").querySelectorAll("[data-sub]").forEach(b => b.onclick = () => pickSt(AT_DARPO, b.dataset.sub));
+  if ($("sel-clear")) $("sel-clear").onclick = () => { ui.sel = null; delete ui.att[BOARD]; delete ui.cat[BOARD]; refresh(); };
+
+  /* Kinds of survey (red): one tile per kind; a click scopes the whole board to it, again to go back to every kind. */
+  const tiles = (kinds.length > 1 ? [""] : []).concat(kinds);
+  $("ktiles").innerHTML = tiles.map(k => { const ks = list.filter(s => (!k || (s.kind || NOT_SET) === k) && visSt(s) && atSel(s)), n = ks.length, ha = haSum(ks), on = (ui.scope || "") === k;
+    return `<button class="ktile${k ? "" : " all"}" data-kind="${esc(k)}" aria-pressed="${on}" title="${k ? "Show only " + esc(k) + " on the board" : "Show every kind of survey"}">
+      <span class="kn"><i style="background:${k ? colorOf(k) : "var(--cyan)"}"></i><span>${esc(k || ALL_KINDS)}</span></span>
+      <span class="kv">${AREA ? fmtHa(ha) + "<small>ha</small>" : n.toLocaleString() + "<small>SRs</small>"}</span>
+      <span class="ks">${AREA ? n.toLocaleString() + " SRs" : fmtHa(ha) + " ha"}${sel ? " · " + esc(selName) : ""}</span></button>`; }).join("") || `<div class="card"><p class="empty">No SRs.</p></div>`;
+  $("ktiles").querySelectorAll(".ktile").forEach(b => b.onclick = () => { const k = b.dataset.kind; ui.scope = k && ui.scope !== k ? k : ""; refresh(); });
+
+  /* Attachments & remarks (pink): what the focused SRs lack, as bars; Complete / Partly marked / Not marked yet after them. */
+  const { miss, rem, groups } = attachStats(focus);
+  const docs = Object.keys(miss).sort((a, b) => miss[b].length - miss[a].length || a.localeCompare(b));
+  const top = docs.length > ATT_MAX + 1 ? docs.slice(0, ATT_MAX) : docs, folded = docs.slice(top.length);
+  const aRows = top.map(l => ({ key: l, name: l.replace(/^Missing: /, ""), srs: miss[l], color: "var(--cyan)" }))
+    .concat(folded.length ? [{ key: OTHER_MISS, name: `${OTHER_MISS} (${folded.length})`, srs: uniq(folded.map(l => miss[l])), color: "var(--cyan)" }] : [])
+    .concat([COMPLETE, PARTLY, UNCHECKED].map((g, j) => ({ key: g, name: g, srs: groups[g], color: GROUP_COLOR[g] === "#2c3a56" ? "#726b65" : GROUP_COLOR[g], gap: j === 0 })));
+  let ap = ui.att[BOARD]; if (ap && !aRows.some(x => x.key === ap) && !folded.includes(ap)) ap = ui.att[BOARD] = null;
+  const apRow = ap ? (folded.includes(ap) ? OTHER_MISS : ap) : null, lacking = uniq(Object.values(miss)).length, fN = focus.length || 1;
+  $("att2").innerHTML = `<div class="chart-head"><div><h2>Attachments &amp; remarks</h2><p class="read">${focus.length.toLocaleString()} SRs${sel ? " at " + esc(selName) : ""} · <b>${lacking.toLocaleString()}</b> lacking a document</p></div></div>
+    ${focus.length ? `<div class="arows">${aRows.map(x => `<button class="arow${x.gap ? " gap" : ""}" data-a="${esc(x.key)}" aria-pressed="${apRow === x.key}" title="${esc(x.name)}: ${x.srs.length} of ${focus.length} SRs"><span class="al">${esc(x.name)}</span><span class="tr"><i style="width:${(x.srs.length / fN * 100).toFixed(1)}%;background:${x.color}"></i></span><span class="an">${x.srs.length.toLocaleString()}</span></button>`).join("")}</div>
+    <div class="aaxis"><span></span><span><span>0%</span><span>50%</span><span>100%</span></span><span></span></div>` : `<p class="empty">No SRs here.</p>`}
+    <div class="foot">Bar = share of the ${focus.length.toLocaleString()} SRs; an SR lacking two documents is in both. Click a missing document to sort its remarks.</div>`;
+  $("att2").querySelectorAll("[data-a]").forEach(b => b.onclick = () => { ui.att[BOARD] = ui.att[BOARD] === b.dataset.a ? null : b.dataset.a; delete ui.cat[BOARD]; render();
+    const d = $("bdetail"); if (d.firstChild && ui.att[BOARD] && miss[ui.att[BOARD]]) d.scrollIntoView({ block: "nearest", behavior: "smooth" }); });
+
+  /* Support list (blue): the SRs behind the current pick (kind, status, attachment), with a gauge of their share. Dot = attachment state. */
+  const apSet = !ap ? null : miss[ap] ? miss[ap] : ap === OTHER_MISS ? uniq(folded.map(l => miss[l])) : groups[ap] || [];
+  const supSet = (apSet || focus).slice().sort(bySeq), apName = ap ? ap.replace(/^Missing: /, "") : "";
+  const gv = AREA ? haSum(supSet) : supSet.length, gof = AREA ? haSum(shown) : shown.length, pc = gof ? gv / gof : 0;
+  const C = 2 * Math.PI * 70, arcLen = Math.max(0, Math.min(1, pc)) * C;
+  $("sup").innerHTML = `<div class="gauge"><h2 style="align-self:flex-start">Support list</h2>
+      <svg viewBox="0 0 180 180" role="img" aria-label="${Math.round(pc * 100)}% of ${esc(scopeName)}"><circle cx="90" cy="90" r="70" fill="none" stroke="var(--grid)" stroke-width="12"/>
+        <circle cx="90" cy="90" r="70" fill="none" stroke="var(--cyan)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${arcLen.toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 90 90)"/>
+        <circle cx="90" cy="90" r="82" fill="none" stroke="color-mix(in srgb, var(--cyan) 40%, transparent)" stroke-width="1"/>
+        <text x="90" y="74" text-anchor="middle" style="fill:var(--cyan);font-size:13px;font-family:var(--body)">${esc((apName ? "Selected" : sel ? stag(sel.st) : "All statuses").slice(0, 22))}</text>
+        <text x="90" y="104" text-anchor="middle" style="fill:var(--fg);font-size:${AREA ? 24 : 32}px;font-weight:600;font-family:var(--body)">${AREA ? fmtHa(gv) : gv.toLocaleString()}</text>
+        <text x="90" y="124" text-anchor="middle" style="fill:var(--muted);font-size:11.5px;font-family:var(--body)">${AREA ? "ha" : "SRs"} · ${Math.round(pc * 100)}%</text></svg>
+      <div class="cap">${Math.round(pc * 100)}% of ${esc(scopeName)}${AREA ? " area" : " SRs"}${sel ? " · at " + esc(selName) : ""}${apName ? " · " + esc(apName) : ""}</div></div>
+    <div class="div"></div>
+    <div><div class="sup-head"><span class="read" style="margin:0">${supSet.length.toLocaleString()} SR${supSet.length === 1 ? "" : "s"}${sampleOn ? " (sample, do not open)" : " · click one to open it in the SR Desk"}</span><input id="sup-q" type="search" placeholder="Search SeqNo, claimant, title" aria-label="Search the support list" autocomplete="off" value="${esc(ui.supQ)}"></div>
+      <div class="srlist" id="srlist"></div>
+      <div class="dkey">${Object.values(ATT_STATE).map(([l, c]) => `<span><i style="background:${c}"></i>${esc(l)}</span>`).join("")}</div></div>`;
+  const fillList = () => {
+    const words = ui.supQ.toLowerCase().split(/\s+/).filter(Boolean), hit = s => words.every(w => [s.seq, s.claimant, s.title, s.lot, s.darmo, s.marpo].join(" ").toLowerCase().includes(w));
+    const got = words.length ? supSet.filter(hit) : supSet, MAX = 300;
+    $("srlist").innerHTML = got.slice(0, MAX).map(s => { const st = ATT_STATE[attState(s)], q = commitQ(s);
+      return `<button class="sr" data-seq="${esc(s.seq)}" title="SR ${esc(s.seq)} · ${esc(s.survey || NOT_SET)}${s.status ? " · " + esc(s.status) : ""} · ${esc(st[0])}"><i class="dot" style="background:${st[1]}"></i>
+        <span class="sq">${esc(s.seq)}${q !== undefined ? `<span class="pill-commit">${esc(q === "0" ? "C" : "Q" + q)}</span>` : ""}</span><span class="sv">${s.area == null ? "no area" : fmtHa(s.area) + " ha"}</span>
+        <span class="sc">${esc(s.claimant || "—")} · ${esc(s.title || "")}${!ui.scope ? " · " + esc(s.kind || NOT_SET) : ""}${sel ? "" : " · " + esc(stag(statusOf(s)))}</span></button>`; }).join("")
+      + (got.length > MAX ? `<p class="read" style="grid-column:1/-1">Showing ${MAX} of ${got.length.toLocaleString()}. Search or pick a status to narrow it.</p>` : "")
+      || `<p class="empty" style="grid-column:1/-1">${words.length ? "No SR matches the search." : "No SRs here."}</p>`;
+    $("srlist").querySelectorAll(".sr").forEach(b => b.onclick = () => openInDesk(b.dataset.seq));
+  };
+  fillList();
+  $("sup-q").oninput = e => { ui.supQ = e.target.value; fillList(); };
+
+  /* Remark categories of the picked missing document (or the folded documents to choose from), under the board. */
+  const bd = $("bdetail");
+  if (ap === OTHER_MISS) {
+    bd.innerHTML = `<div class="cat att-in"><h3>${OTHER_MISS}</h3><p class="read">Pick one to sort its remarks.</p><div class="legend">${folded.map(l => `<button data-doc="${esc(l)}"><i style="background:${OTHER_COLOR}"></i>${esc(l.replace(/^Missing: /, ""))} · ${miss[l].length}</button>`).join("")}</div></div>`;
+    bd.querySelectorAll("[data-doc]").forEach(b => b.onclick = () => { ui.att[BOARD] = b.dataset.doc; delete ui.cat[BOARD]; render(); });
+  } else if (ap && miss[ap]) { catPanel(BOARD, "b", ap, miss[ap], rem[ap] || {}, rcats, bd); bindRows(bd); }
+  else bd.innerHTML = "";
+}
 
 function render() {
   const raw = readDesk() || sampleDesk(), all = raw.list, AREA = ui.metric === "area"; sampleOn = !!raw.sample;
@@ -631,6 +958,7 @@ function render() {
   // the same status pie, attachments and categories as a kind's panel, over every SR shown; the chips give each kind's part of it.
   const allHa = list.reduce((t, s) => t + (s.area || 0), 0);
   kindColor = {}; kinds.forEach(k => { kindColor[k] = colorOf(k); });
+  renderBoard(raw, all, list, SER, AREA, kinds, colorOf, rcats);
   $("kinds-all").innerHTML = kinds.length > 1 ? `<section class="panel kindp" id="kp-all" data-kind="${esc(ALL_KINDS)}" style="--kc:${ALL_COLOR}" aria-label="${esc(ALL_KINDS)}">
     <div class="kind-head"><h2><span class="kind-badge">${esc(ALL_KINDS.toUpperCase())}</span>survey statuses, every kind together${AREA ? " by area (ha)" : ""}</h2><div class="right"><div class="cover" id="kc-all"></div><button class="btn" data-print="all" title="Print the ALL kinds pie as shown: its pie, and the attachments, categories and list now open">Print</button></div></div>
     <div class="kind-split" aria-label="Each kind's part">${kinds.map(k => { const ks = list.filter(s => (s.kind || NOT_SET) === k), n = ks.length, ha = ks.reduce((t, s) => t + (s.area || 0), 0), v = AREA ? ha : n, of = AREA ? allHa : list.length;
@@ -646,6 +974,7 @@ function render() {
   firstPaint = false;
   const noArea = list.filter(s => s.area == null).length;
   $("notes").innerHTML = `<b>How these are counted</b><ul>
+    <li><b>Board</b>: the orange card is the <b>area</b> (Area Validated, ha) of the SRs shown, with the commitment choice; the top cards are the <b>filters</b>; <b>Survey status flow</b> and <b>Status of survey</b> count the SRs at each status (dot hides a status, name or point focuses it); the tiles are the <b>kinds of survey</b> (click one to show only it); <b>Support list</b> lists the SRs behind the current pick (dot = attachment state); <b>Attachments &amp; remarks</b> shows what they lack. The detailed pies are in the fold below.</li>
     <li><b>All kinds</b> (first panel): every SR shown, whatever its kind, at its current survey status. The chips under its header give each kind's part (SRs, or hectares with <b>Area (ha)</b>). Click a status to split its SRs <b>by kind of survey</b>, then a kind to list them; attachments are in each kind's own panel.</li>
     <li>One pie per <b>kind of survey</b>: every SR of that kind at its current survey status, from this PC's SR Desk copy. The outer ring splits <b>SR AT DARPO</b> by DARPO status (Pending, Ongoing Verification, Compliance).</li>
     <li><b>Area</b> is the register's Area Validated, in hectares (an Admin's correction in the SR Desk is used). An SR with no area adds 0 ha${noArea ? `: ${noArea.toLocaleString()} here` : ""}. The status tables show both. <b>SRs</b> / <b>Area (ha)</b> at the top picks what the pie and the Share column measure.</li>
@@ -859,6 +1188,7 @@ function bindGrip(g) {
 
 function printKind(i) {
   const p = $("kp-" + i); if (!p) return;
+  $("classic").open = true;
   document.body.classList.add("print-one"); p.classList.add("print-me");
   const done = () => { document.body.classList.remove("print-one"); p.classList.remove("print-me"); removeEventListener("afterprint", done); };
   addEventListener("afterprint", done); window.print(); setTimeout(done, 1000); // afterprint is not sent by every browser
@@ -866,9 +1196,11 @@ function printKind(i) {
 /* Light / dark: follows the Survey Unit panel ("aw-theme" message, sent when the page loads and when the theme changes; aw.theme on this device). */
 try { const th = localStorage.getItem("aw.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch (e) {}
 window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
-document.querySelectorAll("#commit button").forEach(b => b.onclick = () => { ui.commit = b.dataset.c; try { localStorage.setItem("srdash-commit", ui.commit); } catch (e) {} render(); });
+$("f-kind").onchange = e => { ui.scope = e.target.value; saveBoard(); render(); };
+try { $("classic").open = localStorage.getItem("srdash-classic") === "1"; } catch (e) {}
+$("classic").ontoggle = () => { try { localStorage.setItem("srdash-classic", $("classic").open ? "1" : "0"); } catch (e) {} };
 document.querySelectorAll("#metric button").forEach(b => b.onclick = () => { ui.metric = b.dataset.m; try { localStorage.setItem("srdash-metric", ui.metric); } catch (e) {} render(); });
-$("order-reset").onclick = () => { saveOrder(null); render(); };
+$("order-reset").onclick = e => { e.preventDefault(); saveOrder(null); render(); }; // inside the fold's summary: do not fold
 /* ---------- Export to Excel (2026-11-22, user: "make a export option to SR Flow Dashboard to excel file for data analysis") ----------
    Writes an .xlsx in the browser (no internet needed): SRs (one row per SR shown, with the Commitment filter applied),
    Summary (kind x survey status: SRs and area), Missing documents (one row per SR and missing document, with its remark and
