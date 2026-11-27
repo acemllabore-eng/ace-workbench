@@ -646,7 +646,7 @@ function crumbs(app){
 async function show(id){ try{ await openView(id); } finally{ field.sync(); } }
 function makeFrame(app){
   const f = document.createElement("iframe");
-  f.title = app.name; f.src = app.url; f.setAttribute("allow", "clipboard-read; clipboard-write; fullscreen; geolocation");
+  f.title = app.name; f.src = app.url; f.setAttribute("allow", "clipboard-read; clipboard-write; fullscreen; geolocation" + (app.id === "scan" ? "; local-network-access; local-network; loopback-network" : ""));   // Scanner reads the receiver on this PC
   f.addEventListener("load", () => { sendTheme(f); addFx(f); addTableTools(f); $("load").hidden = true; });
   document.querySelector(".stage").appendChild(f); frames[app.id] = f; return f;
 }

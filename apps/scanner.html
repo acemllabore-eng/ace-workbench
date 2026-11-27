@@ -53,6 +53,12 @@ label.f input{height:38px;border:1px solid var(--line);border-radius:8px;backgro
 .notice.warn{background:var(--warn-bg);color:var(--warn)} .notice.bad{background:var(--bad-bg);color:var(--bad)} .notice.ok{background:var(--accent-soft)}
 .code{font:600 28px/1 var(--mono);letter-spacing:.12em}
 .addr{font:600 16px var(--mono);word-break:break-all}
+.qrwrap{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.qrbox{background:#fff;padding:10px;border-radius:10px;display:inline-block;line-height:0}
+.qrbox svg{width:220px;height:220px;display:block}
+.qrbox+.qrbox{margin-top:8px}
+.qrcap{font:12px var(--mono);color:var(--muted);margin-top:4px;line-height:1.3}
+@media (max-width:720px){ .qrwrap{grid-template-columns:1fr} }
 .pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
 .thumb{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--hover);aspect-ratio:3/4;cursor:pointer}
 .thumb img{width:100%;height:100%;object-fit:contain;display:block}
@@ -87,14 +93,31 @@ td.num{white-space:nowrap}
       <div class="notice warn">The scanner receiver is not running on this PC. Double-click <b>Open Scanner Receiver.bat</b> in the Survey Unit folder, keep its window open, then press Check again.</div>
       <p class="small muted">On the public site, Chrome or Edge may ask to let it reach devices on your network: choose Allow. Other browsers may not reach the receiver from the public site; open the Survey Unit folder's copy instead.</p>
       <p class="small muted">The phone and this PC must be on the same Wi-Fi. If Windows Firewall asks, allow it for the network this PC is on (office Wi-Fi is often set as <b>Public</b>; allowing only Private then blocks the phone).</p>
-      <button class="btn" id="recheck">Check again</button>
+      <div class="row">
+        <a class="btn primary hide" id="startRx" href="surveyscan:start">Start the receiver</a>
+        <button class="btn" id="recheck">Check again</button>
+        <span class="small muted" id="startMsg"></span>
+      </div>
+      <p class="small muted hide" id="startHelp" style="margin:8px 0 0">Start button not working? Run <b>Set Up Scanner Button.bat</b> once on this PC (Survey Unit folder). The browser then asks to open it: tick "Always allow" and choose Open.</p>
     </div>
     <div id="rxUp" class="hide">
-      <div class="grid2">
-        <div><div class="muted small">1. On the phone's browser, open</div><div class="addr" id="addrs"></div></div>
-        <div><div class="muted small">2. Type this pairing code there</div><div class="code" id="pcCode"></div></div>
+      <div class="qrwrap">
+        <div id="qrs"></div>
+        <div>
+          <p style="margin:0 0 6px"><b>Point the phone's camera at the code</b> and tap the link it shows. The phone opens the scanner already connected to this PC; nothing to type.</p>
+          <p class="small muted" style="margin:0">The phone must be on the same Wi-Fi as this PC. If the camera shows no link, open its QR scanner (Google Lens on Android).</p>
+          <details class="small muted" style="margin-top:10px"><summary>No camera? Type it instead</summary>
+            <div style="margin-top:6px">Address: <span class="addr" id="addrs"></span><br>Pairing code: <span class="code" id="pcCode" style="font-size:18px"></span></div>
+          </details>
+        </div>
       </div>
-      <p class="small muted" style="margin:10px 0 0">Scans are saved on this PC in <span id="folder" style="font-family:var(--mono)"></span>. The code changes each time the receiver starts.</p>
+      <div class="row" style="margin-top:12px">
+        <span class="small muted">Scans are saved in <span id="folder" style="font-family:var(--mono);color:var(--ink)"></span></span>
+        <button class="btn small" id="pickFolder">Change folder…</button>
+        <button class="btn small hide" id="resetFolder">Use the default folder</button>
+        <span class="small muted" id="folderMsg"></span>
+      </div>
+      <p class="small muted" style="margin:6px 0 0">Each day's scans go in a dated folder inside it. The pairing code changes each time the receiver starts.</p>
     </div>
   </section>
 
@@ -102,11 +125,12 @@ td.num{white-space:nowrap}
        A secure (https) page cannot send to a plain http address on the Wi-Fi, so the phone must open the PC's page itself. -->
   <section class="card hide" id="phoneOpen">
     <h2>Send scans to a PC</h2>
-    <p class="small muted" style="margin:0 0 10px">The PC runs <b>Open Scanner Receiver.bat</b>; its window shows the address. The phone must be on the same Wi-Fi.</p>
-    <div class="row">
+    <p style="margin:0 0 10px"><b>Scan the QR code on the PC's screen with this phone's camera.</b> It opens the scanner already connected. The PC runs <b>Open Scanner Receiver.bat</b>; the phone must be on the same Wi-Fi.</p>
+    <details class="small muted"><summary>No QR code? Type the PC's address</summary>
+    <div class="row" style="margin-top:8px">
       <label class="f" style="flex:1;min-width:200px">PC address<input id="pcAddr" inputmode="url" autocomplete="off" placeholder="e.g. 192.168.1.20"></label>
       <a class="btn primary big" id="openPc" target="_blank" rel="noopener" style="align-self:end">Open the PC's scanner</a>
-    </div>
+    </div></details>
     <p class="small muted" style="margin:10px 0 0">Without a PC you can still scan here and use <b>Save PDF on this device</b>.</p>
   </section>
 
@@ -167,8 +191,11 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
 const RX_PORT = 8795;
 // Phone mode: the page was served by the receiver itself. PC mode: anything else (panel on localhost:8760, file://).
-const PHONE = location.port === String(RX_PORT);
-const RX = PHONE ? location.origin : `http://localhost:${RX_PORT}`;
+// Phone: the page came from the receiver over Wi-Fi. The same page opened on the PC itself (localhost, opened by the
+// receiver at start) is the PC view and shows the QR code.
+const ON_RX = location.port === String(RX_PORT);
+const PHONE = ON_RX && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const RX = ON_RX ? location.origin : `http://localhost:${RX_PORT}`;
 const LS = "scan.v1";
 let saved = {}; try { saved = JSON.parse(localStorage.getItem(LS) || "{}"); } catch(e) {}
 const keep = () => { try { localStorage.setItem(LS, JSON.stringify(saved)); } catch(e) {} };
@@ -542,8 +569,123 @@ $("send").onclick = async () => {
     render(); if (!PHONE) loadList();
   } catch(e) {
     $("sendMsg").textContent = (e.message === "Failed to fetch" ? "Could not reach the PC. Same Wi-Fi? Receiver window still open?" : "Not sent: " + e.message + ".") + " Your pages are still here.";
+    // Wrong code: the receiver was restarted and has a new code. Show the code box and say how to pair again.
+    if (PHONE && /pairing code/i.test(e.message)) { $("phonePair").classList.remove("hide"); $("sendMsg").textContent = "The PC has a new pairing code. Scan the QR code on the PC again (or type the new code). Your pages are still here."; }
   } finally { $("send").disabled = !pages.length; }
 };
+
+/* ---------- QR code maker (byte mode, error correction M, versions 1-10) ----------
+   Written for this page so it needs no outside file. Follows ISO/IEC 18004: finder, timing and alignment patterns,
+   Reed-Solomon over GF(256) with 0x11D, interleaved blocks, 8 masks scored by penalty rules 1 to 4. */
+function makeQR(text){
+  const bytes = Array.from(new TextEncoder().encode(text));
+  const ECC = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];   // EC codewords per block, level M
+  const BLK = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];            // blocks, level M
+  const rawMods = v => { let r = (16 * v + 128) * v + 64; if (v >= 2) { const na = Math.floor(v / 7) + 2; r -= (25 * na - 10) * na - 55; if (v >= 7) r -= 36; } return r; };
+  const dataCw = v => Math.floor(rawMods(v) / 8) - ECC[v] * BLK[v];
+  let ver = 1;
+  for (; ver <= 10; ver++) if (4 + (ver < 10 ? 8 : 16) + bytes.length * 8 <= dataCw(ver) * 8) break;
+  if (ver > 10) throw new Error("Text too long for the QR code");
+  // data bits
+  const bits = [];
+  const put = (val, n) => { for (let i = n - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+  put(4, 4); put(bytes.length, ver < 10 ? 8 : 16); for (const b of bytes) put(b, 8);
+  const cap = dataCw(ver) * 8;
+  put(0, Math.min(4, cap - bits.length)); put(0, (8 - bits.length % 8) % 8);
+  for (let pad = 0xEC; bits.length < cap; pad ^= 0xEC ^ 0x11) put(pad, 8);
+  const data = []; for (let i = 0; i < bits.length; i += 8) { let b = 0; for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j]; data.push(b); }
+  // Reed-Solomon
+  const mul = (x, y) => { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z; };
+  const divisor = deg => { const r = new Array(deg).fill(0); r[deg - 1] = 1; let root = 1;
+    for (let i = 0; i < deg; i++) { for (let j = 0; j < r.length; j++) { r[j] = mul(r[j], root); if (j + 1 < r.length) r[j] ^= r[j + 1]; } root = mul(root, 2); } return r; };
+  const remainder = (dat, div) => { const r = div.map(() => 0); for (const b of dat) { const f = b ^ r.shift(); r.push(0); div.forEach((c, i) => r[i] ^= mul(c, f)); } return r; };
+  const nb = BLK[ver], el = ECC[ver], raw = Math.floor(rawMods(ver) / 8), nShort = nb - raw % nb, shortLen = Math.floor(raw / nb);
+  const div = divisor(el), blocks = [];
+  for (let i = 0, k = 0; i < nb; i++) {
+    const dat = data.slice(k, k + shortLen - el + (i < nShort ? 0 : 1)); k += dat.length;
+    const ecc = remainder(dat, div); if (i < nShort) dat.push(0); blocks.push(dat.concat(ecc));
+  }
+  const cw = [];
+  for (let i = 0; i < blocks[0].length; i++) for (let j = 0; j < blocks.length; j++) if (i !== shortLen - el || j >= nShort) cw.push(blocks[j][i]);
+  // matrix
+  const size = ver * 4 + 17;
+  const M = Array.from({ length: size }, () => new Array(size).fill(false));
+  const F = Array.from({ length: size }, () => new Array(size).fill(false));
+  const set = (x, y, d) => { M[y][x] = d; F[y][x] = true; };
+  for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  const finder = (cx, cy) => { for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = cx + dx, y = cy + dy, d = Math.max(Math.abs(dx), Math.abs(dy));
+    if (x >= 0 && x < size && y >= 0 && y < size) set(x, y, d !== 2 && d !== 4); } };
+  finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+  if (ver > 1) {
+    const na = Math.floor(ver / 7) + 2, step = Math.ceil((ver * 4 + 4) / (na * 2 - 2)) * 2, pos = [6];
+    for (let p = size - 7; pos.length < na; p -= step) pos.splice(1, 0, p);
+    for (let i = 0; i < na; i++) for (let j = 0; j < na; j++) {
+      if ((i === 0 && j === 0) || (i === 0 && j === na - 1) || (i === na - 1 && j === 0)) continue;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(pos[i] + dx, pos[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }
+  }
+  const bit = (v, i) => ((v >>> i) & 1) !== 0;
+  const format = mask => {
+    const d = (0 << 3) | mask; let r = d; for (let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+    const b = ((d << 10) | r) ^ 0x5412;
+    for (let i = 0; i <= 5; i++) set(8, i, bit(b, i));
+    set(8, 7, bit(b, 6)); set(8, 8, bit(b, 7)); set(7, 8, bit(b, 8));
+    for (let i = 9; i < 15; i++) set(14 - i, 8, bit(b, i));
+    for (let i = 0; i < 8; i++) set(size - 1 - i, 8, bit(b, i));
+    for (let i = 8; i < 15; i++) set(8, size - 15 + i, bit(b, i));
+    set(8, size - 8, true);
+  };
+  format(0);
+  if (ver >= 7) {
+    let r = ver; for (let i = 0; i < 12; i++) r = (r << 1) ^ ((r >>> 11) * 0x1F25);
+    const b = (ver << 12) | r;
+    for (let i = 0; i < 18; i++) { const a = size - 11 + i % 3, c = Math.floor(i / 3); set(a, c, bit(b, i)); set(c, a, bit(b, i)); }
+  }
+  for (let i = 0, right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let v = 0; v < size; v++) for (let j = 0; j < 2; j++) {
+      const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - v : v;
+      if (!F[y][x] && i < cw.length * 8) { M[y][x] = bit(cw[i >>> 3], 7 - (i & 7)); i++; }
+    }
+  }
+  const maskFn = [(x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x, y) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+    (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0, (x, y) => x * y % 2 + x * y % 3 === 0,
+    (x, y) => (x * y % 2 + x * y % 3) % 2 === 0, (x, y) => ((x + y) % 2 + x * y % 3) % 2 === 0];
+  const applyMask = m => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!F[y][x] && maskFn[m](x, y)) M[y][x] = !M[y][x]; };
+  const penalty = () => {
+    let p = 0, dark = 0;
+    for (let y = 0; y < size; y++) for (let dir = 0; dir < 2; dir++) {
+      let run = 1;
+      for (let x = 1; x < size; x++) {
+        const a = dir ? M[x - 1][y] : M[y][x - 1], b = dir ? M[x][y] : M[y][x];
+        if (a === b) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1;
+      }
+    }
+    for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) { const c = M[y][x]; if (c === M[y][x + 1] && c === M[y + 1][x] && c === M[y + 1][x + 1]) p += 3; }
+    // rule 3: finder-like 1:1:3:1:1 runs with 4 light modules on either side (outside the code counts as light)
+    const at = (pos, ln, dir) => pos >= 0 && pos < size ? (dir ? M[pos][ln] : M[ln][pos]) : false;
+    const pat = [1, 0, 1, 1, 1, 0, 1];
+    for (let line = 0; line < size; line++) for (let dir = 0; dir < 2; dir++) for (let s = -4; s < size; s++) {
+      let core = true; for (let k = 0; k < 7 && core; k++) core = at(s + k, line, dir) === !!pat[k];
+      if (!core) continue;
+      let before = true, after = true;
+      for (let k = 1; k <= 4; k++) { if (at(s - k, line, dir)) before = false; if (at(s + 6 + k, line, dir)) after = false; }
+      if (before || after) p += 40;
+    }
+    for (const row of M) for (const c of row) if (c) dark++;
+    p += Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+    return p;
+  };
+  let best = 0, bestP = Infinity;
+  for (let m = 0; m < 8; m++) { applyMask(m); format(m); const pp = penalty(); if (pp < bestP) { bestP = pp; best = m; } applyMask(m); }
+  applyMask(best); format(best);
+  return { size, ver, mask: best, modules: M };
+}
+function qrSvg(text){
+  const q = makeQR(text), n = q.size; let d = "";
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (q.modules[y][x]) d += `M${x} ${y}h1v1h-1z`;
+  return `<svg viewBox="-2 -2 ${n + 4} ${n + 4}" role="img" aria-label="QR code" shape-rendering="crispEdges"><path fill="#000" d="${d}"/></svg>`;
+}
 
 /* ---------- PC: receiver status and list ---------- */
 async function checkRx(){
@@ -551,11 +693,17 @@ async function checkRx(){
     const r = await fetch(`${RX}/info`, { cache: "no-store" }); const j = await r.json();
     if (!j.ok) throw new Error();
     rxUp = true; pcCode = j.code;
-    $("addrs").innerHTML = (j.addresses || []).map(a => esc(`http://${a}:${j.port}/`)).join("<br>") || "No Wi-Fi address found on this PC";
-    $("pcCode").textContent = j.code; $("folder").textContent = j.folder;
+    const links = (j.addresses || []).map(a => `http://${a}:${j.port}/`);
+    $("addrs").innerHTML = links.map(esc).join("<br>") || "No Wi-Fi address found on this PC";
+    // one code per Wi-Fi address (a PC with two networks shows two); the link carries the pairing code
+    $("qrs").innerHTML = links.length ? links.map(u => `<div><div class="qrbox">${qrSvg(u + "?pair=" + j.code)}</div>${links.length > 1 ? `<div class="qrcap">${esc(u)}</div>` : ""}</div>`).join("")
+      : `<div class="notice warn">This PC has no Wi-Fi address. Connect it to the office Wi-Fi.</div>`;
+    $("pcCode").textContent = j.code; showFolder(j);
     setConn("on", "Receiver running");
     loadList();
   } catch(e) { rxUp = false; setConn("off", "Receiver not running"); }
+  // Start button for the admin (the receiver can only be started by a link this PC was set up for)
+  $("startRx").classList.toggle("hide", rxUp || !isAdmin()); $("startHelp").classList.toggle("hide", rxUp || !isAdmin());
   // A phone (touch screen) with no receiver on itself: show how to reach the PC instead of the PC instructions.
   const onPhone = !rxUp && matchMedia("(pointer: coarse)").matches && Math.min(innerWidth, innerHeight) < 820;
   $("pcConnect").classList.toggle("hide", onPhone); $("phoneOpen").classList.toggle("hide", !onPhone);
@@ -586,6 +734,32 @@ $("list").addEventListener("click", async e => {
 });
 $("recheck").onclick = checkRx; $("reload").onclick = loadList;
 
+/* ---------- admin: start the receiver; anyone on the PC: change the save folder ---------- */
+function isAdmin(){ try { const s = JSON.parse(localStorage.getItem("aw.signin") || "null"); return !!(s && s.key && s.role === "admin"); } catch(e) { return false; } }
+$("startRx").addEventListener("click", () => {
+  // The link opens Windows' "surveyscan:" handler (Set Up Scanner Button.bat). Then wait for the receiver to answer.
+  $("startMsg").textContent = "Starting… if the browser asks, choose Open.";
+  let n = 0; clearInterval(window.__startPoll);
+  window.__startPoll = setInterval(async () => {
+    n++; await checkRx();
+    if (rxUp) { clearInterval(window.__startPoll); $("startMsg").textContent = ""; toast("Receiver started"); }
+    else if (n >= 20) { clearInterval(window.__startPoll); $("startMsg").textContent = "It did not start. Run Set Up Scanner Button.bat once on this PC, then try again."; }
+  }, 2000);
+});
+function showFolder(j){ $("folder").textContent = j.folder; $("resetFolder").classList.toggle("hide", !!j.isDefault); }
+async function folderCall(path, waitMsg){
+  $("pickFolder").disabled = $("resetFolder").disabled = true; $("folderMsg").textContent = waitMsg || "";
+  try {
+    // X-Scanner header: the receiver refuses folder changes without it, so other websites cannot trigger them
+    const r = await fetch(`${RX}${path}`, { method: "POST", headers: { "X-Scanner": "1" } }); const j = await r.json();
+    if (j.ok) { showFolder(j); $("folderMsg").textContent = ""; toast("Scans will be saved in " + j.folder, 4000); loadList(); }
+    else $("folderMsg").textContent = j.cancelled ? "" : (j.error || "Not changed.");
+  } catch(e) { $("folderMsg").textContent = "Could not reach the receiver."; }
+  finally { $("pickFolder").disabled = $("resetFolder").disabled = false; }
+}
+$("pickFolder").onclick = () => folderCall("/folder", "Choose the folder in the window that opened (it may be behind the browser).");
+$("resetFolder").onclick = () => folderCall("/folder/reset");
+
 /* ---------- phone on another site: link to the PC's scanner ---------- */
 function pcUrl(v){
   v = String(v || "").trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
@@ -607,8 +781,12 @@ setPcLink();
 /* ---------- start ---------- */
 if (PHONE) {
   $("modeTxt").textContent = "Phone → PC";
-  $("phonePair").classList.remove("hide");
+  // Opened from the PC's QR code: the link carries the pairing code. Keep it and clean the address bar.
+  const pair = new URLSearchParams(location.search).get("pair");
+  if (/^\d{6}$/.test(pair || "")) { saved.code = pair; keep(); history.replaceState(null, "", location.pathname); }
   $("code").value = saved.code || ""; $("device").value = saved.device || "";
+  // Paired by QR: nothing to type. The box comes back only if the PC refuses the code (receiver restarted).
+  $("phonePair").classList.toggle("hide", /^\d{6}$/.test(saved.code || ""));
   fetch(`${RX}/ping`, { cache: "no-store" }).then(r => r.json()).then(() => setConn("on", "Connected to the PC")).catch(() => setConn("err", "PC not reachable"));
 } else {
   $("modeTxt").textContent = "On this PC";
