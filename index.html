@@ -370,6 +370,7 @@ const ICON = {
   cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M12 13.5c-1.6 0-2.8 1.2-2.8 2.7 0 1.9 2.8 3.8 2.8 3.8s2.8-1.9 2.8-3.8c0-1.5-1.2-2.7-2.8-2.7z"/></svg>',
   chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14.5h4.5"/></svg>',
   claim:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M8.5 10h7M8.5 13.5h4"/><path d="M13.5 17.5l1.5 1.5 3-3"/></svg>',
+  scan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 9h8M8 12h8M8 15h5"/></svg>',
   desk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 7l2-3h12l2 3"/><path d="M9 12l3 3 3-3"/><path d="M12 15V9"/></svg>',
 };
 // Add an app here to put it on the panel (and an icon in ICON under its id). url: where its server serves the page; start: how to run that server.
@@ -382,6 +383,10 @@ const ALL_APPS = [
   { id:"desk", group:"unit", local:true, name:"Unit Desk", tab:"Desk", short:"Incoming, outgoing and tasks",
     blurb:"Log every letter, memo, verbal or informal instruction the unit receives or sends, assign it, and see each member's urgent work. Works offline; syncs to the unit's Google Sheet.",
     url:"apps/unit-desk.html" },
+  // apps/scanner.html: phone to PC over the same Wi-Fi through tools/offline/scan-receiver.ps1 (port 8795). No Google service.
+  { id:"scan", group:"unit", local:true, name:"Scanner", tab:"Scan", short:"Phone scans to this PC as PDF",
+    blurb:"Photograph pages on a phone, crop each to its corners and clean it, and send one PDF to this PC over the office Wi-Fi with a pairing code. Received scans are listed here; copy a scan's link into a Unit Desk entry. Needs Open Scanner Receiver.bat running on the PC.",
+    url:"apps/scanner.html" },
   { id:"time", group:"unit", local:true, name:"Time Log", tab:"Time", short:"Daily time in and time out",
     blurb:"Each employee logs their own time in, time out, break and notes on a month calendar, from their own phone or PC. Hours per day, week and month; the head sees everyone. Works offline; syncs to a Google Sheet.",
     url:"apps/time-log.html" },

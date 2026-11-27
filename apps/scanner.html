@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scanner</title>
+<style>
+/* Scanner: phone to PC over the same Wi-Fi. Part of the Survey Unit panel (same look).
+   The PC runs tools/offline/scan-receiver.ps1 (port 8795). The phone opens http://<PC address>:8795/, which serves this page;
+   pages are photographed, cropped by four corners, cleaned, made into one PDF on the phone, and sent with the pairing code.
+   In the panel (http://localhost:8760/#scan) this page lists what arrived and can also scan photos already on the PC.
+   No Google service and no outside server is used. */
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#17181a; --muted:#6b6e73; --line:#e3e1dc; --hover:#f0eee9; --field:#ffffff;
+  --accent:#b8860b; --accent-ink:#ffffff; --accent-soft:#f7efd9;
+  --ok:#1d7a43; --bad:#b3261e; --bad-bg:#fbe7e4; --warn:#8f5b00; --warn-bg:#fbf0d9;
+  --shadow:0 1px 2px rgba(0,0,0,.05);
+  --font:"Inter","IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,monospace; --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0e0f10; --panel:#17181a; --ink:#ececea; --muted:#9a9c9f; --line:#2a2c2f; --hover:#1f2023; --field:#121315;
+  --accent:#e0b03c; --accent-ink:#17130a; --accent-soft:#2a230f;
+  --ok:#5fcf8c; --bad:#f2877d; --bad-bg:#331714; --warn:#e3b24f; --warn-bg:#2e2310;
+  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);min-height:100vh;min-height:100dvh;padding-bottom:env(safe-area-inset-bottom)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+.muted{color:var(--muted)} .small{font-size:12px}
+header.top{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header.top h1{font-size:18px;margin:0}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 10px;margin-left:auto}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line)} .dot.on{background:var(--ok)} .dot.off{background:var(--warn)} .dot.err{background:var(--bad)}
+main{max-width:1100px;margin:0 auto;padding:16px 20px 40px;display:grid;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.card h2{font-size:15px;margin:0 0 10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:500;white-space:nowrap;text-decoration:none}
+.btn:hover{background:var(--hover)} .btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big{min-height:52px;font-size:16px;padding:0 20px}
+.btn.small{min-height:30px;padding:0 10px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+label.f input{height:38px;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 10px;color:var(--ink);font-size:15px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.notice{border-radius:8px;padding:10px 12px;font-size:13px}
+.notice.warn{background:var(--warn-bg);color:var(--warn)} .notice.bad{background:var(--bad-bg);color:var(--bad)} .notice.ok{background:var(--accent-soft)}
+.code{font:600 28px/1 var(--mono);letter-spacing:.12em}
+.addr{font:600 16px var(--mono);word-break:break-all}
+.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.thumb{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--hover);aspect-ratio:3/4;cursor:pointer}
+.thumb img{width:100%;height:100%;object-fit:contain;display:block}
+.thumb b{position:absolute;left:6px;top:6px;background:var(--panel);border-radius:6px;padding:0 6px;font-size:12px}
+.thumb.sel{outline:2px solid var(--accent)}
+.editor{display:grid;gap:10px}
+.stage{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;background:#000;border-radius:8px;overflow:hidden;display:flex;justify-content:center}
+.stage canvas{display:block;max-width:100%;max-height:62vh}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:0 12px;min-height:34px;cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500}
+td.num{white-space:nowrap}
+.hide{display:none!important}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:9;max-width:90vw}
+@media (max-width:720px){ main{padding:12px} header.top{padding:10px 12px} .grid2{grid-template-columns:1fr} th.opt,td.opt{display:none} }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Scanner</h1>
+  <span class="muted small" id="modeTxt"></span>
+  <span class="chip"><span class="dot" id="dot"></span><span id="conn">Checking…</span></span>
+</header>
+<main>
+  <!-- PC: receiver status and connect details -->
+  <section class="card hide" id="pcConnect">
+    <h2>Scan from a phone</h2>
+    <div id="rxDown" class="hide">
+      <div class="notice warn">The scanner receiver is not running on this PC. Double-click <b>Open Scanner Receiver.bat</b> in the Survey Unit folder, keep its window open, then press Check again.</div>
+      <p class="small muted">On the public site, Chrome or Edge may ask to let it reach devices on your network: choose Allow. Other browsers may not reach the receiver from the public site; open the Survey Unit folder's copy instead.</p>
+      <p class="small muted">The phone and this PC must be on the same Wi-Fi. If Windows Firewall asks, allow it for the network this PC is on (office Wi-Fi is often set as <b>Public</b>; allowing only Private then blocks the phone).</p>
+      <button class="btn" id="recheck">Check again</button>
+    </div>
+    <div id="rxUp" class="hide">
+      <div class="grid2">
+        <div><div class="muted small">1. On the phone's browser, open</div><div class="addr" id="addrs"></div></div>
+        <div><div class="muted small">2. Type this pairing code there</div><div class="code" id="pcCode"></div></div>
+      </div>
+      <p class="small muted" style="margin:10px 0 0">Scans are saved on this PC in <span id="folder" style="font-family:var(--mono)"></span>. The code changes each time the receiver starts.</p>
+    </div>
+  </section>
+
+  <!-- Phone on the GitHub site (or any page not served by the PC): open the PC's own scanner page.
+       A secure (https) page cannot send to a plain http address on the Wi-Fi, so the phone must open the PC's page itself. -->
+  <section class="card hide" id="phoneOpen">
+    <h2>Send scans to a PC</h2>
+    <p class="small muted" style="margin:0 0 10px">The PC runs <b>Open Scanner Receiver.bat</b>; its window shows the address. The phone must be on the same Wi-Fi.</p>
+    <div class="row">
+      <label class="f" style="flex:1;min-width:200px">PC address<input id="pcAddr" inputmode="url" autocomplete="off" placeholder="e.g. 192.168.1.20"></label>
+      <a class="btn primary big" id="openPc" target="_blank" rel="noopener" style="align-self:end">Open the PC's scanner</a>
+    </div>
+    <p class="small muted" style="margin:10px 0 0">Without a PC you can still scan here and use <b>Save PDF on this device</b>.</p>
+  </section>
+
+  <!-- Phone: pairing -->
+  <section class="card hide" id="phonePair">
+    <h2>Connect to the PC</h2>
+    <div class="grid2">
+      <label class="f">Pairing code (shown on the PC)<input id="code" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="6 digits"></label>
+      <label class="f">This phone's name (optional)<input id="device" maxlength="40" placeholder="e.g. Records phone"></label>
+    </div>
+  </section>
+
+  <!-- Scan editor (phone, and PC for photos on disk) -->
+  <section class="card" id="scanCard">
+    <h2 id="scanTitle">New scan</h2>
+    <div class="row">
+      <label class="btn primary big" id="takeBtn">Take photo of a page<input type="file" accept="image/*" capture="environment" id="take" hidden></label>
+      <label class="btn big">Add from gallery<input type="file" accept="image/*" multiple id="pick" hidden></label>
+    </div>
+    <p class="small muted" id="tip">Lay the page flat in good light, fill the frame, hold steady. Then drag the four corners to the page's edges.</p>
+    <div class="pages" id="pages"></div>
+    <div class="editor hide" id="editor">
+      <div class="stage" id="stage"><canvas id="cv"></canvas></div>
+      <div class="row">
+        <div class="seg" id="filter"><button data-f="color">Colour</button><button data-f="gray">Grey</button><button data-f="bw">B&amp;W</button></div>
+        <button class="btn small" id="rot">Rotate ↻</button>
+        <button class="btn small" id="full">Whole photo</button>
+        <button class="btn small" id="auto">Find edges</button>
+        <button class="btn small" id="up">Move earlier</button>
+        <button class="btn small" id="del">Remove page</button>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <label class="f">File name<input id="fname" maxlength="80" placeholder="e.g. Letter from DARPO 2026-11-27"></label>
+      <label class="f">Unit Desk ref no. (optional)<input id="ref" maxlength="60" placeholder="their ref no., to find it later"></label>
+    </div>
+    <label class="f" style="margin-top:10px">Note (optional)<input id="note" maxlength="200"></label>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary big" id="send" disabled>Send PDF to PC</button>
+      <button class="btn" id="save" disabled>Save PDF on this device</button>
+      <button class="btn" id="clear" disabled>Start over</button>
+      <span class="small muted" id="sendMsg"></span>
+    </div>
+  </section>
+
+  <!-- PC: received scans -->
+  <section class="card hide" id="listCard">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Received on this PC</h2><button class="btn small" id="reload">Refresh</button></div>
+    <p class="small muted">Copy link puts the scan's address in the clipboard for Unit Desk's <i>Scan or file link</i>. That link opens only on this PC, while the receiver is running. To share a scan, upload the PDF to Drive and use the Drive link instead.</p>
+    <div style="overflow:auto"><table><thead><tr><th>File</th><th class="opt">Ref no.</th><th class="opt">From</th><th>Received</th><th></th></tr></thead><tbody id="list"></tbody></table></div>
+  </section>
+</main>
+<div class="toast hide" id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const RX_PORT = 8795;
+// Phone mode: the page was served by the receiver itself. PC mode: anything else (panel on localhost:8760, file://).
+const PHONE = location.port === String(RX_PORT);
+const RX = PHONE ? location.origin : `http://localhost:${RX_PORT}`;
+const LS = "scan.v1";
+let saved = {}; try { saved = JSON.parse(localStorage.getItem(LS) || "{}"); } catch(e) {}
+const keep = () => { try { localStorage.setItem(LS, JSON.stringify(saved)); } catch(e) {} };
+let pcCode = "";      // PC mode: read from the receiver's /info
+let rxUp = false;
+
+window.addEventListener("message", e => { if (e.data && e.data.type === "aw-theme") { if (e.data.theme) document.documentElement.dataset.theme = e.data.theme; else delete document.documentElement.dataset.theme; } });
+
+function toast(t, ms){ const el = $("toast"); el.textContent = t; el.classList.remove("hide"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hide"), ms || 2600); }
+function setConn(state, text){ $("dot").className = "dot " + state; $("conn").textContent = text; }
+
+/* ---------- pages ---------- */
+// page = { img: HTMLImageElement (full photo, rotated as stored), rot: 0..3, q: [[x,y]*4] in 0..1 of the rotated photo, f: filter, thumb: dataURL }
+const pages = [];
+let sel = -1;
+const MAX_SRC = 2600;   // longest side kept from a phone photo (keeps memory low on phones)
+const OUT_LONG = 2000;  // longest side of a page in the PDF (about 170 dpi on A4)
+
+function loadFile(file){
+  return new Promise((ok, bad) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      const s = Math.min(1, MAX_SRC / Math.max(im.naturalWidth, im.naturalHeight));
+      const c = document.createElement("canvas"); c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); ok(c);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); bad(new Error("Could not read that picture")); };
+    im.src = url;
+  });
+}
+function rotated(p){
+  // canvas of the photo turned by p.rot quarter turns
+  const s = p.src, r = p.rot & 3;
+  if (!r) return s;
+  if (p._rc && p._rr === r) return p._rc;
+  const c = document.createElement("canvas");
+  c.width = r % 2 ? s.height : s.width; c.height = r % 2 ? s.width : s.height;
+  const g = c.getContext("2d"); g.translate(c.width / 2, c.height / 2); g.rotate(r * Math.PI / 2); g.drawImage(s, -s.width / 2, -s.height / 2);
+  p._rc = c; p._rr = r; return c;
+}
+// When no page edge is found, keep the whole photo (phone test 2026-11-27: pages filled the frame, a 3% inset cut text).
+const WHOLE = [[0,0],[1,0],[1,1],[0,1]];
+async function addFiles(files){
+  for (const f of files) {
+    try {
+      const src = await loadFile(f);
+      const p = { src, rot: 0, q: WHOLE.map(a => a.slice()), f: saved.filter || "gray" };
+      if (isSideways(src)) p.rot = SIDE_TURN;   // text runs up/down the photo: turn it level (user 2026-11-27: "sideways fix")
+      p.q = findEdges(rotated(p)) || p.q;
+      pages.push(p); sel = pages.length - 1;
+      await makeThumb(p);
+    } catch(e) { toast(e.message); }
+  }
+  render();
+}
+
+/* ---------- perspective crop ---------- */
+// Homography from the unit square to quad q (pixels). Standard square-to-quad mapping.
+function sqToQuad(q){
+  const [[x0,y0],[x1,y1],[x2,y2],[x3,y3]] = q;
+  const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
+  const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
+  let g = 0, h = 0;
+  if (Math.abs(sx) > 1e-9 || Math.abs(sy) > 1e-9) {
+    const d = dx1 * dy2 - dx2 * dy1;
+    g = (sx * dy2 - dx2 * sy) / d; h = (dx1 * sy - sx * dy1) / d;
+  }
+  return [x1 - x0 + g * x1, x3 - x0 + h * x3, x0, y1 - y0 + g * y1, y3 - y0 + h * y3, y0, g, h];
+}
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+function warp(p){
+  const src = rotated(p), W = src.width, H = src.height;
+  const q = p.q.map(([x, y]) => [x * W, y * H]);
+  let ow = Math.max(dist(q[0], q[1]), dist(q[3], q[2])), oh = Math.max(dist(q[0], q[3]), dist(q[1], q[2]));
+  const s = OUT_LONG / Math.max(ow, oh); ow = Math.max(8, Math.round(ow * s)); oh = Math.max(8, Math.round(oh * s));
+  const sd = src.getContext("2d").getImageData(0, 0, W, H).data;
+  const out = document.createElement("canvas"); out.width = ow; out.height = oh;
+  const og = out.getContext("2d"), od = og.createImageData(ow, oh), o = od.data;
+  const [a, b, c, d, e, f, g, h] = sqToQuad(q);
+  for (let j = 0; j < oh; j++) {
+    const v = (j + .5) / oh;
+    for (let i = 0; i < ow; i++) {
+      const u = (i + .5) / ow, w = g * u + h * v + 1;
+      let x = (a * u + b * v + c) / w - .5, y = (d * u + e * v + f) / w - .5;
+      if (x < 0) x = 0; else if (x > W - 1.001) x = W - 1.001;
+      if (y < 0) y = 0; else if (y > H - 1.001) y = H - 1.001;
+      const xi = x | 0, yi = y | 0, fx = x - xi, fy = y - yi, k = (yi * W + xi) * 4, k2 = k + W * 4, t = (j * ow + i) * 4;
+      for (let ch = 0; ch < 3; ch++) {
+        o[t + ch] = (sd[k + ch] * (1 - fx) + sd[k + 4 + ch] * fx) * (1 - fy) + (sd[k2 + ch] * (1 - fx) + sd[k2 + 4 + ch] * fx) * fy;
+      }
+      o[t + 3] = 255;
+    }
+  }
+  applyFilter(o, ow, oh, p.f);
+  og.putImageData(od, 0, 0);
+  return out;
+}
+function applyFilter(o, w, h, f){
+  if (f === "color") {
+    // gentle white balance: stretch each channel between its 1% and 99% levels
+    const lo = [0,0,0], hi = [255,255,255];
+    for (let ch = 0; ch < 3; ch++) {
+      const hist = new Uint32Array(256); for (let t = ch; t < o.length; t += 4) hist[o[t]]++;
+      const n = w * h; let acc = 0, l = 0, r = 255;
+      for (l = 0; l < 256; l++) { acc += hist[l]; if (acc > n * .01) break; }
+      acc = 0; for (r = 255; r > 0; r--) { acc += hist[r]; if (acc > n * .01) break; }
+      if (r - l > 40) { lo[ch] = l; hi[ch] = r; }
+    }
+    for (let t = 0; t < o.length; t += 4) for (let ch = 0; ch < 3; ch++) { const v = (o[t + ch] - lo[ch]) * 255 / (hi[ch] - lo[ch]); o[t + ch] = v < 0 ? 0 : v > 255 ? 255 : v; }
+    return;
+  }
+  // grey: lighten the paper by dividing by a blurred background (removes shadows), then stretch
+  const n = w * h, L = new Float32Array(n);
+  for (let i = 0, t = 0; i < n; i++, t += 4) L[i] = o[t] * .299 + o[t + 1] * .587 + o[t + 2] * .114;
+  const bg = boxBlur(L, w, h, Math.max(8, Math.round(Math.max(w, h) / 40)));
+  // r = this pixel against the paper around it: about 1 on paper (shaded or not), lower on ink.
+  // Phone test 2026-11-27: the old curve left shaded paper grey (Grey) and dropped faint typed figures (B&W).
+  for (let i = 0, t = 0; i < n; i++, t += 4) {
+    const r = L[i] / Math.max(bg[i], 1);
+    let v;
+    if (f === "bw") v = r >= .86 ? 255 : r <= .62 ? 0 : (r - .62) / .24 * 255;          // faint ink stays dark grey, paper goes white
+    else { const x = (r - .35) / (.9 - .35); v = x >= 1 ? 255 : x <= 0 ? 0 : Math.pow(x, 1.25) * 255; }
+    o[t] = o[t + 1] = o[t + 2] = v;
+  }
+}
+function boxBlur(src, w, h, r){
+  // two passes of a separable running-sum blur on a small copy, then scaled back up (fast enough on phones)
+  const k = 8, sw = Math.max(1, (w / k) | 0), sh = Math.max(1, (h / k) | 0), s0 = new Float32Array(sw * sh), s = new Float32Array(sw * sh);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+    let m = 0; for (let dy = 0; dy < k; dy++) for (let dx = 0; dx < k; dx++) { const v = src[Math.min(h - 1, y * k + dy) * w + Math.min(w - 1, x * k + dx)]; if (v > m) m = v; }
+    s0[y * sw + x] = m;   // max keeps the paper level, not the ink
+  }
+  // widen the max by one block each way so thick lines and filled areas do not pull the paper level down
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+    let m = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = s0[Math.min(sh - 1, Math.max(0, y + dy)) * sw + Math.min(sw - 1, Math.max(0, x + dx))]; if (v > m) m = v; }
+    s[y * sw + x] = m;
+  }
+  const rr = Math.max(1, (r / k) | 0), tmp = new Float32Array(sw * sh), out = new Float32Array(sw * sh);
+  for (let pass = 0; pass < 2; pass++) {
+    const a = pass ? out : s, b = tmp;
+    for (let y = 0; y < sh; y++) { let acc = 0; for (let x = -rr; x <= rr; x++) acc += a[y * sw + Math.min(sw - 1, Math.max(0, x))];
+      for (let x = 0; x < sw; x++) { b[y * sw + x] = acc / (2 * rr + 1); acc += a[y * sw + Math.min(sw - 1, x + rr + 1)] - a[y * sw + Math.max(0, x - rr)]; } }
+    for (let x = 0; x < sw; x++) { let acc = 0; for (let y = -rr; y <= rr; y++) acc += b[Math.min(sh - 1, Math.max(0, y)) * sw + x];
+      for (let y = 0; y < sh; y++) { out[y * sw + x] = acc / (2 * rr + 1); acc += b[Math.min(sh - 1, y + rr + 1) * sw + x] - b[Math.max(0, y - rr) * sw + x]; } }
+  }
+  const big = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) big[y * w + x] = out[Math.min(sh - 1, (y / k) | 0) * sw + Math.min(sw - 1, (x / k) | 0)];
+  return big;
+}
+// Rough page finder: the paper is usually the brightest large area. Threshold a small copy, take the biggest bright
+// blob, and use its extreme points along the two diagonals as the four corners. Returns null if unsure.
+// Sideways check: find letter-sized marks (3-40 px on a 1,400 px copy) and, for each, its nearest letter-sized
+// neighbour. In level text the next letter sits beside it; in sideways text it sits above or below it. Long lines,
+// drawings and big blobs are ignored, so ruled tables and plan drawings do not decide it.
+// Sideways when neighbours above/below outnumber those beside (at least 40 pairs counted).
+// Tells only level from sideways; an upside-down page is not detected (Rotate twice fixes it).
+// Checked on the 12 pages of the two phone test scans of 2026-11-27 (2 sideways, 10 not) and on 5 typed pages turned
+// by 90 degrees; see PROJECT_STATE. An earlier ink-count method wrongly turned level landscape plans and was dropped.
+const SIDE_TURN = 3;   // quarter turns clockwise (3 = one turn anticlockwise): both sideways pages of the 2026-11-27 phone test came out upright this way, upside down with 1
+function isSideways(src){
+  const S = 1400, s = Math.min(1, S / Math.max(src.width, src.height)), w = Math.max(16, Math.round(src.width * s)), h = Math.max(16, Math.round(src.height * s));
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.drawImage(src, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data, n = w * h, L = new Float32Array(n);
+  for (let i = 0; i < n; i++) L[i] = d[i * 4] * .299 + d[i * 4 + 1] * .587 + d[i * 4 + 2] * .114;
+  const bg = boxBlur(L, w, h, Math.max(8, Math.round(Math.max(w, h) / 40)));
+  const I = new Uint8Array(n); for (let i = 0; i < n; i++) I[i] = L[i] / Math.max(bg[i], 1) < .72 ? 1 : 0;
+  const seen = new Uint8Array(n), C = [], st = [];
+  for (let i = 0; i < n; i++) {
+    if (!I[i] || seen[i]) continue;
+    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1, cnt = 0, sx = 0, sy = 0; st.push(i); seen[i] = 1;
+    while (st.length) {
+      const k = st.pop(), x = k % w, y = (k / w) | 0; cnt++; sx += x; sy += y;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        const kk = yy * w + xx; if (I[kk] && !seen[kk]) { seen[kk] = 1; st.push(kk); } }
+    }
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    if (bw >= 3 && bh >= 3 && bw <= 40 && bh <= 40 && cnt >= 6) C.push({ cx: sx / cnt, cy: sy / cnt, sz: Math.max(bw, bh, 6) });
+  }
+  const cell = 40, grid = new Map();
+  for (const o of C) { const k = ((o.cx / cell) | 0) + "," + ((o.cy / cell) | 0); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(o); }
+  let beside = 0, above = 0;
+  for (const o of C) {
+    let best = null, bd = 1e9; const gx = (o.cx / cell) | 0, gy = (o.cy / cell) | 0;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const q of (grid.get((gx + a) + "," + (gy + b)) || [])) {
+      if (q === o) continue; const dd = Math.hypot(q.cx - o.cx, q.cy - o.cy); if (dd < bd) { bd = dd; best = q; } }
+    if (!best || bd > 1.6 * o.sz) continue;
+    const dx = Math.abs(best.cx - o.cx), dy = Math.abs(best.cy - o.cy);
+    if (dx > 2 * dy) beside++; else if (dy > 2 * dx) above++;
+  }
+  isSideways.last = { beside, above };
+  return beside + above >= 40 && above > beside;
+}
+function findEdges(src){
+  const S = 240, s = S / Math.max(src.width, src.height), w = Math.max(2, Math.round(src.width * s)), h = Math.max(2, Math.round(src.height * s));
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.drawImage(src, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data, n = w * h, L = new Uint8Array(n);
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < n; i++) { L[i] = (d[i * 4] * .299 + d[i * 4 + 1] * .587 + d[i * 4 + 2] * .114) | 0; hist[L[i]]++; }
+  // Otsu threshold
+  let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sB = 0, wB = 0, best = 0, thr = 128;
+  for (let t = 0; t < 256; t++) { wB += hist[t]; if (!wB) continue; const wF = n - wB; if (!wF) break; sB += t * hist[t];
+    const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) * (mB - mF); if (v > best) { best = v; thr = t; } }
+  const lab = new Int32Array(n).fill(-1); let bestId = -1, bestN = 0, id = 0; const stack = [];
+  for (let i = 0; i < n; i++) {
+    if (L[i] <= thr || lab[i] >= 0) continue;
+    let cnt = 0; stack.push(i); lab[i] = id;
+    while (stack.length) { const k = stack.pop(); cnt++; const x = k % w, y = (k / w) | 0;
+      if (x > 0 && L[k - 1] > thr && lab[k - 1] < 0) { lab[k - 1] = id; stack.push(k - 1); }
+      if (x < w - 1 && L[k + 1] > thr && lab[k + 1] < 0) { lab[k + 1] = id; stack.push(k + 1); }
+      if (y > 0 && L[k - w] > thr && lab[k - w] < 0) { lab[k - w] = id; stack.push(k - w); }
+      if (y < h - 1 && L[k + w] > thr && lab[k + w] < 0) { lab[k + w] = id; stack.push(k + w); } }
+    if (cnt > bestN) { bestN = cnt; bestId = id; } id++;
+  }
+  if (bestN < n * .15 || bestN > n * .97) return null;
+  // Paper filling the frame touches the photo's edges; then the biggest bright area is often only one framed part
+  // of the sheet (phone test 2026-11-27 cut off a plan's title block). Keep the whole photo in that case.
+  let tT = 0, tB = 0, tL = 0, tR = 0;
+  for (let x = 0; x < w; x++) { if (lab[x] === bestId) tT++; if (lab[(h - 1) * w + x] === bestId) tB++; }
+  for (let y = 0; y < h; y++) { if (lab[y * w] === bestId) tL++; if (lab[y * w + w - 1] === bestId) tR++; }
+  if ([tT / w, tB / w, tL / h, tR / h].filter(v => v > .1).length >= 2) return null;
+  let tl = [0,0,1e9], tr = [0,0,-1e9], br = [0,0,-1e9], bl = [0,0,1e9];
+  for (let i = 0; i < n; i++) if (lab[i] === bestId) { const x = i % w, y = (i / w) | 0;
+    if (x + y < tl[2]) tl = [x, y, x + y]; if (x + y > br[2]) br = [x, y, x + y];
+    if (x - y > tr[2]) tr = [x, y, x - y]; if (x - y < bl[2]) bl = [x, y, x - y]; }
+  const q = [tl, tr, br, bl].map(([x, y]) => [Math.min(1, Math.max(0, (x + .5) / w)), Math.min(1, Math.max(0, (y + .5) / h))]);
+  // reject thin or twisted shapes
+  const area = Math.abs((q[0][0]*q[1][1]-q[1][0]*q[0][1])+(q[1][0]*q[2][1]-q[2][0]*q[1][1])+(q[2][0]*q[3][1]-q[3][0]*q[2][1])+(q[3][0]*q[0][1]-q[0][0]*q[3][1])) / 2;
+  return area > .12 ? q : null;
+}
+
+/* ---------- editor ---------- */
+const cv = $("cv"), cg = cv.getContext("2d");
+let view = null, drag = -1;
+function drawEditor(){
+  const p = pages[sel]; if (!p) return;
+  const src = rotated(p);
+  const maxW = Math.min($("stage").clientWidth || 600, 900), maxH = Math.max(260, window.innerHeight * .62);
+  const s = Math.min(maxW / src.width, maxH / src.height);
+  cv.width = Math.round(src.width * s); cv.height = Math.round(src.height * s);
+  cg.drawImage(src, 0, 0, cv.width, cv.height);
+  const pts = p.q.map(([x, y]) => [x * cv.width, y * cv.height]);
+  cg.save();
+  cg.fillStyle = "rgba(0,0,0,.45)"; cg.beginPath(); cg.rect(0, 0, cv.width, cv.height);
+  cg.moveTo(...pts[0]); for (let i = 3; i >= 1; i--) cg.lineTo(...pts[i]); cg.closePath(); cg.fill("evenodd");
+  cg.strokeStyle = "#e0b03c"; cg.lineWidth = 2; cg.beginPath(); cg.moveTo(...pts[0]); for (let i = 1; i < 4; i++) cg.lineTo(...pts[i]); cg.closePath(); cg.stroke();
+  for (const [x, y] of pts) { cg.beginPath(); cg.arc(x, y, 11, 0, 7); cg.fillStyle = "rgba(224,176,60,.35)"; cg.fill(); cg.lineWidth = 2.5; cg.stroke(); }
+  cg.restore();
+  view = { s };
+  document.querySelectorAll("#filter button").forEach(b => b.classList.toggle("on", b.dataset.f === p.f));
+}
+function ptr(e){ const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; }
+cv.addEventListener("pointerdown", e => {
+  const p = pages[sel]; if (!p) return;
+  const [x, y] = ptr(e), r = cv.getBoundingClientRect();
+  let bi = -1, bd = 1e9;
+  p.q.forEach(([qx, qy], i) => { const d = Math.hypot((qx - x) * r.width, (qy - y) * r.height); if (d < bd) { bd = d; bi = i; } });
+  if (bd < 48) { drag = bi; cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+});
+cv.addEventListener("pointermove", e => {
+  if (drag < 0) return; const p = pages[sel]; const [x, y] = ptr(e);
+  p.q[drag] = [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))]; drawEditor();
+});
+const endDrag = async () => { if (drag < 0) return; drag = -1; await makeThumb(pages[sel]); renderThumbs(); };
+cv.addEventListener("pointerup", endDrag); cv.addEventListener("pointercancel", endDrag);
+
+async function makeThumb(p){
+  const o = warp(p), t = document.createElement("canvas"), s = 240 / Math.max(o.width, o.height);
+  t.width = Math.round(o.width * s); t.height = Math.round(o.height * s); t.getContext("2d").drawImage(o, 0, 0, t.width, t.height);
+  p.thumb = t.toDataURL("image/jpeg", .7);
+}
+function renderThumbs(){
+  $("pages").innerHTML = pages.map((p, i) => `<div class="thumb${i === sel ? " sel" : ""}" data-i="${i}"><img alt="Page ${i + 1}" src="${p.thumb || ""}"><b>${i + 1}</b></div>`).join("");
+}
+function render(){
+  renderThumbs();
+  $("editor").classList.toggle("hide", !pages.length);
+  const has = pages.length > 0;
+  $("send").disabled = !has || (PHONE ? false : !rxUp); $("save").disabled = !has; $("clear").disabled = !has;
+  $("scanTitle").textContent = has ? `New scan · ${pages.length} page${pages.length > 1 ? "s" : ""}` : "New scan";
+  $("takeBtn").firstChild.textContent = has ? "Take next page" : "Take photo of a page";
+  if (has) requestAnimationFrame(drawEditor);
+}
+$("pages").addEventListener("click", e => { const t = e.target.closest(".thumb"); if (!t) return; sel = +t.dataset.i; render(); });
+$("take").addEventListener("change", e => { addFiles([...e.target.files]); e.target.value = ""; });
+$("pick").addEventListener("change", e => { addFiles([...e.target.files]); e.target.value = ""; });
+$("filter").addEventListener("click", async e => { const b = e.target.closest("button"); if (!b || !pages[sel]) return; pages[sel].f = saved.filter = b.dataset.f; keep(); await makeThumb(pages[sel]); render(); });
+$("rot").onclick = async () => { const p = pages[sel]; if (!p) return; p.rot = (p.rot + 1) & 3;
+  p.q = [3, 0, 1, 2].map(i => [1 - p.q[i][1], p.q[i][0]]);  // turn the corners with the photo
+  await makeThumb(p); render(); };
+$("full").onclick = async () => { const p = pages[sel]; if (!p) return; p.q = [[0,0],[1,0],[1,1],[0,1]]; await makeThumb(p); render(); };
+$("auto").onclick = async () => { const p = pages[sel]; if (!p) return; const q = findEdges(rotated(p)); if (!q) { toast("No clear page edge found; drag the corners by hand"); return; } p.q = q; await makeThumb(p); render(); };
+$("up").onclick = () => { if (sel > 0) { [pages[sel - 1], pages[sel]] = [pages[sel], pages[sel - 1]]; sel--; render(); } };
+$("del").onclick = () => { if (sel < 0) return; pages.splice(sel, 1); sel = Math.min(sel, pages.length - 1); render(); };
+$("clear").onclick = () => { if (!confirm("Remove all pages of this scan?")) return; pages.length = 0; sel = -1; $("sendMsg").textContent = ""; render(); };
+window.addEventListener("resize", () => { if (pages.length) drawEditor(); });
+
+/* ---------- PDF ---------- */
+function b64ToBytes(b64){ const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+function makePdf(jpegs){
+  // jpegs: [{bytes, w, h}] -> one PDF, each page A4 width (595 pt) with the page's own height ratio
+  const enc = new TextEncoder(), parts = [], offs = [];
+  let len = 0;
+  const put = x => { const b = typeof x === "string" ? enc.encode(x) : x; parts.push(b); len += b.length; };
+  const obj = (n, body) => { offs[n] = len; put(`${n} 0 obj\n`); body(); put("\nendobj\n"); };
+  put("%PDF-1.4\n"); put(new Uint8Array([37, 226, 227, 207, 211, 10]));   // binary marker line
+  const nP = jpegs.length, kids = [];
+  for (let i = 0; i < nP; i++) kids.push(`${3 + i * 3} 0 R`);
+  obj(1, () => put("<< /Type /Catalog /Pages 2 0 R >>"));
+  obj(2, () => put(`<< /Type /Pages /Count ${nP} /Kids [${kids.join(" ")}] >>`));
+  jpegs.forEach((j, i) => {
+    const pn = 3 + i * 3, im = pn + 1, cn = pn + 2;
+    const pw = 595.28, ph = +(pw * j.h / j.w).toFixed(2);
+    const content = `q ${pw} 0 0 ${ph} 0 0 cm /Im0 Do Q`;
+    obj(pn, () => put(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 ${im} 0 R >> >> /Contents ${cn} 0 R >>`));
+    obj(im, () => { put(`<< /Type /XObject /Subtype /Image /Width ${j.w} /Height ${j.h} /ColorSpace /${j.gray ? "DeviceGray" : "DeviceRGB"} /BitsPerComponent 8 /Filter /DCTDecode /Length ${j.bytes.length} >>\nstream\n`); put(j.bytes); put("\nendstream"); });
+    obj(cn, () => put(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+  });
+  const n = 3 + nP * 3, xref = len;
+  let x = `xref\n0 ${n}\n0000000000 65535 f \n`;
+  for (let i = 1; i < n; i++) x += String(offs[i]).padStart(10, "0") + " 00000 n \n";
+  put(x + `trailer\n<< /Size ${n} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  const out = new Uint8Array(len); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+async function buildPdf(){
+  const jpegs = [];
+  for (let i = 0; i < pages.length; i++) {
+    $("sendMsg").textContent = `Making page ${i + 1} of ${pages.length}…`;
+    await new Promise(r => setTimeout(r, 0));
+    const c = warp(pages[i]);
+    // JPEG from a canvas is always RGB; a grey page is stored as RGB too (viewers show it the same).
+    const b64 = c.toDataURL("image/jpeg", pages[i].f === "color" ? .82 : .78).split(",")[1];
+    jpegs.push({ bytes: b64ToBytes(b64), w: c.width, h: c.height, gray: false });
+  }
+  return makePdf(jpegs);
+}
+function fileName(){
+  const n = $("fname").value.trim() || ("Scan " + new Date().toISOString().slice(0, 16).replace("T", " ").replace(":", ""));
+  return n.replace(/[^\w\-. ]/g, "_").slice(0, 80);
+}
+
+$("save").onclick = async () => {
+  try {
+    $("save").disabled = true; const pdf = await buildPdf();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" })); a.download = fileName() + ".pdf";
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    $("sendMsg").textContent = `PDF made (${Math.round(pdf.length / 1024)} KB).`;
+  } catch(e) { $("sendMsg").textContent = "Could not make the PDF: " + e.message; }
+  finally { $("save").disabled = !pages.length; }
+};
+$("send").onclick = async () => {
+  const code = PHONE ? $("code").value.trim() : pcCode;
+  if (!/^\d{6}$/.test(code)) { toast("Type the 6-digit pairing code shown on the PC"); $("code").focus(); return; }
+  if (PHONE) { saved.code = code; saved.device = $("device").value.trim(); keep(); }
+  $("send").disabled = true;
+  try {
+    const pdf = await buildPdf();
+    $("sendMsg").textContent = `Sending ${Math.round(pdf.length / 1024)} KB…`;
+    const qs = new URLSearchParams({ code, name: fileName(), pages: String(pages.length), note: $("note").value.trim(), ref: $("ref").value.trim(), device: PHONE ? ($("device").value.trim() || "phone") : "this PC" });
+    const r = await fetch(`${RX}/upload?${qs}`, { method: "POST", headers: { "Content-Type": "application/pdf" }, body: pdf });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    $("sendMsg").textContent = `Saved on the PC as ${j.saved}.`;
+    toast("Sent to the PC");
+    pages.length = 0; sel = -1; $("fname").value = ""; $("ref").value = ""; $("note").value = "";
+    render(); if (!PHONE) loadList();
+  } catch(e) {
+    $("sendMsg").textContent = (e.message === "Failed to fetch" ? "Could not reach the PC. Same Wi-Fi? Receiver window still open?" : "Not sent: " + e.message + ".") + " Your pages are still here.";
+  } finally { $("send").disabled = !pages.length; }
+};
+
+/* ---------- PC: receiver status and list ---------- */
+async function checkRx(){
+  try {
+    const r = await fetch(`${RX}/info`, { cache: "no-store" }); const j = await r.json();
+    if (!j.ok) throw new Error();
+    rxUp = true; pcCode = j.code;
+    $("addrs").innerHTML = (j.addresses || []).map(a => esc(`http://${a}:${j.port}/`)).join("<br>") || "No Wi-Fi address found on this PC";
+    $("pcCode").textContent = j.code; $("folder").textContent = j.folder;
+    setConn("on", "Receiver running");
+    loadList();
+  } catch(e) { rxUp = false; setConn("off", "Receiver not running"); }
+  // A phone (touch screen) with no receiver on itself: show how to reach the PC instead of the PC instructions.
+  const onPhone = !rxUp && matchMedia("(pointer: coarse)").matches && Math.min(innerWidth, innerHeight) < 820;
+  $("pcConnect").classList.toggle("hide", onPhone); $("phoneOpen").classList.toggle("hide", !onPhone);
+  if (onPhone) {   // scan and save on the phone; sending happens from the PC's own page
+    $("modeTxt").textContent = "Phone"; setConn("off", "Not linked to a PC");
+    $("takeBtn").classList.remove("hide"); $("send").classList.add("hide");
+    $("tip").textContent = "Lay the page flat in good light, fill the frame, hold steady. To send to a PC, open the PC's scanner above.";
+  }
+  $("rxUp").classList.toggle("hide", !rxUp); $("rxDown").classList.toggle("hide", rxUp); $("listCard").classList.toggle("hide", !rxUp);
+  render();
+}
+async function loadList(){
+  try {
+    const r = await fetch(`${RX}/list`, { cache: "no-store" }); const j = await r.json();
+    const items = j.items || [];
+    $("list").innerHTML = items.length ? items.map(it => {
+      const url = `${RX}/scans/${it.file.split("/").map(encodeURIComponent).join("/")}`;
+      return `<tr><td><a href="${esc(url)}" target="_blank" rel="noopener">${esc(it.file.split("/").pop())}</a><div class="small muted">${it.pages ? esc(it.pages) + " page(s) · " : ""}${Math.round(it.size / 1024)} KB${it.note ? " · " + esc(it.note) : ""}</div></td>
+        <td class="opt">${esc(it.ref)}</td><td class="opt">${esc(it.from)}</td><td class="num">${esc(String(it.time).replace("T", " ").slice(0, 16))}</td>
+        <td class="num"><button class="btn small" data-copy="${esc(url)}">Copy link</button> <button class="btn small" data-copy="${esc(it.path)}" title="Full path of the file on this PC">Copy path</button></td></tr>`;
+    }).join("") : `<tr><td colspan="5" class="muted">Nothing received yet.</td></tr>`;
+  } catch(e) { $("list").innerHTML = `<tr><td colspan="5" class="muted">Could not read the list.</td></tr>`; }
+}
+$("list").addEventListener("click", async e => {
+  const b = e.target.closest("[data-copy]"); if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copy); toast("Copied. Paste it into the Unit Desk entry's Scan or file link."); }
+  catch(err) { prompt("Copy this:", b.dataset.copy); }
+});
+$("recheck").onclick = checkRx; $("reload").onclick = loadList;
+
+/* ---------- phone on another site: link to the PC's scanner ---------- */
+function pcUrl(v){
+  v = String(v || "").trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  if (!v) return "";
+  // only a private Wi-Fi address or a PC name, so the button never sends staff to an outside site
+  const host = v.replace(/:\d+$/, "");
+  const priv = /^(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(host) || /^[a-z0-9-]+(\.local)?$/i.test(host);
+  return priv ? `http://${host}:${RX_PORT}/` : "";
+}
+function setPcLink(){
+  const u = pcUrl($("pcAddr").value);
+  if (u) { $("openPc").href = u; $("openPc").removeAttribute("aria-disabled"); $("openPc").style.opacity = ""; }
+  else { $("openPc").removeAttribute("href"); $("openPc").setAttribute("aria-disabled", "true"); $("openPc").style.opacity = ".5"; }
+}
+$("pcAddr").value = saved.pcAddr || "";
+$("pcAddr").addEventListener("input", () => { saved.pcAddr = $("pcAddr").value.trim(); keep(); setPcLink(); });
+setPcLink();
+
+/* ---------- start ---------- */
+if (PHONE) {
+  $("modeTxt").textContent = "Phone → PC";
+  $("phonePair").classList.remove("hide");
+  $("code").value = saved.code || ""; $("device").value = saved.device || "";
+  fetch(`${RX}/ping`, { cache: "no-store" }).then(r => r.json()).then(() => setConn("on", "Connected to the PC")).catch(() => setConn("err", "PC not reachable"));
+} else {
+  $("modeTxt").textContent = "On this PC";
+  $("pcConnect").classList.remove("hide");
+  $("takeBtn").classList.add("hide");
+  $("tip").textContent = "Phones send scans here. You can also turn photos already on this PC into a PDF: Add from gallery.";
+  checkRx(); setInterval(() => { if (rxUp) loadList(); }, 15000);
+}
+render();
+</script>
+</body>
+</html>
