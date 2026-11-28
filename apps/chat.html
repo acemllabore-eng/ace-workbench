@@ -82,6 +82,23 @@ form.compose .btn{height:40px}
 .setup label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;margin-bottom:10px}
 .setup input,.setup select{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:8px 10px;font-size:14px}
 .rooms .admin{margin-top:auto;padding:10px}
+/* File transfer: dialog to pick a person and a file, and a card per transfer above the message box. */
+.dlg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+.dlg[hidden]{display:none}
+.dlg .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:18px 20px;width:min(440px,100%)}
+.dlg h2{font-size:16px;margin:0 0 4px}
+.dlg p{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+.dlg label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:500;margin-bottom:12px}
+.dlg select,.dlg input[type=file]{border:1px solid var(--line);border-radius:8px;background:var(--field);padding:7px 9px;font-size:14px}
+.dlg .row{display:flex;gap:8px;justify-content:flex-end}
+.xfers{position:fixed;right:16px;bottom:76px;display:flex;flex-direction:column;gap:8px;z-index:20;width:min(360px,calc(100% - 32px))}
+.xf{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;box-shadow:var(--shadow-lg);padding:10px 12px;font-size:13px}
+.xf.bad{border-left-color:var(--bad)} .xf.ok{border-left-color:var(--ok)}
+.xf .fn{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xf .st{color:var(--muted);margin:2px 0 6px}
+.xf .bar{height:5px;border-radius:3px;background:var(--hover);overflow:hidden;margin-bottom:6px}
+.xf .bar i{display:block;height:100%;background:var(--accent);width:0}
+.xf .row{display:flex;gap:6px;justify-content:flex-end}
 .toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;font-weight:500;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px)}
 .toast[hidden]{display:none}
 @media (max-width:720px){
@@ -110,11 +127,22 @@ form.compose .btn{height:40px}
     <div class="rhead" id="rhead"></div>
     <div class="log" id="log" aria-live="polite"></div>
     <form class="compose" id="compose" autocomplete="off">
+      <button class="btn" id="fileBtn" type="button" title="Send a file straight to a member's computer">Send file</button>
       <textarea id="txt" rows="1" maxlength="2000" placeholder="Message" aria-label="Message"></textarea>
       <button class="btn primary" id="sendBtn" type="submit">Send</button>
     </form>
     <div class="note" id="note" hidden></div>
   </section>
+</div>
+<div class="xfers" id="xfers" aria-live="polite"></div>
+<div class="dlg" id="fdlg" hidden role="dialog" aria-modal="true" aria-labelledby="fdlgT">
+  <form class="box" id="fform">
+    <h2 id="fdlgT">Send a file</h2>
+    <p>The file goes straight from this computer to theirs and is saved there only. The file itself never goes to the app or Google; only its name and size pass through to connect you. Both of you need Chatroom open until it finishes.</p>
+    <label>To<select id="fTo" required></select></label>
+    <label>File<input type="file" id="fFile" required></label>
+    <div class="row"><button class="btn" type="button" id="fCancel">Cancel</button><button class="btn primary" type="submit">Send</button></div>
+  </form>
 </div>
 <div class="toast" id="toast" hidden role="status"></div>
 
@@ -136,7 +164,7 @@ function awSignin(url, key) {
     return JSON.parse(localStorage.getItem("aw.signin") || "null");
   } catch (e) { return null; }
 }
-function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, rooms: [], people: [], msgs: {}, last: 0, read: {}, outbox: [], room: "general", lastPull: "", seq: 0, more: {} }; }
+function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, rooms: [], people: [], msgs: {}, last: 0, read: {}, outbox: [], room: "general", lastPull: "", seq: 0, more: {}, sigAfter: 0 }; }
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
@@ -199,10 +227,11 @@ async function sync(quiet) {
       if (res.rooms) state.rooms = res.rooms;
     }
     const before = state.last;
-    const p = await call("GET", { action: "pull", after: state.last, rsince: state.lastPull ? new Date(new Date(state.lastPull).getTime() - 120000).toISOString() : "" });
+    const p = await call("GET", { action: "pull", after: state.last, sigafter: state.sigAfter || 0, rsince: state.lastPull ? new Date(new Date(state.lastPull).getTime() - 120000).toISOString() : "" });
     if (!state.me || state.me.name !== p.me.name) { const keep = state.cfg, ob = state.outbox; state = blank(); state.cfg = keep; state.outbox = ob; }
     if (p.total < state.last) { state.msgs = {}; state.last = 0; }  // the tab was reset
     state.me = p.me; state.rooms = p.rooms || state.rooms; state.people = p.people || state.people;
+    onSignals(p);
     const fresh = addMsgs(p.messages || []);
     (p.removed || []).forEach(seq => Object.values(state.msgs).forEach(a => a.forEach(m => { if (m.seq === seq) { m.text = ""; m.removed_by = m.removed_by || "?"; } })));
     if (p.gap) Object.keys(state.msgs).forEach(k => { state.more[k] = true; });
@@ -232,7 +261,10 @@ function render() {
   const r = room();
   if (!signed) {
     $("rooms").innerHTML = ""; $("rhead").innerHTML = ""; $("compose").hidden = true; $("note").hidden = true;
-    $("log").innerHTML = `<div class="setup"><h2 style="font-size:16px">Sign in to chat</h2><p class="muted">Sign in once with <b>Sign in</b> in the Survey Unit panel's top bar. It signs in every app.</p></div>`;
+    $("log").innerHTML = `<div class="setup"><h2 style="font-size:16px">Sign in to chat</h2><p class="muted">Sign in once from the panel (top right), or here. Same web app address and key as every Survey Unit app.</p>
+      <label>Web app address<input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label>Your key<input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
+      <button class="btn primary" id="cSave" type="button">Sign in</button></div>`;
     return;
   }
   if (state.me && seen()) { state.read[r.id] = Math.max(state.read[r.id] || 0, ...roomMsgs(r.id).map(m => m.seq), 0); save(); }
@@ -273,6 +305,199 @@ function renderSync() {
   if (!storeOk) { c = "err"; text = "This browser is not keeping messages on the device."; }
   $("sDot").className = "dot " + c; $("sText").textContent = text;
 }
+
+/* ---------- File transfer ----------
+   Direct browser-to-browser (WebRTC data channel, encrypted). The web app only carries the connect handshake
+   (?app=chat signal: offer / answer / decline / cancel), kept 10 minutes in the script cache, never in the Sheet.
+   The receiver saves the file on this computer only: a Save As box where the browser has one, else Downloads.
+   No relay server (TURN): if the two networks block a direct link, the transfer fails and says so. */
+const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+const CHUNK = 16384, HIGH = 1 << 20, OFFER_LIFE = 180000;
+const xf = {};   // transfers on this page only, by id; nothing about them is saved on the device
+const fmtSize = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";
+const live = x => ["waiting", "connecting", "sending", "receiving", "confirm"].includes(x.status);
+async function signal(to, kind, sid, data) {
+  const res = await call("POST", { changes: [{ type: "signal", to, kind, sid, data: data || "" }] });
+  const r = res.results && res.results[0];
+  if (!r || r.result !== "saved") throw Object.assign(new Error((r && r.error) || "The web app refused the transfer"), { server: true });
+}
+function iceDone(pc) {
+  return new Promise(res => {
+    if (pc.iceGatheringState === "complete") return res();
+    const t = setTimeout(res, 4000);
+    pc.addEventListener("icegatheringstatechange", () => { if (pc.iceGatheringState === "complete") { clearTimeout(t); res(); } });
+  });
+}
+function endXf(x, status, text) {
+  x.status = status; x.text = text || "";
+  try { if (x.ch) x.ch.close(); } catch (e) {}
+  try { if (x.pc) x.pc.close(); } catch (e) {}
+  if (x.writable && status !== "done") { try { x.writable.abort(); } catch (e) {} }
+  x.writable = null; x.parts = null; x.pc = null; x.ch = null;
+  renderXf();
+}
+function watchPc(x) {
+  x.pc.addEventListener("connectionstatechange", () => {
+    const s = x.pc && x.pc.connectionState;
+    if (!(s === "failed" || s === "disconnected" || s === "closed") || !live(x)) return;
+    if (x.status === "confirm") endXf(x, "failed", "Sent, but " + x.peer + "'s computer did not confirm it was saved. Ask them to check.");
+    else if (x.status === "sending" || x.status === "receiving") endXf(x, "failed", "The connection dropped. Not saved; send it again.");
+    else endXf(x, "failed", "Could not connect the two computers directly. Try with both on the office network, or send it another way.");
+  });
+}
+// Sender
+async function startSend(to, file) {
+  const sid = "tx-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const x = xf[sid] = { sid, dir: "out", peer: to, name: file.name, size: file.size, done: 0, status: "connecting", text: "", file, t0: Date.now() };
+  renderXf();
+  try {
+    const pc = x.pc = new RTCPeerConnection(ICE), ch = x.ch = pc.createDataChannel("file", { ordered: true });
+    ch.binaryType = "arraybuffer"; ch.bufferedAmountLowThreshold = HIGH / 4;
+    watchPc(x);
+    ch.onopen = () => pump(x);
+    ch.onmessage = e => { if (e.data === "ok") endXf(x, "done", "Saved on " + to + "'s computer"); };
+    await pc.setLocalDescription(await pc.createOffer());
+    await iceDone(pc);
+    if (x.status !== "connecting") return;   // cancelled meanwhile
+    await signal(to, "offer", sid, JSON.stringify({ sdp: pc.localDescription.sdp, name: file.name, size: file.size, type: file.type || "" }));
+    x.status = "waiting"; renderXf(); sigLoop();
+    setTimeout(() => { if (x.status === "waiting") { signal(to, "cancel", sid).catch(() => {}); endXf(x, "failed", to + " did not answer in 3 minutes. Their Chatroom may be closed."); } }, OFFER_LIFE);
+  } catch (e) { endXf(x, "failed", e.message || "Could not start the transfer"); }
+}
+async function pump(x) {
+  x.status = "sending"; renderXf();
+  const ch = x.ch, file = x.file;
+  try {
+    for (let off = 0; off < file.size && x.status === "sending";) {
+      const buf = await file.slice(off, off + 262144).arrayBuffer();
+      for (let i = 0; i < buf.byteLength && x.status === "sending"; i += CHUNK) {
+        if (ch.bufferedAmount > HIGH) await new Promise(r => { ch.onbufferedamountlow = () => { ch.onbufferedamountlow = null; r(); }; });
+        ch.send(buf.slice(i, i + CHUNK));
+      }
+      off += buf.byteLength; x.done = off; renderXf();
+    }
+    if (x.status !== "sending") return;
+    ch.send(JSON.stringify({ eof: true, size: file.size }));
+    x.status = "confirm"; renderXf();
+  } catch (e) { if (live(x)) endXf(x, "failed", "The connection dropped while sending."); }
+}
+// Receiver
+async function accept(x) {
+  if (x.status !== "ask") return;
+  if (Date.now() - x.seen > OFFER_LIFE - 15000) return endXf(x, "failed", "This offer has expired. Ask " + x.peer + " to send it again.");
+  // Save As box (Chrome and Edge on a PC) writes straight to the chosen file; otherwise it goes to Downloads at the end.
+  if (window.showSaveFilePicker) {
+    try { const h = await showSaveFilePicker({ suggestedName: x.name }); x.writable = await h.createWritable(); x.where = h.name; }
+    catch (e) { if (e && e.name === "AbortError") return; x.writable = null; }
+  }
+  if (!x.writable) x.parts = [];
+  x.status = "connecting"; x.wq = Promise.resolve(); renderXf();
+  try {
+    const pc = x.pc = new RTCPeerConnection(ICE);
+    watchPc(x);
+    pc.ondatachannel = e => {
+      const ch = x.ch = e.channel; ch.binaryType = "arraybuffer";
+      ch.onopen = () => { x.status = "receiving"; renderXf(); };
+      ch.onmessage = ev => {
+        if (typeof ev.data === "string") { let m = null; try { m = JSON.parse(ev.data); } catch (er) {} if (m && m.eof) finish(x); return; }
+        const b = ev.data; x.done += b.byteLength;
+        if (x.writable) { const w = x.writable; x.wq = x.wq.then(() => w.write(b)); } else if (x.parts) x.parts.push(b);
+        if (x.done > x.size) endXf(x, "failed", "More data came than the file size. Not saved.");
+        else renderXf();
+      };
+    };
+    await pc.setRemoteDescription({ type: "offer", sdp: x.sdp });
+    await pc.setLocalDescription(await pc.createAnswer());
+    await iceDone(pc);
+    await signal(x.peer, "answer", x.sid, pc.localDescription.sdp);
+  } catch (e) { endXf(x, "failed", e.message || "Could not answer the transfer"); }
+}
+async function finish(x) {
+  if (x.done !== x.size) return endXf(x, "failed", "The file came incomplete (" + fmtSize(x.done) + " of " + fmtSize(x.size) + "). Not saved.");
+  try {
+    if (x.writable) { await x.wq; await x.writable.close(); x.writable = null; }
+    else {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(x.parts, { type: x.type || "application/octet-stream" })); a.download = x.name;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    }
+    try { x.ch.send("ok"); } catch (e) {}
+    setTimeout(() => endXf(x, "done", x.where ? "Saved as " + x.where : "Saved to this computer's Downloads"), 300);
+  } catch (e) { endXf(x, "failed", "Could not write the file: " + (e.message || e)); }
+}
+function decline(x) { signal(x.peer, "decline", x.sid).catch(() => {}); endXf(x, "declined", "Declined"); }
+function cancelXf(x) {
+  if (x.dir === "out" && (x.status === "waiting" || x.status === "connecting")) signal(x.peer, "cancel", x.sid).catch(() => {});
+  endXf(x, "cancelled", "Cancelled");
+}
+// Signals from the web app (in every pull, and every 2 s while a transfer is being set up).
+function onSignals(p) {
+  (p.signals || []).forEach(s => {
+    state.sigAfter = Math.max(state.sigAfter || 0, s.n);
+    const x = xf[s.sid];
+    if (s.kind === "offer" && !x) {
+      if (p.sig_now - s.n > OFFER_LIFE) return;   // old offer from before this page opened
+      let m = {}; try { m = JSON.parse(s.data); } catch (e) { return; }
+      xf[s.sid] = { sid: s.sid, dir: "in", peer: s.from, name: String(m.name || "file").slice(0, 200), size: Math.max(0, Number(m.size) || 0), type: String(m.type || ""), sdp: String(m.sdp || ""), done: 0, status: "ask", seen: Date.now() - Math.max(0, p.sig_now - s.n) };
+      if (!seen()) document.title = "File from " + s.from + " · Chatroom";
+    } else if (x && x.peer === s.from) {
+      if (s.kind === "answer" && x.dir === "out" && x.status === "waiting") { x.status = "connecting"; x.pc.setRemoteDescription({ type: "answer", sdp: s.data }).catch(e => endXf(x, "failed", e.message)); }
+      else if (s.kind === "decline" && x.dir === "out" && live(x)) endXf(x, "declined", s.from + " declined the file");
+      else if (s.kind === "cancel" && x.dir === "in" && (x.status === "ask" || live(x))) endXf(x, "cancelled", s.from + " cancelled the transfer");
+    }
+  });
+  renderXf();
+}
+let sigBusy = false;
+async function sigLoop() {
+  if (sigBusy) return; sigBusy = true;
+  try {
+    while (Object.values(xf).some(x => x.dir === "out" && x.status === "waiting")) {
+      try { onSignals(await call("GET", { action: "signals", sigafter: state.sigAfter || 0 })); save(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  } finally { sigBusy = false; }
+}
+function renderXf() {
+  const list = Object.values(xf);
+  $("xfers").innerHTML = list.map(x => {
+    const pct = x.size ? Math.round(x.done / x.size * 100) : 0, out = x.dir === "out";
+    const st = {
+      ask: x.peer + " wants to send you this file (" + fmtSize(x.size) + "). It is saved on this computer only.",
+      connecting: "Connecting to " + x.peer + "…",
+      waiting: "Waiting for " + x.peer + " to accept…",
+      sending: "Sending to " + x.peer + " · " + pct + "%",
+      receiving: "Receiving from " + x.peer + " · " + pct + "% of " + fmtSize(x.size),
+      confirm: "Sent. Waiting for " + x.peer + "'s computer to save it…"
+    }[x.status] || x.text;
+    const cls = x.status === "done" ? " ok" : ["failed", "declined", "cancelled"].includes(x.status) ? " bad" : "";
+    const btns = x.status === "ask" ? `<button class="btn sm" data-xno="${esc(x.sid)}">Decline</button><button class="btn sm primary" data-xok="${esc(x.sid)}">Save to this computer</button>`
+      : live(x) ? `<button class="btn sm" data-xcancel="${esc(x.sid)}">Cancel</button>` : `<button class="btn sm ghost" data-xclose="${esc(x.sid)}">Close</button>`;
+    return `<div class="xf${cls}"><div class="fn" title="${esc(x.name)}">${out ? "To " + esc(x.peer) + ": " : ""}${esc(x.name)}</div><div class="st">${esc(st)}</div>${["sending", "receiving"].includes(x.status) ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ""}<div class="row">${btns}</div></div>`;
+  }).join("");
+}
+$("xfers").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const x = xf[b.dataset.xok || b.dataset.xno || b.dataset.xcancel || b.dataset.xclose]; if (!x) return;
+  if (b.dataset.xok) accept(x); else if (b.dataset.xno) decline(x); else if (b.dataset.xcancel) cancelXf(x); else { delete xf[x.sid]; renderXf(); }
+});
+$("fileBtn").addEventListener("click", () => {
+  if (!window.RTCPeerConnection) return toast("This browser cannot send files directly. Use Chrome or Edge.");
+  if (!online) return toast("Sending a file needs a connection.");
+  const others = state.people.filter(p => !state.me || p.name !== state.me.name);
+  if (!others.length) return toast("No other members to send to yet.");
+  $("fTo").innerHTML = others.map(p => `<option>${esc(p.name)}</option>`).join(""); $("fFile").value = "";
+  $("fdlg").hidden = false; $("fTo").focus();
+});
+$("fCancel").addEventListener("click", () => { $("fdlg").hidden = true; });
+$("fdlg").addEventListener("keydown", e => { if (e.key === "Escape") $("fdlg").hidden = true; });
+$("fform").addEventListener("submit", e => {
+  e.preventDefault();
+  const f = $("fFile").files[0], to = $("fTo").value;
+  if (!f || !to) return;
+  if (!f.size) return toast("That file is empty.");
+  $("fdlg").hidden = true; startSend(to, f);
+});
+window.addEventListener("beforeunload", e => { if (Object.values(xf).some(live)) { e.preventDefault(); e.returnValue = ""; } });
 
 /* ---------- Events ---------- */
 let toastT;
