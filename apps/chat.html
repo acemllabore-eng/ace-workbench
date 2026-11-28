@@ -99,6 +99,11 @@ form.compose .btn{height:40px}
 .xf .bar{height:5px;border-radius:3px;background:var(--hover);overflow:hidden;margin-bottom:6px}
 .xf .bar i{display:block;height:100%;background:var(--accent);width:0}
 .xf .row{display:flex;gap:6px;justify-content:flex-end}
+.xf ul{margin:0 0 6px;padding-left:18px;color:var(--muted);font-size:12px}
+.xf ul li{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room .at{font-family:var(--mono);opacity:.7}
+.dlg .cur{font-size:13px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:12px;background:var(--hover)}
+.dlg .chk{flex-direction:row;align-items:center;gap:8px;font-weight:400}
 .toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;font-weight:500;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px)}
 .toast[hidden]{display:none}
 @media (max-width:720px){
@@ -106,7 +111,8 @@ form.compose .btn{height:40px}
   .sync{margin-left:0;width:100%}
   .wrap{flex-direction:column}
   nav.rooms{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px 12px;overflow-x:auto;gap:6px;scrollbar-width:none}
-  .rlbl,.people,.rooms .admin{display:none}
+  .rlbl,.rooms .admin{display:none}
+  .people{display:contents}
   .room{width:auto;flex:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px}
   .rhead{display:none}
   .log{padding:12px 12px}
@@ -120,6 +126,7 @@ form.compose .btn{height:40px}
 <header class="top">
   <h1>Chatroom</h1>
   <div class="sync"><span class="dot" id="sDot"></span><span id="sText">Not connected</span></div>
+  <button class="btn sm" id="rxBtn" type="button" title="Where files sent to you are saved">Received files</button>
 </header>
 <div class="wrap" id="wrap">
   <nav class="rooms" id="rooms" aria-label="Rooms"></nav>
@@ -137,12 +144,21 @@ form.compose .btn{height:40px}
 <div class="xfers" id="xfers" aria-live="polite"></div>
 <div class="dlg" id="fdlg" hidden role="dialog" aria-modal="true" aria-labelledby="fdlgT">
   <form class="box" id="fform">
-    <h2 id="fdlgT">Send a file</h2>
-    <p>The file goes straight from this computer to theirs and is saved there only. The file itself never goes to the app or Google; only its name and size pass through to connect you. Both of you need Chatroom open until it finishes.</p>
+    <h2 id="fdlgT">Send files</h2>
+    <p>The files go straight from this computer to theirs and are saved there automatically, in the folder they chose. The files never go to the app or Google; only their names and sizes pass through to connect you. Both of you need Chatroom open until it finishes.</p>
     <label>To<select id="fTo" required></select></label>
-    <label>File<input type="file" id="fFile" required></label>
+    <label>Files (pick one or several)<input type="file" id="fFile" multiple required></label>
     <div class="row"><button class="btn" type="button" id="fCancel">Cancel</button><button class="btn primary" type="submit">Send</button></div>
   </form>
+</div>
+<div class="dlg" id="rdlg" hidden role="dialog" aria-modal="true" aria-labelledby="rdlgT">
+  <div class="box">
+    <h2 id="rdlgT">Received files</h2>
+    <p>Files a member sends you are saved here automatically, on this computer only, and you get a notice. Keep Chatroom open to receive them.</p>
+    <div class="cur" id="rCur"></div>
+    <label class="chk"><input type="checkbox" id="rAsk"> Ask me before saving each transfer</label>
+    <div class="row"><button class="btn" type="button" id="rDl">Use Downloads</button><button class="btn" type="button" id="rPick">Choose folder</button><button class="btn primary" type="button" id="rClose">Done</button></div>
+  </div>
 </div>
 <div class="toast" id="toast" hidden role="status"></div>
 
@@ -164,7 +180,7 @@ function awSignin(url, key) {
     return JSON.parse(localStorage.getItem("aw.signin") || "null");
   } catch (e) { return null; }
 }
-function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, rooms: [], people: [], msgs: {}, last: 0, read: {}, outbox: [], room: "general", lastPull: "", seq: 0, more: {}, sigAfter: 0 }; }
+function blank() { return { cfg: { url: "", key: "", device: "" }, me: null, rooms: [], people: [], msgs: {}, last: 0, read: {}, outbox: [], room: "general", lastPull: "", seq: 0, more: {}, sigAfter: 0, rxAsk: false }; }
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) { s = null; }
@@ -179,7 +195,19 @@ function save() { try { localStorage.setItem(LS, JSON.stringify(state)); storeOk
 // Shown on screen: the tab is visible and, inside the panel, this app's frame is the one showing (a hidden frame has no width).
 const seen = () => !document.hidden && window.innerWidth > 0;
 const boss = () => !!state.me && (state.me.role === "head" || state.me.role === "admin");
-const room = () => state.rooms.find(r => r.id === state.room) || state.rooms[0] || { id: "general", name: "General", post: "all" };
+// Direct messages: room "dm:NAME A|NAME B" (both names in capitals, sorted), the same id the web app makes.
+const dmId = (a, b) => "dm:" + [String(a).toUpperCase(), String(b).toUpperCase()].sort().join("|");
+const isDm = id => String(id).startsWith("dm:");
+const others = () => state.people.filter(p => !state.me || p.name.toUpperCase() !== state.me.name.toUpperCase());
+function dmRoom(id) {
+  if (!isDm(id) || !state.me) return null;
+  const parts = id.slice(3).split("|"), mine = state.me.name.toUpperCase(), other = parts[0] === mine ? parts[1] : parts[0];
+  const p = state.people.find(x => x.name.toUpperCase() === other);
+  return { id, name: p ? p.name : other, post: "all", dm: true, peer: p ? p.name : other, gone: !p };
+}
+// Every conversation this person has: the shared rooms, then a direct message with each other member.
+const allIds = () => state.rooms.map(r => r.id).concat(others().map(p => dmId(state.me.name, p.name)));
+const room = () => dmRoom(state.room) || state.rooms.find(r => r.id === state.room) || state.rooms[0] || { id: "general", name: "General", post: "all" };
 const canPost = r => !!state.me && (r.post !== "head" || boss());
 const roomMsgs = id => state.msgs[id] || [];
 const unread = id => state.me ? roomMsgs(id).filter(m => m.seq > (state.read[id] || 0) && m.from !== state.me.name && !m.removed_by).length : 0;
@@ -235,11 +263,12 @@ async function sync(quiet) {
     const fresh = addMsgs(p.messages || []);
     (p.removed || []).forEach(seq => Object.values(state.msgs).forEach(a => a.forEach(m => { if (m.seq === seq) { m.text = ""; m.removed_by = m.removed_by || "?"; } })));
     if (p.gap) Object.keys(state.msgs).forEach(k => { state.more[k] = true; });
-    if (!before && p.messages && p.messages.length) state.rooms.forEach(r => { if (!(r.id in state.read)) state.read[r.id] = Math.max(0, ...roomMsgs(r.id).map(m => m.seq)); });
+    // First pull on this device only: what is already there counts as read. (Not on every pull while the chat is still empty.)
+    if (!state.pulled && p.messages && p.messages.length) state.rooms.map(r => r.id).concat(Object.keys(state.msgs)).forEach(id => { if (!(id in state.read)) state.read[id] = Math.max(0, ...roomMsgs(id).map(m => m.seq)); });
     if (!before && p.total > (p.messages || []).length) Object.keys(state.msgs).forEach(k => { state.more[k] = true; });
-    state.last = Math.max(state.last, p.total || 0); state.lastPull = p.server_time;
+    state.last = Math.max(state.last, p.total || 0); state.lastPull = p.server_time; state.pulled = true;
     lastError = ""; online = true;
-    if (!state.rooms.some(r => r.id === state.room) && state.rooms[0]) state.room = state.rooms[0].id;
+    if (!(isDm(state.room) ? dmRoom(state.room) && !dmRoom(state.room).gone : state.rooms.some(r => r.id === state.room)) && state.rooms[0]) state.room = state.rooms[0].id;
     if (fresh && !seen()) beep();
     save();
   } catch (e) {
@@ -251,7 +280,7 @@ async function sync(quiet) {
     if (again) setTimeout(() => sync(true), 0);
   }
 }
-function beep() { try { document.title = "(" + state.rooms.reduce((a, r) => a + unread(r.id), 0) + ") Chatroom"; } catch (e) {} }
+function beep() { try { document.title = "(" + allIds().reduce((a, id) => a + unread(id), 0) + ") Chatroom"; } catch (e) {} }
 
 /* ---------- Rendering ---------- */
 let stick = true;   // keep the view at the newest message unless the reader scrolled up
@@ -265,12 +294,16 @@ function render() {
     return;
   }
   if (state.me && seen()) { state.read[r.id] = Math.max(state.read[r.id] || 0, ...roomMsgs(r.id).map(m => m.seq), 0); save(); }
-  const total = state.rooms.reduce((a, x) => a + unread(x.id), 0);
+  const total = state.me ? allIds().reduce((a, id) => a + unread(id), 0) : 0;
   document.title = total ? "(" + total + ") Chatroom" : "Chatroom";
+  // Direct messages: the people talked with most recently first, then the rest by name.
+  const lastSeq = id => Math.max(0, ...roomMsgs(id).map(m => m.seq));
+  const dms = state.me ? others().map(p => ({ p, id: dmId(state.me.name, p.name) })).sort((a, b) => lastSeq(b.id) - lastSeq(a.id) || a.p.name.localeCompare(b.p.name)) : [];
   $("rooms").innerHTML = `<div class="rlbl">Rooms</div>` + state.rooms.map(x => `<button class="room" data-room="${esc(x.id)}" aria-current="${x.id === r.id}"><span class="h">#</span><span class="nm">${esc(x.name)}</span>${unread(x.id) ? `<span class="badge">${unread(x.id)}</span>` : x.post === "head" ? '<span class="lock" title="Only the head and admin post here">head</span>' : ""}</button>`).join("")
-    + (state.people.length ? `<div class="people"><div class="rlbl">Members (${state.people.length})</div>${state.people.map(p => `<div class="person"><b>${esc(p.name)}</b>${p.role !== "member" ? " · " + esc(p.role) : ""}</div>`).join("")}</div>` : "")
+    + (dms.length ? `<div class="people"><div class="rlbl">Direct messages</div>${dms.map(d => `<button class="room" data-room="${esc(d.id)}" aria-current="${d.id === r.id}" title="Message ${esc(d.p.name)} only"><span class="at">@</span><span class="nm">${esc(d.p.name)}</span>${unread(d.id) ? `<span class="badge">${unread(d.id)}</span>` : d.p.role !== "member" ? `<span class="lock">${esc(d.p.role)}</span>` : ""}</button>`).join("")}</div>` : "")
     + (state.me && state.me.role === "admin" ? `<div class="admin"><button class="btn sm" id="addRoom" type="button">Add a room</button></div>` : "");
-  $("rhead").innerHTML = `<h2># ${esc(r.name)}</h2><span class="muted" style="font-size:12.5px">${r.post === "head" ? "Only the head and admin post here" : "Everyone in the unit"}</span>`;
+  $("rhead").innerHTML = r.dm ? `<h2>@ ${esc(r.name)}</h2><span class="muted" style="font-size:12.5px">Direct message · only the two of you see it in Chatroom</span>`
+    : `<h2># ${esc(r.name)}</h2><span class="muted" style="font-size:12.5px">${r.post === "head" ? "Only the head and admin post here" : "Everyone in the unit"}</span>`;
   const can = canPost(r);
   $("compose").hidden = !can; $("note").hidden = can;
   if (!can) $("note").textContent = state.me ? "Only the head and admin post in " + r.name + "." : "Connecting…";
@@ -282,13 +315,14 @@ function render() {
     if (d !== lastDay) { html += `<div class="daysep">${esc(d)}</div>`; lastDay = d; lastFrom = ""; }
     const head = m.from !== lastFrom || t - lastAt > 10 * 60000;
     lastFrom = m.from; lastAt = t;
-    const canRm = m.seq && !m.removed_by && state.me && (mine || boss());
+    const canRm = m.seq && !m.removed_by && state.me && (mine || (boss() && !r.dm));
     html += `<div class="msg${mine ? " me" : ""}">${head && !mine ? `<div class="who">${esc(m.from)}</div>` : ""}
       <div class="bub${m.removed_by ? " rm" : ""}">${m.removed_by ? "Message removed" : linkify(m.text)}</div>
       <div class="meta">${m.out ? (m.out.error ? `<span class="bad">Not sent: ${esc(m.out.error)}</span> <button data-drop="${esc(m.out.ref)}" style="opacity:1">Delete</button>` : online ? "Sending…" : "Waiting for a connection") : esc(hm(m.at))}
         ${canRm ? `<button data-rm="${m.seq}" type="button">Remove</button>` : ""}</div></div>`;
   });
-  if (!list.length) html = `<div class="empty"><b>No messages in # ${esc(r.name)} yet</b>${can ? "Say hello to the unit." : ""}</div>`;
+  if (!list.length) html = r.dm ? `<div class="empty"><b>No messages with ${esc(r.name)} yet</b>Only the two of you see this conversation in Chatroom. Send file sends straight to ${esc(r.name)}.</div>`
+    : `<div class="empty"><b>No messages in # ${esc(r.name)} yet</b>${can ? "Say hello to the unit." : ""}</div>`;
   log.innerHTML = html;
   if (stick || atEnd) log.scrollTop = log.scrollHeight;
 }
@@ -306,13 +340,18 @@ function renderSync() {
 /* ---------- File transfer ----------
    Direct browser-to-browser (WebRTC data channel, encrypted). The web app only carries the connect handshake
    (?app=chat signal: offer / answer / decline / cancel), kept 10 minutes in the script cache, never in the Sheet.
-   The receiver saves the file on this computer only: a Save As box where the browser has one, else Downloads.
-   No relay server (TURN): if the two networks block a direct link, the transfer fails and says so. */
+   One transfer carries one or several files over one connection, one after the other: {start:i}, the bytes,
+   {eof:true,i,size}; the receiver answers "ok" once every file is saved.
+   Receiving is automatic: the files go into the folder this person chose under Received files (Chrome / Edge on a PC;
+   the folder is remembered on this device in IndexedDB), else into Downloads, and both sides get a notice.
+   "Ask me before saving" brings back the Save / Decline card. No relay server (TURN): if the two networks block a
+   direct link, the transfer fails and says so. */
 const ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-const CHUNK = 16384, HIGH = 1 << 20, OFFER_LIFE = 180000;
+const CHUNK = 16384, HIGH = 1 << 20, OFFER_LIFE = 180000, MAX_FILES = 100;
 const xf = {};   // transfers on this page only, by id; nothing about them is saved on the device
 const fmtSize = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";
 const live = x => ["waiting", "connecting", "sending", "receiving", "confirm"].includes(x.status);
+const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
 async function signal(to, kind, sid, data) {
   const res = await call("POST", { changes: [{ type: "signal", to, kind, sid, data: data || "" }] });
   const r = res.results && res.results[0];
@@ -329,8 +368,8 @@ function endXf(x, status, text) {
   x.status = status; x.text = text || "";
   try { if (x.ch) x.ch.close(); } catch (e) {}
   try { if (x.pc) x.pc.close(); } catch (e) {}
-  if (x.writable && status !== "done") { try { x.writable.abort(); } catch (e) {} }
-  x.writable = null; x.parts = null; x.pc = null; x.ch = null;
+  if (x.w && status !== "done") { try { x.w.abort(); } catch (e) {} }
+  x.w = null; x.parts = null; x.pc = null; x.ch = null; x.blobs = null;
   renderXf();
 }
 function watchPc(x) {
@@ -338,57 +377,117 @@ function watchPc(x) {
     const s = x.pc && x.pc.connectionState;
     if (!(s === "failed" || s === "disconnected" || s === "closed") || !live(x)) return;
     if (x.status === "confirm") endXf(x, "failed", "Sent, but " + x.peer + "'s computer did not confirm it was saved. Ask them to check.");
-    else if (x.status === "sending" || x.status === "receiving") endXf(x, "failed", "The connection dropped. Not saved; send it again.");
+    else if (x.status === "sending" || x.status === "receiving") endXf(x, "failed", "The connection dropped" + (x.saved ? " after " + plural(x.saved, "file") + " were saved" : "") + ". Send the rest again.");
     else endXf(x, "failed", "Could not connect the two computers directly. Try with both on the office network, or send it another way.");
   });
 }
+
+/* Where received files go: a folder handle kept on this device, else Downloads. */
+const rx = { dir: null, perm: "" };   // perm: granted, prompt or denied
+function idb(mode, fn) {
+  return new Promise((res, rej) => {
+    const o = indexedDB.open("chat-files", 1);
+    o.onupgradeneeded = () => o.result.createObjectStore("kv");
+    o.onerror = () => rej(o.error);
+    o.onsuccess = () => { const t = o.result.transaction("kv", mode), q = fn(t.objectStore("kv")); t.oncomplete = () => { o.result.close(); res(q && q.result); }; t.onerror = () => rej(t.error); };
+  });
+}
+async function rxLoad() {
+  try { rx.dir = (window.indexedDB && await idb("readonly", s => s.get("dir"))) || null; } catch (e) { rx.dir = null; }
+  await rxPerm(false);
+}
+// Chrome asks again after a reload unless the person chose "Allow on every visit"; until then files go to Downloads.
+async function rxPerm(askNow) {
+  rx.perm = "";
+  if (rx.dir) {
+    try { rx.perm = await rx.dir.queryPermission({ mode: "readwrite" }); if (rx.perm !== "granted" && askNow) rx.perm = await rx.dir.requestPermission({ mode: "readwrite" }); }
+    catch (e) { rx.perm = "denied"; }
+  }
+  renderRx(); renderXf();
+  return rx.perm === "granted";
+}
+const rxWhere = () => rx.dir && rx.perm === "granted" ? "folder " + rx.dir.name : "Downloads";
+function renderRx() {
+  const pick = !!window.showDirectoryPicker;
+  $("rCur").innerHTML = rx.dir ? (rx.perm === "granted" ? `Files are saved in the folder <b>${esc(rx.dir.name)}</b>.` : `Folder <b>${esc(rx.dir.name)}</b> needs your OK again (Choose folder, or Allow on the notice). Until then files go to Downloads.`)
+    : pick ? "Files are saved in this browser's <b>Downloads</b> folder. Choose a folder to save them somewhere else." : "Files are saved in this browser's <b>Downloads</b> folder. Choosing another folder needs Chrome or Edge on a PC.";
+  $("rPick").hidden = !pick; $("rDl").hidden = !rx.dir; $("rAsk").checked = !!state.rxAsk;
+}
+// A name that is not taken yet in the folder: "plan.pdf", then "plan (1).pdf", "plan (2).pdf" …
+async function freeFile(dir, name) {
+  const clean = String(name).replace(/[\\/:*?"<>|\x00-\x1f]/g, "_").replace(/^[.\s]+|[.\s]+$/g, "") || "file";
+  const dot = clean.lastIndexOf("."), base = dot > 0 ? clean.slice(0, dot) : clean, ext = dot > 0 ? clean.slice(dot) : "";
+  for (let k = 0; k < 500; k++) {
+    const nm = k ? base + " (" + k + ")" + ext : clean;
+    try { await dir.getFileHandle(nm); } catch (e) { if (e && e.name === "NotFoundError") return dir.getFileHandle(nm, { create: true }); throw e; }
+  }
+  throw new Error("Too many files named " + clean);
+}
+
 // Sender
-async function startSend(to, file) {
+async function startSend(to, files) {
   const sid = "tx-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  const x = xf[sid] = { sid, dir: "out", peer: to, name: file.name, size: file.size, done: 0, status: "connecting", text: "", file, t0: Date.now() };
+  const list = files.map(f => ({ name: f.name, size: f.size, type: f.type || "" }));
+  const x = xf[sid] = { sid, dir: "out", peer: to, files: list, blobs: files, name: files.length === 1 ? files[0].name : plural(files.length, "file"), size: list.reduce((a, f) => a + f.size, 0), done: 0, cur: 0, status: "connecting", text: "", t0: Date.now() };
   renderXf();
   try {
     const pc = x.pc = new RTCPeerConnection(ICE), ch = x.ch = pc.createDataChannel("file", { ordered: true });
     ch.binaryType = "arraybuffer"; ch.bufferedAmountLowThreshold = HIGH / 4;
     watchPc(x);
     ch.onopen = () => pump(x);
-    ch.onmessage = e => { if (e.data === "ok") endXf(x, "done", "Saved on " + to + "'s computer"); };
+    ch.onmessage = e => { if (e.data === "ok") sentOk(x); };
     await pc.setLocalDescription(await pc.createOffer());
     await iceDone(pc);
     if (x.status !== "connecting") return;   // cancelled meanwhile
-    await signal(to, "offer", sid, JSON.stringify({ sdp: pc.localDescription.sdp, name: file.name, size: file.size, type: file.type || "" }));
+    // name / size / type stay for a Chatroom page from before several files could go in one transfer.
+    await signal(to, "offer", sid, JSON.stringify({ sdp: pc.localDescription.sdp, name: x.name, size: x.size, type: files.length === 1 ? list[0].type : "", files: list }));
     x.status = "waiting"; renderXf(); sigLoop();
-    setTimeout(() => { if (x.status === "waiting") { signal(to, "cancel", sid).catch(() => {}); endXf(x, "failed", to + " did not answer in 3 minutes. Their Chatroom may be closed."); } }, OFFER_LIFE);
+    setTimeout(() => { if (x.status === "waiting") { signal(to, "cancel", sid).catch(() => {}); endXf(x, "failed", to + "'s Chatroom did not answer in 3 minutes. It may be closed."); } }, OFFER_LIFE);
   } catch (e) { endXf(x, "failed", e.message || "Could not start the transfer"); }
 }
 async function pump(x) {
   x.status = "sending"; renderXf();
-  const ch = x.ch, file = x.file;
+  const ch = x.ch;
   try {
-    for (let off = 0; off < file.size && x.status === "sending";) {
-      const buf = await file.slice(off, off + 262144).arrayBuffer();
-      for (let i = 0; i < buf.byteLength && x.status === "sending"; i += CHUNK) {
-        if (ch.bufferedAmount > HIGH) await new Promise(r => { ch.onbufferedamountlow = () => { ch.onbufferedamountlow = null; r(); }; });
-        ch.send(buf.slice(i, i + CHUNK));
+    for (let k = 0; k < x.blobs.length && x.status === "sending"; k++) {
+      const file = x.blobs[k]; x.cur = k;
+      ch.send(JSON.stringify({ start: k }));
+      for (let off = 0; off < file.size && x.status === "sending";) {
+        const buf = await file.slice(off, off + 262144).arrayBuffer();
+        for (let i = 0; i < buf.byteLength && x.status === "sending"; i += CHUNK) {
+          if (ch.bufferedAmount > HIGH) await new Promise(r => { ch.onbufferedamountlow = () => { ch.onbufferedamountlow = null; r(); }; });
+          ch.send(buf.slice(i, i + CHUNK));
+        }
+        off += buf.byteLength; x.done += buf.byteLength; renderXf();
       }
-      off += buf.byteLength; x.done = off; renderXf();
+      if (x.status !== "sending") return;
+      ch.send(JSON.stringify({ eof: true, i: k, size: file.size }));
     }
-    if (x.status !== "sending") return;
-    ch.send(JSON.stringify({ eof: true, size: file.size }));
-    x.status = "confirm"; renderXf();
+    if (x.status === "sending") { x.status = "confirm"; renderXf(); }
   } catch (e) { if (live(x)) endXf(x, "failed", "The connection dropped while sending."); }
 }
-// Receiver
+// Saved on the other side: notice here, and a line in the direct message so both have a record of what was sent.
+function sentOk(x) {
+  if (!live(x)) return;
+  const n = x.files.length, names = x.files.map(f => f.name).join(", ");
+  endXf(x, "done", (n === 1 ? "Saved" : plural(n, "file") + " saved") + " on " + x.peer + "'s computer");
+  toast(n === 1 ? x.files[0].name + " was sent to " + x.peer : plural(n, "file") + " were sent to " + x.peer);
+  if (state.me) {
+    let text = "Sent " + (n === 1 ? "a file" : plural(n, "file")) + " (" + fmtSize(x.size) + ") straight to your computer: " + names;
+    if (text.length > 1990) text = text.slice(0, 1985) + " …";
+    state.seq = (state.seq || 0) + 1;
+    state.outbox.push({ type: "send", room: dmId(state.me.name, x.peer), text, at: new Date().toISOString(), ref: state.cfg.device + "-" + Date.now().toString(36) + "-" + state.seq });
+    save(); render(); sync(true);
+  }
+}
+// Receiver. Writes run one after the other on x.wq; a failed write ends the transfer and skips the rest.
+function q(x, fn) { x.wq = x.wq.then(() => live(x) ? fn() : null).catch(e => { if (live(x)) endXf(x, "failed", "Could not save the file: " + (e && e.message || e)); }); }
 async function accept(x) {
   if (x.status !== "ask") return;
   if (Date.now() - x.seen > OFFER_LIFE - 15000) return endXf(x, "failed", "This offer has expired. Ask " + x.peer + " to send it again.");
-  // Save As box (Chrome and Edge on a PC) writes straight to the chosen file; otherwise it goes to Downloads at the end.
-  if (window.showSaveFilePicker) {
-    try { const h = await showSaveFilePicker({ suggestedName: x.name }); x.writable = await h.createWritable(); x.where = h.name; }
-    catch (e) { if (e && e.name === "AbortError") return; x.writable = null; }
-  }
-  if (!x.writable) x.parts = [];
-  x.status = "connecting"; x.wq = Promise.resolve(); renderXf();
+  x.status = "connecting"; x.wq = Promise.resolve(); x.cur = -1; x.saved = 0; renderXf();
+  if (x.clicked && rx.dir && rx.perm !== "granted") await rxPerm(true);   // a click may grant the folder again
+  x.toDir = rx.dir && rx.perm === "granted" ? rx.dir : null; x.where = x.toDir ? "folder " + x.toDir.name : "Downloads";
   try {
     const pc = x.pc = new RTCPeerConnection(ICE);
     watchPc(x);
@@ -396,11 +495,14 @@ async function accept(x) {
       const ch = x.ch = e.channel; ch.binaryType = "arraybuffer";
       ch.onopen = () => { x.status = "receiving"; renderXf(); };
       ch.onmessage = ev => {
-        if (typeof ev.data === "string") { let m = null; try { m = JSON.parse(ev.data); } catch (er) {} if (m && m.eof) finish(x); return; }
-        const b = ev.data; x.done += b.byteLength;
-        if (x.writable) { const w = x.writable; x.wq = x.wq.then(() => w.write(b)); } else if (x.parts) x.parts.push(b);
-        if (x.done > x.size) endXf(x, "failed", "More data came than the file size. Not saved.");
-        else renderXf();
+        if (!live(x)) return;
+        if (typeof ev.data === "string") { let m = null; try { m = JSON.parse(ev.data); } catch (er) {} if (m && typeof m.start === "number") beginFile(x, m.start); else if (m && m.eof) endFile(x); return; }
+        if (x.cur < 0) beginFile(x, 0);   // a sender from before several files: no start mark
+        const b = ev.data, f = x.files[x.cur];
+        x.done += b.byteLength; x.curDone += b.byteLength;
+        if (x.curDone > f.size) return endXf(x, "failed", "More data came than " + f.name + "'s size. Stopped.");
+        if (x.parts) x.parts.push(b); else q(x, () => x.w.write(b));
+        renderXf();
       };
     };
     await pc.setRemoteDescription({ type: "offer", sdp: x.sdp });
@@ -409,17 +511,25 @@ async function accept(x) {
     await signal(x.peer, "answer", x.sid, pc.localDescription.sdp);
   } catch (e) { endXf(x, "failed", e.message || "Could not answer the transfer"); }
 }
-async function finish(x) {
-  if (x.done !== x.size) return endXf(x, "failed", "The file came incomplete (" + fmtSize(x.done) + " of " + fmtSize(x.size) + "). Not saved.");
-  try {
-    if (x.writable) { await x.wq; await x.writable.close(); x.writable = null; }
-    else {
-      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(x.parts, { type: x.type || "application/octet-stream" })); a.download = x.name;
-      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    }
+function beginFile(x, i) {
+  if (i !== x.cur + 1 || i >= x.files.length) return endXf(x, "failed", "The files came out of order. Ask " + x.peer + " to send them again.");
+  x.cur = i; x.curDone = 0; x.parts = null;
+  if (x.toDir) q(x, async () => { const h = await freeFile(x.toDir, x.files[i].name); x.w = await h.createWritable(); x.files[i].saved = h.name; });
+  else x.parts = [];
+}
+function endFile(x) {
+  const f = x.files[x.cur];
+  if (!f || x.curDone !== f.size) return endXf(x, "failed", (f ? f.name : "A file") + " came incomplete (" + fmtSize(x.curDone || 0) + " of " + fmtSize(f ? f.size : 0) + "). Not saved.");
+  if (x.parts) {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(x.parts, { type: f.type || "application/octet-stream" })); a.download = f.name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    x.parts = null; x.saved++;
+  } else q(x, async () => { await x.w.close(); x.w = null; x.saved++; renderXf(); });
+  if (x.cur === x.files.length - 1) q(x, () => {
     try { x.ch.send("ok"); } catch (e) {}
-    setTimeout(() => endXf(x, "done", x.where ? "Saved as " + x.where : "Saved to this computer's Downloads"), 300);
-  } catch (e) { endXf(x, "failed", "Could not write the file: " + (e.message || e)); }
+    const n = x.files.length, msg = (n === 1 ? x.files[0].name : plural(n, "file")) + " from " + x.peer + " saved in " + x.where;
+    setTimeout(() => { endXf(x, "done", msg); toast(msg); if (!seen()) document.title = (n === 1 ? "File" : plural(n, "file")) + " from " + x.peer + " · Chatroom"; }, 300);
+  });
 }
 function decline(x) { signal(x.peer, "decline", x.sid).catch(() => {}); endXf(x, "declined", "Declined"); }
 function cancelXf(x) {
@@ -434,8 +544,11 @@ function onSignals(p) {
     if (s.kind === "offer" && !x) {
       if (p.sig_now - s.n > OFFER_LIFE) return;   // old offer from before this page opened
       let m = {}; try { m = JSON.parse(s.data); } catch (e) { return; }
-      xf[s.sid] = { sid: s.sid, dir: "in", peer: s.from, name: String(m.name || "file").slice(0, 200), size: Math.max(0, Number(m.size) || 0), type: String(m.type || ""), sdp: String(m.sdp || ""), done: 0, status: "ask", seen: Date.now() - Math.max(0, p.sig_now - s.n) };
-      if (!seen()) document.title = "File from " + s.from + " · Chatroom";
+      const one = f => ({ name: String(f.name || "file").slice(0, 200), size: Math.max(0, Math.floor(Number(f.size) || 0)), type: String(f.type || "").slice(0, 100) });
+      const files = Array.isArray(m.files) && m.files.length ? m.files.slice(0, MAX_FILES).map(one) : [one(m)];
+      const nx = xf[s.sid] = { sid: s.sid, dir: "in", peer: s.from, files, name: files.length === 1 ? files[0].name : plural(files.length, "file"), size: files.reduce((a, f) => a + f.size, 0), sdp: String(m.sdp || ""), done: 0, status: "ask", seen: Date.now() - Math.max(0, p.sig_now - s.n) };
+      if (!state.rxAsk) accept(nx);   // automatic: no Save click needed
+      else if (!seen()) document.title = "File from " + s.from + " · Chatroom";
     } else if (x && x.peer === s.from) {
       if (s.kind === "answer" && x.dir === "out" && x.status === "waiting") { x.status = "connecting"; x.pc.setRemoteDescription({ type: "answer", sdp: s.data }).catch(e => endXf(x, "failed", e.message)); }
       else if (s.kind === "decline" && x.dir === "out" && live(x)) endXf(x, "declined", s.from + " declined the file");
@@ -456,44 +569,69 @@ async function sigLoop() {
 }
 function renderXf() {
   const list = Object.values(xf);
-  $("xfers").innerHTML = list.map(x => {
-    const pct = x.size ? Math.round(x.done / x.size * 100) : 0, out = x.dir === "out";
+  const allow = rx.dir && rx.perm === "prompt" ? `<div class="xf"><div class="fn">Save received files in “${esc(rx.dir.name)}”?</div><div class="st">The browser needs your OK again for that folder. Until then, files sent to you go to Downloads.</div><div class="row"><button class="btn sm" data-rxset="1">Settings</button><button class="btn sm primary" data-rxallow="1">Allow</button></div></div>` : "";
+  $("xfers").innerHTML = allow + list.map(x => {
+    const pct = x.size ? Math.round(x.done / x.size * 100) : 0, out = x.dir === "out", n = x.files.length;
+    const which = n > 1 ? "file " + (x.cur + 1) + " of " + n + " " : "";
     const st = {
-      ask: x.peer + " wants to send you this file (" + fmtSize(x.size) + "). It is saved on this computer only.",
-      connecting: "Connecting to " + x.peer + "…",
-      waiting: "Waiting for " + x.peer + " to accept…",
-      sending: "Sending to " + x.peer + " · " + pct + "%",
-      receiving: "Receiving from " + x.peer + " · " + pct + "% of " + fmtSize(x.size),
+      ask: x.peer + " wants to send you " + (n > 1 ? plural(n, "file") + " " : "this file ") + "(" + fmtSize(x.size) + "). Saved on this computer only, in " + rxWhere() + ".",
+      connecting: out ? "Connecting to " + x.peer + "…" : "Receiving from " + x.peer + ": connecting…",
+      waiting: "Waiting for " + x.peer + "'s Chatroom to answer…",
+      sending: "Sending " + which + "to " + x.peer + " · " + pct + "%",
+      receiving: "Receiving " + which + "from " + x.peer + " · " + pct + "% of " + fmtSize(x.size) + " · into " + (x.where || rxWhere()),
       confirm: "Sent. Waiting for " + x.peer + "'s computer to save it…"
     }[x.status] || x.text;
     const cls = x.status === "done" ? " ok" : ["failed", "declined", "cancelled"].includes(x.status) ? " bad" : "";
+    const names = n > 1 ? `<ul>${x.files.slice(0, 5).map(f => `<li title="${esc(f.saved || f.name)}">${esc(f.saved || f.name)} · ${fmtSize(f.size)}</li>`).join("")}${n > 5 ? `<li>and ${n - 5} more</li>` : ""}</ul>` : "";
     const btns = x.status === "ask" ? `<button class="btn sm" data-xno="${esc(x.sid)}">Decline</button><button class="btn sm primary" data-xok="${esc(x.sid)}">Save to this computer</button>`
       : live(x) ? `<button class="btn sm" data-xcancel="${esc(x.sid)}">Cancel</button>` : `<button class="btn sm ghost" data-xclose="${esc(x.sid)}">Close</button>`;
-    return `<div class="xf${cls}"><div class="fn" title="${esc(x.name)}">${out ? "To " + esc(x.peer) + ": " : ""}${esc(x.name)}</div><div class="st">${esc(st)}</div>${["sending", "receiving"].includes(x.status) ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ""}<div class="row">${btns}</div></div>`;
+    return `<div class="xf${cls}"><div class="fn" title="${esc(x.name)}">${out ? "To " + esc(x.peer) + ": " : "From " + esc(x.peer) + ": "}${esc(x.name)}</div>${names}<div class="st">${esc(st)}</div>${["sending", "receiving"].includes(x.status) ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ""}<div class="row">${btns}</div></div>`;
   }).join("");
 }
 $("xfers").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.rxallow) return rxPerm(true);
+  if (b.dataset.rxset) return openRx();
   const x = xf[b.dataset.xok || b.dataset.xno || b.dataset.xcancel || b.dataset.xclose]; if (!x) return;
-  if (b.dataset.xok) accept(x); else if (b.dataset.xno) decline(x); else if (b.dataset.xcancel) cancelXf(x); else { delete xf[x.sid]; renderXf(); }
+  if (b.dataset.xok) { x.clicked = true; accept(x); } else if (b.dataset.xno) decline(x); else if (b.dataset.xcancel) cancelXf(x); else { delete xf[x.sid]; renderXf(); }
 });
 $("fileBtn").addEventListener("click", () => {
   if (!window.RTCPeerConnection) return toast("This browser cannot send files directly. Use Chrome or Edge.");
-  if (!online) return toast("Sending a file needs a connection.");
-  const others = state.people.filter(p => !state.me || p.name !== state.me.name);
-  if (!others.length) return toast("No other members to send to yet.");
-  $("fTo").innerHTML = others.map(p => `<option>${esc(p.name)}</option>`).join(""); $("fFile").value = "";
-  $("fdlg").hidden = false; $("fTo").focus();
+  if (!online) return toast("Sending files needs a connection.");
+  const list = others();
+  if (!list.length) return toast("No other members to send to yet.");
+  const r = room();
+  $("fTo").innerHTML = list.map(p => `<option${r.dm && p.name === r.peer ? " selected" : ""}>${esc(p.name)}</option>`).join(""); $("fFile").value = "";
+  $("fdlg").hidden = false; (r.dm ? $("fFile") : $("fTo")).focus();
 });
 $("fCancel").addEventListener("click", () => { $("fdlg").hidden = true; });
 $("fdlg").addEventListener("keydown", e => { if (e.key === "Escape") $("fdlg").hidden = true; });
 $("fform").addEventListener("submit", e => {
   e.preventDefault();
-  const f = $("fFile").files[0], to = $("fTo").value;
-  if (!f || !to) return;
-  if (!f.size) return toast("That file is empty.");
-  $("fdlg").hidden = true; startSend(to, f);
+  const all = Array.from($("fFile").files), to = $("fTo").value, files = all.filter(f => f.size > 0);
+  if (!all.length || !to) return;
+  if (!files.length) return toast(all.length === 1 ? "That file is empty." : "Those files are empty.");
+  if (files.length > MAX_FILES) return toast("Up to " + MAX_FILES + " files at a time.");
+  if (files.length < all.length) toast(plural(all.length - files.length, "empty file") + " left out.");
+  $("fdlg").hidden = true; startSend(to, files);
 });
+function openRx() { renderRx(); $("rdlg").hidden = false; $("rClose").focus(); }
+$("rxBtn").addEventListener("click", openRx);
+$("rClose").addEventListener("click", () => { $("rdlg").hidden = true; });
+$("rdlg").addEventListener("keydown", e => { if (e.key === "Escape") $("rdlg").hidden = true; });
+$("rAsk").addEventListener("change", () => { state.rxAsk = $("rAsk").checked; save(); });
+$("rPick").addEventListener("click", async () => {
+  try {
+    const d = await showDirectoryPicker({ id: "chat-received", mode: "readwrite" });
+    await idb("readwrite", s => s.put(d, "dir")); rx.dir = d; await rxPerm(true);
+    toast("Files sent to you will be saved in " + d.name);
+  } catch (e) { if (!(e && e.name === "AbortError")) toast("Could not use that folder: " + (e && e.message || e)); }
+});
+$("rDl").addEventListener("click", async () => {
+  try { await idb("readwrite", s => s.delete("dir")); } catch (e) {}
+  rx.dir = null; await rxPerm(false); toast("Files sent to you will go to Downloads");
+});
+rxLoad();
 window.addEventListener("beforeunload", e => { if (Object.values(xf).some(live)) { e.preventDefault(); e.returnValue = ""; } });
 
 /* ---------- Events ---------- */
