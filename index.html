@@ -279,7 +279,123 @@ iframe.peek{z-index:5;background:transparent !important;animation:none}
   @keyframes ping{0%{transform:scale(1);opacity:.8}70%,100%{transform:scale(2.8);opacity:0}}
   @keyframes sweep{from{left:-35%}to{left:100%}}
 }
+
+/* ---------- Diagram look (html.dg, the default since 2026-11-28; "aw.look" = "classic" brings back the look above) ----------
+   From the diagram-design skill's style guide: white-smoke paper, jet-black ink, blue-slate muted, burnt tangerine only on the
+   one thing that matters (the current app, problems), hairlines instead of glass and glow, serif titles, mono labels, no
+   decorative motion. System fonts (the panel works offline): Geist / Instrument Serif when installed. The apps get the same
+   tokens from apps/fx/diagram.css. */
+html.dg{
+  --bg:#f5f5f5; --rail:#f5f5f5; --panel:#ffffff; --ink:#2d3142; --muted:#4f5d75; --soft:#5a6580; --line:#dcdcde; --hover:#ececec;
+  --accent:#2d3142; --accent-ink:#f5f5f5; --accent-soft:rgba(45,49,66,.07); --focal:#bf4520; --focal-tint:rgba(191,69,32,.08);
+  --ok:#3d6b4f; --bad:#bf4520; --shadow:none; --shadow-lg:0 12px 32px rgba(45,49,66,.16);
+  --font:"Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif; --mono:"Geist Mono","Cascadia Mono",Consolas,monospace;
+  --serif:"Instrument Serif","Iowan Old Style",Georgia,serif; --r:6px; --glass:var(--panel); --accent-rgb:45,49,66;
+}
+@media (prefers-color-scheme: dark){ html.dg:not([data-theme="light"]){
+  --bg:#2a2e3d; --rail:#2a2e3d; --panel:#313649; --ink:#f5f5f5; --muted:#bfc0c0; --soft:#949eb2; --line:#444a60; --hover:#393e53;
+  --accent:#f5f5f5; --accent-ink:#2d3142; --accent-soft:rgba(245,245,245,.08); --focal:#f08a59; --focal-tint:rgba(240,138,89,.12);
+  --ok:#8fc0a0; --bad:#f08a59; --shadow-lg:0 12px 32px rgba(0,0,0,.45); --accent-rgb:245,245,245; } }
+html.dg[data-theme="dark"]{
+  --bg:#2a2e3d; --rail:#2a2e3d; --panel:#313649; --ink:#f5f5f5; --muted:#bfc0c0; --soft:#949eb2; --line:#444a60; --hover:#393e53;
+  --accent:#f5f5f5; --accent-ink:#2d3142; --accent-soft:rgba(245,245,245,.08); --focal:#f08a59; --focal-tint:rgba(240,138,89,.12);
+  --ok:#8fc0a0; --bad:#f08a59; --shadow-lg:0 12px 32px rgba(0,0,0,.45); --accent-rgb:245,245,245; }
+html.dg ::selection{background:var(--focal-tint)}
+html.dg body{font-variant-numeric:tabular-nums}
+html.dg #field,html.dg #fxBtn,html.dg .bar::after,html.dg .card::before,html.dg .card::after,html.dg .fig::before,html.dg .fig::after{display:none}
+html.dg .stage{background:none}
+/* rail */
+html.dg .rail{border-right-color:var(--line)}
+html.dg .brand{border-bottom-color:var(--line)}
+html.dg .mark{background:none;border:1px solid var(--ink);border-radius:6px;color:var(--ink);box-shadow:none}
+html.dg .brand b,html.dg .mbrand b{font:400 18px/1 var(--serif);letter-spacing:-.01em}
+html.dg .brand b span,html.dg .mbrand b span{color:var(--muted);font-style:italic}
+html.dg .navlabel{font:500 10.5px var(--mono);letter-spacing:.14em;color:var(--muted)}
+html.dg .item{border-radius:4px}
+html.dg .item[aria-current="page"]{background:var(--hover)}
+html.dg .item[aria-current="page"]::before{width:2px;border-radius:0;background:var(--focal);box-shadow:none}
+html.dg .ico,html.dg .item[aria-current="page"] .ico{border-radius:4px;border-color:var(--line);background:var(--panel);box-shadow:none;color:var(--ink)}
+html.dg .item[aria-current="page"] .ico{border-color:var(--ink)}
+html.dg .txt small{color:var(--soft)}
+html.dg .dot.up{box-shadow:none}
+html.dg .dot.up::after{display:none}
+html.dg .item[aria-current="page"] .tab{color:var(--ink)}
+/* top bar */
+html.dg .bar{background:var(--bg)}
+html.dg .crumbs{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+html.dg .crumbs b{font-weight:500}
+html.dg .search,html.dg .appsbtn,html.dg .ibtn,html.dg .net,html.dg .who{border-radius:4px;background:none}
+html.dg .who{border-color:var(--line);color:var(--ink)}
+html.dg .who svg,html.dg .menu .mi,html.dg .pal li .mi{color:var(--ink)}
+html.dg .load i{background:var(--ink);box-shadow:none}
+html.dg .menu,html.dg .pal .box{border-radius:6px;border-color:var(--line)}
+html.dg .pal .box{box-shadow:var(--shadow-lg)}
+html.dg .pal{background:rgba(45,49,66,.35);-webkit-backdrop-filter:none;backdrop-filter:none}
+html.dg .pal li{border-radius:4px}
+html.dg .pal li[aria-selected="true"]{background:var(--hover)}
+/* home */
+html.dg .date{font:12px var(--mono);color:var(--soft)}
+html.dg .clock{color:var(--ink);background:none;border-color:var(--line);border-radius:4px}
+html.dg .home h2{font:400 44px/1.1 var(--serif);letter-spacing:-.005em;background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--ink);margin:6px 0 28px}
+html.dg .sect{font:500 10.5px var(--mono);letter-spacing:.14em;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.waiting[hidden]{display:none}
+html.dg .waiting{border-radius:6px;border-color:var(--focal);background:var(--focal-tint)}
+@container (max-width:680px){
+  html.dg .fig:nth-child(odd){border-left:0;padding-left:0}
+  html.dg .fig:nth-child(n+3){border-top:1px solid var(--line)}
+}
+html.dg .waiting .w-ico{color:var(--focal)}
+html.dg .figs{gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+html.dg .fig{background:none;border:0;border-left:1px solid var(--line);border-radius:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;padding:14px 18px}
+html.dg .fig:first-child{border-left:0;padding-left:0}
+html.dg .fig .k{font:500 10.5px var(--mono);letter-spacing:.14em;color:var(--muted)}
+html.dg .fig .v{font:400 40px/1.05 var(--serif);margin:8px 0 4px}
+html.dg .fig .v.word{font:400 26px/1.15 var(--serif);margin:10px 0 6px}
+html.dg .fig .s{color:var(--soft)}
+html.dg .fig .s a{color:var(--ink)}
+html.dg .fig.pending{border-style:solid}
+html.dg .meter{height:2px;border-radius:0}
+html.dg .meter i{border-radius:0;background:var(--ink);box-shadow:none}
+html.dg .grid{gap:8px}
+html.dg .card{background:var(--panel);border-color:var(--line);border-radius:6px;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;padding:16px}
+html.dg .card:hover{border-color:var(--ink);box-shadow:none;transform:none}
+html.dg .card header .ico{color:var(--ink);border-color:var(--line);background:none}
+html.dg .card p{color:var(--soft)}
+html.dg .btn{border-radius:4px;font-weight:500}
+html.dg .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+html.dg .btn.primary:hover{filter:none;box-shadow:none;opacity:.9}
+html.dg .btn.primary::after{display:none}
+html.dg .down .box{-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:6px}
+html.dg .sign input{border-radius:4px}
+html.dg .sign input:focus{border-color:var(--ink);box-shadow:none}
+/* hub map (Home) */
+.hubmap{display:none}
+html.dg .hubmap{display:block;margin:0 0 28px;overflow-x:auto}
+html.dg .hubmap svg{width:100%;min-width:640px;height:auto;display:block}
+.hubmap .cont rect{fill:none;stroke:var(--line);stroke-dasharray:4 4}
+.hubmap .clabel{font:500 8px var(--mono);letter-spacing:.18em;fill:var(--muted)}
+.hubmap .node rect{fill:var(--panel);stroke:var(--ink);stroke-width:1}
+.hubmap a:hover .node rect,.hubmap a:focus-visible .node rect{fill:var(--hover)}
+.hubmap a:focus-visible{outline:none}
+.hubmap .node.focal rect{fill:var(--focal-tint);stroke:var(--focal)}
+.hubmap .nlabel{font:600 12px var(--font);fill:var(--ink)}
+.hubmap .nsub{font:400 9px var(--mono);letter-spacing:.08em;fill:var(--soft)}
+.hubmap .focal .nsub{fill:var(--focal)}
+.hubmap .edge{fill:none;stroke:var(--muted);stroke-width:1}
+.hubmap .ahead{fill:var(--muted)}
+.hubmap .elabel{font:500 7.5px var(--mono);letter-spacing:.12em;fill:var(--soft)}
+@media (prefers-reduced-motion:no-preference){
+  html.dg .fig,html.dg .card,html.dg .date,html.dg .home h2,html.dg .sect{animation:none}
+  html.dg iframe{animation:none}
+}
+@media (max-width:720px){
+  html.dg .home h2{font-size:32px}
+  html.dg .item[aria-current="page"]{background:none}
+  html.dg .item[aria-current="page"]::before{height:2px;border-radius:0}
+}
 </style>
+<script>/* Diagram look unless this device chose the classic one; set before the page draws. */
+try{ if(localStorage.getItem("aw.look") !== "classic") document.documentElement.classList.add("dg"); }catch(e){ document.documentElement.classList.add("dg"); }</script>
 </head>
 <body>
 <aside class="rail">
@@ -287,6 +403,7 @@ iframe.peek{z-index:5;background:transparent !important;animation:none}
   <div class="navscroll" id="nav"></div>
   <div class="railfoot">
     <button class="item" id="themeBtn" title="Light or dark"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="txt"><b>Theme</b></span></button>
+    <button class="item" id="lookBtn" title="Diagram or classic look (this device)"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="7" height="6" rx="1"/><rect x="14" y="14" width="7" height="6" rx="1"/><path d="M10 7h4v10"/></svg></span><span class="txt"><b id="lookLbl">Classic look</b></span></button>
     <button class="item" id="fxBtn" title="Special effects on or off (this device)"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></span><span class="txt"><b id="fxLbl">Effects on</b></span></button>
     <button class="item" id="collapse" title="Collapse sidebar"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></span><span class="txt"><b>Collapse</b></span></button>
   </div>
@@ -317,6 +434,7 @@ iframe.peek{z-index:5;background:transparent !important;animation:none}
         <div class="date"><span id="date"></span><span class="clock" id="clock"></span></div>
         <h2 id="greet"></h2>
         <div class="waiting" id="waiting" role="status" hidden></div>
+        <div class="hubmap" id="hubmap"></div>
         <div class="figs" id="figs"></div>
         <div class="sect">Apps</div>
         <div class="grid" id="cards"></div>
@@ -469,6 +587,7 @@ function renderNav(){
       <div class="actions"><a class="btn primary" href="#${a.id}">Open</a>
         <a class="btn" href="${a.url}" target="_blank" rel="noopener">New tab</a></div>
     </article>`).join("");
+  renderMap();
 }
 
 // Figures row: only what the panel itself knows. SR counts need a link to the SR Desk's data, not built yet.
@@ -492,11 +611,39 @@ function renderFigs(){
 }
 
 const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DG = document.documentElement.classList.contains("dg");   // diagram look: static, no decorative motion
+
+// Home in the diagram look: the apps drawn as a map, with an arrow only where one app's data really feeds another
+// (from the app descriptions above). The app opened last is the one tangerine node. Positions are fixed slots, so an app
+// hidden for this person (Claim Monitor) leaves a gap instead of moving the others.
+function renderMap(){
+  const el = $("hubmap"); if(!DG || !el) return;
+  const SLOT = { unit:["time","scan","desk","dash","chat","db","claim","cal"], verify:["sr","srdash","rss"], survey:["td"] };
+  const BOX = { unit:{ x:16, w:500, cols:4, label:"SURVEY UNIT" }, verify:{ x:536, w:232, cols:1, label:"VERIFICATION" }, survey:{ x:788, w:156, cols:1, label:"SURVEY" } };
+  const NH = 56, H = 300, last = store("aw.last"), pos = {};
+  let svg = Object.values(BOX).map(b => `<g class="cont"><rect x="${b.x}" y="16" width="${b.w}" height="${H - 32}" rx="8"/><text class="clabel" x="${b.x + 12}" y="36">${b.label}</text></g>`).join("");
+  Object.entries(SLOT).forEach(([g, ids]) => ids.forEach((id, i) => {
+    const b = BOX[g], cw = (b.w - 24) / b.cols, a = APPS.find(x => x.id === id); if(!a) return;
+    const p = pos[id] = { x: b.x + 12 + (i % b.cols) * cw, y: 52 + Math.floor(i / b.cols) * 76, w: cw - 12 };
+    svg += `<a href="#${id}" aria-label="${esc(a.name)}"><g class="node${id === last ? " focal" : ""}"><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${NH}" rx="6"/>
+      <text class="nlabel" x="${p.x + 10}" y="${p.y + 24}">${esc(a.name)}</text><text class="nsub" x="${p.x + 10}" y="${p.y + 42}">${esc((id === last ? "LAST OPENED" : a.tab).toUpperCase())}</text></g></a>`;
+  }));
+  const right = (f, t, lbl) => { const A = pos[f], B = pos[t]; if(!A || !B) return ""; const y = A.y + NH / 2;
+    return `<path class="edge" d="M${A.x + A.w} ${y}H${B.x - 5}" marker-end="url(#hm-ah)"/><text class="elabel" x="${(A.x + A.w + B.x) / 2}" y="${y - 5}" text-anchor="middle">${lbl}</text>`; };
+  const up = (f, t, lbl) => { const A = pos[f], B = pos[t]; if(!A || !B) return ""; const x = A.x + A.w / 2;
+    return `<path class="edge" d="M${x} ${A.y}V${B.y + NH + 5}" marker-end="url(#hm-ah)"/><text class="elabel" x="${x + 6}" y="${(A.y + B.y + NH) / 2 + 3}">${lbl}</text>`; };
+  const down = (f, t, lbl) => { const A = pos[f], B = pos[t]; if(!A || !B) return ""; const x = A.x + 40;
+    return `<path class="edge" d="M${x} ${A.y + NH}V${B.y - 5}" marker-end="url(#hm-ah)"/><text class="elabel" x="${x + 6}" y="${(A.y + NH + B.y) / 2 + 3}">${lbl}</text>`; };
+  let edges = right("scan", "desk", "LINK") + right("desk", "dash", "COUNTS") + up("cal", "dash", "COUNTS") + down("sr", "srdash", "SR DATA");
+  if(pos.rss && pos.dash){ const R = pos.rss, D = pos.dash, gx = 526, y1 = R.y + NH / 2, y2 = D.y + 16;
+    edges += `<path class="edge" d="M${R.x} ${y1}H${gx}V${y2}H${D.x + D.w + 5}" marker-end="url(#hm-ah)"/><text class="elabel" x="${gx - 4}" y="${y1 - 5}" text-anchor="end">COUNTS</text>`; }
+  el.innerHTML = `<div class="sect">How work moves between the apps</div><svg viewBox="0 0 960 ${H}" role="img" aria-label="Map of the Survey Unit apps and how their data flows"><defs><marker id="hm-ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L8 4L0 8z" class="ahead"/></marker></defs>${edges}${svg}</svg>`;
+}
 
 // Greeting resolves out of scrambled characters, left to right.
 function decode(el, text){
   clearInterval(el._t); el.setAttribute("aria-label", text);
-  if(STILL){ el.textContent = text; return; }
+  if(STILL || DG){ el.textContent = text; return; }
   const glyphs = "ABCDEFGHJKLMNPRSTUVWXYZ0123456789", steps = 20; let f = 0;
   el._t = setInterval(() => {
     const k = Math.floor(text.length * ++f / steps);
@@ -627,7 +774,7 @@ const field = (() => {
     draw();
   }
   function sync(){
-    const want = !STILL && !document.hidden && (!$("home").hidden || !$("down").hidden);
+    const want = !STILL && !DG && !document.hidden && (!$("home").hidden || !$("down").hidden);
     if(want && !on){ on = true; last = performance.now(); raf = requestAnimationFrame(frame); }
     else if(!want && on){ on = false; cancelAnimationFrame(raf); }
   }
@@ -647,7 +794,7 @@ async function show(id){ try{ await openView(id); } finally{ field.sync(); } }
 function makeFrame(app){
   const f = document.createElement("iframe");
   f.title = app.name; f.src = app.url; f.setAttribute("allow", "clipboard-read; clipboard-write; fullscreen; geolocation" + (app.id === "scan" ? "; local-network-access; local-network; loopback-network" : ""));   // Scanner reads the receiver on this PC
-  f.addEventListener("load", () => { sendTheme(f); addFx(f); addTableTools(f); $("load").hidden = true; });
+  f.addEventListener("load", () => { sendTheme(f); addFx(f, app.id); addTableTools(f); $("load").hidden = true; });
   document.querySelector(".stage").appendChild(f); frames[app.id] = f; return f;
 }
 async function openView(id){
@@ -660,7 +807,7 @@ async function openView(id){
   crumbs(app);
   if(!app){
     $("home").hidden = false; $("reload").hidden = $("popout").hidden = true; document.title = "Survey Unit – Masbate"; document.body.classList.add("at-home");
-    renderHomeHead(); renderFigs(); APPS.forEach(ping); return;
+    renderHomeHead(); renderFigs(); renderMap(); APPS.forEach(ping); return;
   }
   $("home").hidden = true;
   $("popout").href = app.url; $("popout").hidden = false; document.title = app.name + " · Survey Unit – Masbate"; document.body.classList.remove("at-home");
@@ -773,6 +920,8 @@ window.addEventListener("storage", e => { if(e.key === "aw.signin"){ renderWho()
 renderWho();
 $("fxLbl").textContent = store("aw.fx") === "off" ? "Effects off" : "Effects on";
 $("fxBtn").onclick = () => { store("aw.fx", store("aw.fx") === "off" ? "on" : "off"); location.reload(); };
+$("lookLbl").textContent = DG ? "Classic look" : "Diagram look";
+$("lookBtn").onclick = () => { store("aw.look", DG ? "classic" : "diagram"); location.reload(); };
 // Installable app (phones and PCs) when served over https: the service worker keeps every page for offline use.
 // Opened from the folder (file://) none of this runs and the panel works as before.
 let installEvt = null;
@@ -789,9 +938,18 @@ $("home").addEventListener("pointermove", e => {
 window.addEventListener("online", renderNet); window.addEventListener("offline", renderNet);
 // Shared effects layer (apps/fx) added to each app as it loads, so the app files themselves stay unchanged.
 // Works when the app page is same-origin (the local server or the published site); skipped silently otherwise.
-function addFx(f){
+// In the diagram look the app gets apps/fx/diagram.css (its colour and type tokens) instead of the effects layer.
+// SR Desk and SR Flow Dashboard use their own token names, so each gets its own mapping file.
+const DG_CSS = { sr:"diagram-srdesk.css", srdash:"diagram-srflow.css" };
+function addFx(f, id){
   try{
-    const d = f.contentDocument; if(!d || !d.head || d.getElementById("aw-fx-css") || d.documentElement.dataset.fx === "own" || store("aw.fx") === "off") return;
+    const d = f.contentDocument; if(!d || !d.head) return;
+    if(DG){
+      if(d.getElementById("aw-dg-css")) return;
+      const l = d.createElement("link"); l.id = "aw-dg-css"; l.rel = "stylesheet"; l.href = new URL("apps/fx/" + (DG_CSS[id] || "diagram.css"), location.href).href; d.head.appendChild(l);
+      return;
+    }
+    if(d.getElementById("aw-fx-css") || d.documentElement.dataset.fx === "own" || store("aw.fx") === "off") return;
     const base = new URL("apps/fx/", location.href).href;
     const l = d.createElement("link"); l.id = "aw-fx-css"; l.rel = "stylesheet"; l.href = base + "fx.css"; d.head.appendChild(l);
     const s = d.createElement("script"); s.src = base + "fx.js"; d.head.appendChild(s);

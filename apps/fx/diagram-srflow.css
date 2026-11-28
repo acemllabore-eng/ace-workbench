@@ -1,0 +1,61 @@
+/* Survey Unit – Masbate: the "diagram" look for the SR Flow Dashboard (sr-dashboard.html), phase 2 (2026-11-28).
+   Added by the panel (index.html) like diagram.css, so sr-dashboard.html stays a verbatim copy of
+   outputs/sr-verification-desk/app/sr-dashboard.html. It re-points that page's own token names and, on screen only,
+   takes out the glows and decorative motion (pulse, spin-in, drawn lines) the diagram style does not use.
+   Status colours keep their hues (in, out, endorsed, compliance, days, good, warn, critical) in muted editorial tones;
+   the page's orange accent (--cyan, kept under that name by the page) becomes burnt tangerine. */
+/* Light: html:root:not([data-theme="dark"]) to outrank the page's own light rule (:root:not([data-theme="dark"])). */
+@media screen{ html:root:not([data-theme="dark"]){
+  --bg:#f5f5f5; --surface:#ffffff; --surface-2:#ececec; --line:#dcdcde; --grid:#e6e6e8;
+  --fg:#2d3142; --muted:#4f5d75; --faint:#5a6580;
+  --cyan:#bf4520; --in:#5e7a9b; --out:#c0643a; --endorse:#5f8a6e; --comply:#b8915a; --days:#6e6479;
+  --good:#3d6b4f; --warn:#a87b1c; --crit:#a8443c;
+  --mono:"Geist Mono","Cascadia Mono",Consolas,monospace; --body:"Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --panel-bg:#ffffff; --ctrl-bg:#ffffff; --chip-bg:#f5f5f5; --tip-bg:rgba(255,255,255,.98); --sunk:#f5f5f5; --banner-fg:#8a5a14;
+  --hi:rgba(45,49,66,.05); --hi-2:rgba(191,69,32,.08); --grid-line:transparent; --glow-a:transparent; --glow-b:transparent;
+  color-scheme:light;
+} }
+@media screen and (prefers-color-scheme: dark){ html:root:not([data-theme="light"]){
+  --bg:#2a2e3d; --surface:#313649; --surface-2:#393e53; --line:#444a60; --grid:#3a4054;
+  --fg:#f5f5f5; --muted:#bfc0c0; --faint:#949eb2;
+  --cyan:#f08a59; --in:#82a0c0; --out:#e08a62; --endorse:#8fb59c; --comply:#d3ad7a; --days:#8d8298;
+  --good:#8fc0a0; --warn:#d9b45a; --crit:#e0827a;
+  --panel-bg:#313649; --ctrl-bg:#313649; --chip-bg:#393e53; --tip-bg:rgba(42,46,61,.98); --sunk:#262a38; --banner-fg:#d3ad7a;
+  --hi:rgba(245,245,245,.05); --hi-2:rgba(240,138,89,.12); --glow-a:transparent; --glow-b:transparent;
+  color-scheme:dark; } }
+@media screen{ html:root[data-theme="dark"]{
+  --bg:#2a2e3d; --surface:#313649; --surface-2:#393e53; --line:#444a60; --grid:#3a4054;
+  --fg:#f5f5f5; --muted:#bfc0c0; --faint:#949eb2;
+  --cyan:#f08a59; --in:#82a0c0; --out:#e08a62; --endorse:#8fb59c; --comply:#d3ad7a; --days:#8d8298;
+  --good:#8fc0a0; --warn:#d9b45a; --crit:#e0827a;
+  --panel-bg:#313649; --ctrl-bg:#313649; --chip-bg:#393e53; --tip-bg:rgba(42,46,61,.98); --sunk:#262a38; --banner-fg:#d3ad7a;
+  --hi:rgba(245,245,245,.05); --hi-2:rgba(240,138,89,.12); --glow-a:transparent; --glow-b:transparent;
+  color-scheme:dark; } }
+
+@media screen{
+  /* No glow: marks and swatches are flat; selected controls get a plain 1px ring in the accent. */
+  .live,.live.off,.snap .sw,.snap .track i,.legend i,.pie-list .sw{box-shadow:none}
+  .kpi .v{text-shadow:none}
+  .card,.panel,#bdetail .cat{border-radius:8px;box-shadow:none}
+  .fcard,.ktile{border-radius:6px}
+  /* The orange gradient card becomes the screen's one focal box: tangerine outline on a tint, ink text, serif figure. */
+  .hero{background:var(--hi-2);border:1px solid var(--cyan);color:var(--fg);border-radius:8px;box-shadow:none}
+  .hero::after{display:none}
+  .hero-top .upd,.hero-meta{opacity:1;color:var(--muted)}
+  .hero-ic{color:var(--cyan)}
+  .hero-big{font-family:"Instrument Serif","Iowan Old Style",Georgia,serif;font-weight:400;color:var(--cyan)}
+  .hero-sub{font-weight:600}
+  .hero-chips button{border:1px solid var(--line);background:var(--panel-bg);color:var(--fg);border-radius:6px}
+  .hero-chips button:hover{background:var(--hi);border-color:var(--muted)}
+  .hero :focus-visible{outline-color:var(--cyan)}
+  .seg button[aria-pressed="true"]{background:var(--hi-2);box-shadow:inset 0 0 0 1px var(--cyan)}
+  .filters select.on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+  .pill-commit{background:var(--hi-2)}
+  .ktile[aria-pressed="true"]{box-shadow:inset 0 0 0 1px var(--cyan)}
+  .hero-chips button[aria-pressed="true"]{background:var(--hi);border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+  /* Static by default: data appears drawn, without spin-in, line drawing or pulsing. */
+  .live,.ping,.pie .grow,.snap .track i,.att-in,.kindp.moved{animation:none}
+  .draw{animation:none;stroke-dashoffset:0}
+}
+::selection{background:rgba(191,69,32,.18);color:inherit}
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}

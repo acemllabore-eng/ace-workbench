@@ -1,0 +1,35 @@
+/* Survey Unit – Masbate: the "diagram" look (adopted 2026-11-28, from the diagram-design skill's style guide).
+   The panel (index.html) adds this file to every app it opens, like fx.css, so the app files themselves stay unchanged
+   (they are hash-matched to their Apps Script copies). It only re-points the colour and type tokens the apps already share
+   (--bg, --panel, --ink, --muted, --line, --accent, --ok, --bad, --warn, --font, --mono ...) and themes the browser's own
+   surfaces, on screen only (printing keeps each app's own print rules). Selectors start with html:root so they win over each app's own :root rules, light and dark.
+   Palette: white-smoke paper, jet-black ink, blue-slate muted, burnt tangerine for problems; primary actions in ink.
+   Type: system-font mode (the app works offline, no web fonts): Geist / Geist Mono / Instrument Serif when installed,
+   otherwise Segoe UI / Cascadia Mono / Georgia. */
+@media screen{ html:root{
+  --bg:#f5f5f5; --panel:#ffffff; --ink:#2d3142; --muted:#4f5d75; --line:#dcdcde; --hover:#ececec; --field:#ffffff;
+  --accent:#2d3142; --accent-ink:#f5f5f5; --accent-soft:rgba(45,49,66,.07);
+  --ok:#3d6b4f; --ok-bg:#e7eee8; --bad:#bf4520; --bad-bg:#f8e9e3; --warn:#8a5a14; --warn-bg:#f4ecdc;
+  --info:#2e5aa8; --info-bg:#e6edf7;
+  --shadow:none; --shadow-lg:0 12px 32px rgba(45,49,66,.16);
+  --font:"Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif; --mono:"Geist Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
+  --r:6px;
+  color-scheme:light;
+} }
+@media screen and (prefers-color-scheme: dark){ html:root:not([data-theme="light"]){
+  --bg:#2a2e3d; --panel:#313649; --ink:#f5f5f5; --muted:#bfc0c0; --line:#444a60; --hover:#393e53; --field:#262a38;
+  --accent:#f5f5f5; --accent-ink:#2d3142; --accent-soft:rgba(245,245,245,.08);
+  --ok:#8fc0a0; --ok-bg:#2c3b36; --bad:#f08a59; --bad-bg:#46352f; --warn:#d3ad7a; --warn-bg:#413a30;
+  --info:#739fdf; --info-bg:#2f3a52;
+  --shadow:none; --shadow-lg:0 12px 32px rgba(0,0,0,.45); color-scheme:dark; } }
+@media screen{ html:root[data-theme="dark"]{
+  --bg:#2a2e3d; --panel:#313649; --ink:#f5f5f5; --muted:#bfc0c0; --line:#444a60; --hover:#393e53; --field:#262a38;
+  --accent:#f5f5f5; --accent-ink:#2d3142; --accent-soft:rgba(245,245,245,.08);
+  --ok:#8fc0a0; --ok-bg:#2c3b36; --bad:#f08a59; --bad-bg:#46352f; --warn:#d3ad7a; --warn-bg:#413a30;
+  --info:#739fdf; --info-bg:#2f3a52;
+  --shadow:none; --shadow-lg:0 12px 32px rgba(0,0,0,.45); color-scheme:dark; } }
+
+/* The browser's own surfaces, which no app styles: selection, numbers, scrollbars. */
+::selection{background:rgba(191,69,32,.18);color:inherit}
+html{font-variant-numeric:tabular-nums}
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
