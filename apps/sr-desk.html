@@ -531,6 +531,99 @@ html.peek body::before, html.peek body::after { display: none !important; }
   .ref-cols { grid-template-columns: 1fr 1fr; }
   .panel { border: 0; }
 }
+/* Guided document checks (2026-11-28, user: "like usebygga.com … interactive and full of visuals … easily trained"): one check at a time
+   over the document model, a close-up lens with a leader line, a progress strip, document chips, big answer buttons, read aloud. */
+.gd-mode { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.gd-mode .seg button { padding: 6px 14px; font-size: 13px; }
+.gd-mode .seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.gd-voice[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.gd { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; } .gd > *, .gd-split > * { min-width: 0; }
+.gd-rail { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: thin; }
+.gd-doc { display: inline-flex; align-items: center; gap: 7px; flex: none; max-width: 260px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 11px 4px 5px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.gd-doc .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-doc .c { font-variant-numeric: tabular-nums; font-weight: 600; }
+.gd-doc svg { flex: none; } .gd-doc .rb { stroke: var(--line); } .gd-doc .rf { stroke: var(--pass); transition: stroke-dashoffset .4s ease; } .gd-doc.has-fail .rf { stroke: var(--fail); }
+.gd-doc.is-cur { border-color: var(--fg); color: var(--fg); box-shadow: 0 0 0 1px var(--fg); }
+.gd-doc.is-full { color: var(--pass); } .gd-doc.is-full.has-fail { color: var(--fail); }
+.gd-doc:disabled { cursor: default; opacity: .55; text-decoration: line-through; }
+.gd-bar { display: flex; gap: 2px; height: 8px; }
+.gd-tick { flex: 1 1 0; min-width: 0; border: 0; padding: 0; border-radius: 2px; background: var(--line); cursor: pointer; transition: background .25s ease, transform .2s ease; }
+.gd-tick.gap { margin-left: 5px; } .gd-tick:hover { transform: scaleY(1.6); }
+.gd-tick.v-pass { background: var(--pass); } .gd-tick.v-fail { background: var(--fail); } .gd-tick.v-na { background: var(--na); }
+.gd-tick.is-cur { background: var(--fg); transform: scaleY(1.8); }
+.dm-split.gd-split { grid-template-columns: minmax(0, 1.05fr) minmax(300px, .95fr); padding: 0; gap: 16px; }
+.gd-split .dm-stage { position: relative; }
+.gd-split .dm-stage .dm-in { transform: none !important; } /* whole page in view; the lens gives the close-up */
+.gd-split .dm-key .dm-zoom { display: none; }
+.gd-split .dm-side { top: 0; padding-top: 0; }
+.gd-stage-box { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.gd-lens { position: absolute; width: var(--L, 170px); height: var(--L, 170px); border-radius: 50%; overflow: hidden; z-index: 3; background: var(--paper);
+  border: 2px solid var(--fg); box-shadow: 0 0 0 5px color-mix(in srgb, var(--surface) 85%, transparent), 0 12px 30px rgba(0, 0, 0, .25); pointer-events: none; }
+.gd-lens .dm { position: absolute; left: 0; top: 0; margin: 0; transform-origin: 0 0; box-shadow: none; border: 0; }
+.gd-lead { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+.gd-lead line { stroke: var(--fg); stroke-width: 1.4; stroke-dasharray: 4 3; } .gd-lead circle { fill: none; stroke: var(--fg); stroke-width: 1.6; }
+.gd-paper { display: grid; gap: 8px; justify-items: center; }
+.gd-sheet { position: relative; width: min(100%, 320px); aspect-ratio: .77; background: var(--paper); border: 1px solid var(--line); border-radius: 3px; box-shadow: 0 10px 28px rgba(20, 30, 25, .12); padding: 12% 10%; display: grid; align-content: start; gap: 6%; }
+.gd-sheet b { font: 700 15px/1.25 Georgia, serif; color: var(--paper-ink); text-align: center; }
+.gd-sheet i { display: block; height: 6px; border-radius: 3px; background: var(--paper-faint); } .gd-sheet i:nth-child(3n) { width: 70%; } .gd-sheet i:nth-child(4n) { width: 85%; }
+.gd-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.gd-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.gd-meta .pill-t { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; }
+.gd-num { font: 800 44px/1 var(--font-body); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.gd-eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+.gd-title, .gd-finish h3 { margin: 0; font-size: 21px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; text-transform: none; color: var(--fg); }
+.gd-split .dm { width: min(100%, calc((100vh - 430px) * var(--ar))); min-width: min(100%, 260px); }
+.gd-how { margin: 0; font-size: 14.5px; line-height: 1.5; }
+.gd-how.none { color: var(--muted); font-size: 13px; }
+.gd-look { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.gd-look .k, .gd-next .k { font-size: 12px; color: var(--muted); font-weight: 600; margin-right: 2px; }
+.gd-look .chip { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; }
+.gd-answer .row { grid-template-columns: 1fr; border: 0; padding: 0; background: none; gap: 8px; }
+.gd-answer .row > .no, .gd-answer .row > .tx { display: none; }
+.gd-answer .seg { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; border-radius: 12px; border: 0; gap: 8px; background: none; overflow: visible; }
+.gd-answer .seg button { border: 1.5px solid var(--line) !important; border-radius: 12px; padding: 14px 6px; font-size: 15px; font-weight: 700; background: var(--surface); color: var(--fg); transition: transform .12s ease, background .2s ease; }
+.gd-answer .seg button::before { display: block; font-size: 20px; line-height: 1; margin-bottom: 4px; }
+.gd-answer .seg button[data-v="pass"]::before { content: "✓"; color: var(--pass); } .gd-answer .seg button[data-v="fail"]::before { content: "✕"; color: var(--fail); } .gd-answer .seg button[data-v="na"]::before { content: "–"; color: var(--na); }
+.gd-answer .seg button:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--muted) !important; }
+.gd-answer .seg button[aria-pressed="true"][data-v="pass"] { background: var(--pass); color: var(--surface); border-color: var(--pass) !important; }
+.gd-answer .seg button[aria-pressed="true"][data-v="fail"] { background: var(--fail); color: var(--surface); border-color: var(--fail) !important; }
+.gd-answer .seg button[aria-pressed="true"][data-v="na"] { background: var(--na); color: var(--surface); border-color: var(--na) !important; }
+.gd-answer .seg button[aria-pressed="true"]::before { color: inherit; }
+.gd-answer .seg button.pop { animation: gd-pop .35s ease; }
+.gd-answer .row .note { grid-column: 1; } .gd-answer .row .note input { padding: 10px 12px; font-size: 14px; }
+.gd-answer .fx { margin: 0; }
+.gd-keys { font-size: 11.5px; color: var(--muted); } .gd-keys kbd { font: 600 11px var(--font-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--surface-2); }
+.gd-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.gd-next { border-top: 1px dashed var(--line); padding-top: 10px; font-size: 13px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.gd-next .no { font-weight: 700; font-variant-numeric: tabular-nums; }
+.gd-nav { position: sticky; bottom: -24px; display: flex; gap: 8px; padding: 10px 0 12px; background: linear-gradient(to top, var(--bg) 70%, transparent); z-index: 4; }
+.gd-back { flex: none; width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--surface-2); font-size: 20px; cursor: pointer; color: var(--fg); }
+.gd-back:disabled { opacity: .4; cursor: default; }
+.gd-go { flex: 1; display: flex; align-items: center; gap: 12px; height: 52px; border-radius: 999px; border: 0; background: var(--fg); color: var(--bg); padding: 0 22px 0 10px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 0 0 3px var(--bg), 0 0 0 4.5px var(--fg); }
+.gd-go .ck { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 20%, transparent); font-size: 16px; }
+.gd-go.is-done .ck { background: #F5C518; color: #111; }
+.gd-go .ar { margin-left: auto; font-size: 20px; }
+.gd-card.enter { animation: gd-in .3s cubic-bezier(.2, .8, .2, 1); }
+.gd-done-flash { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 5; }
+.gd-done-flash span { background: var(--pass); color: var(--surface); border-radius: 999px; padding: 10px 18px; font-weight: 700; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); animation: gd-toast 1.6s ease forwards; }
+.gd-finish { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: grid; gap: 16px; justify-items: start; }
+.gd-medal { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; font-size: 38px; font-weight: 800; background: var(--pass); color: var(--surface); animation: gd-pop .6s ease; }
+.gd-medal.has-fail { background: var(--fail); } .gd-medal.open { background: var(--warn); }
+.gd-finish h3 { margin: 0; font-size: 24px; }
+.gd-stats { display: grid; grid-template-columns: repeat(4, minmax(90px, 1fr)); gap: 8px; width: 100%; }
+.gd-stat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; } .gd-stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+.gd-stat.pass b { color: var(--pass); } .gd-stat.fail b { color: var(--fail); } .gd-stat.na b { color: var(--na); } .gd-stat.open b { color: var(--warn); }
+.gd-list { display: grid; gap: 4px; width: 100%; } .gd-list button { text-align: left; border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+.gd-list button .no { font-weight: 700; margin-right: 6px; } .gd-list .miss { color: var(--fail); }
+.gd-confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.gd-confetti i { position: absolute; top: -10px; width: 7px; height: 11px; border-radius: 1px; animation: gd-fall 1.6s ease-in forwards; }
+@keyframes gd-in { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes gd-pop { 0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes gd-toast { 0% { opacity: 0; transform: translateY(10px) scale(.9); } 15%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-10px); } }
+@keyframes gd-fall { to { transform: translateY(420px) rotate(540deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .gd-card.enter, .gd-answer .seg button.pop, .gd-medal, .gd-done-flash span, .gd-confetti i { animation: none; } .gd-confetti { display: none; } }
+@media (max-width: 900px) { .dm-split.gd-split { grid-template-columns: minmax(0, 1fr); } .gd-split .dm-pages { flex-wrap: wrap; } .gd-bar { gap: 1px; } .gd-tick.gap { margin-left: 3px; } .gd-split .dm-side { position: static; } .gd-lens { --L: 128px; } .gd-num { font-size: 36px; } .gd-title { font-size: 18px; } .gd-stats { grid-template-columns: repeat(2, 1fr); } }
+@media print { .gd-mode, .gd { display: none; } }
 </style>
 <!--SRD-HOSTED-->
 </head>
@@ -1754,8 +1847,10 @@ let netDown = false; // phone version: the last request could not reach the web 
 if (HOSTED) { state.cfg.url = HOSTED.url; state.queue = {}; }
 try { localStorage.setItem(STORE + "-probe", "1"); localStorage.removeItem(STORE + "-probe"); } catch (e) { storageOk = false; }
 let ui = { view: "register", status: "Open", route: "All", verifier: "All", kind: "All", survey: "All", vstat: "All", q: "", open: null, limit: PAGE, editFields: false,
-  step: null, guide: true, guideRoute: "DENR" };
-try { const v = localStorage.getItem(STORE + "-view"); if (v) ui.view = v; ui.guide = localStorage.getItem(STORE + "-guide") !== "0"; } catch (e) {}
+  step: null, guide: true, guideRoute: "DENR", gMode: "guided", gVoice: false, gPos: {}, gLast: "" };
+try { const v = localStorage.getItem(STORE + "-view"); if (v) ui.view = v; ui.guide = localStorage.getItem(STORE + "-guide") !== "0";
+  ui.gMode = localStorage.getItem(STORE + "-gmode") === "list" ? "list" : "guided"; ui.gVoice = localStorage.getItem(STORE + "-gvoice") === "1"; } catch (e) {}
+let gdCur = null; // guided document checks: {seq, steps} of the open SR
 /* Remark categories (2026-11-19): {finding label: {category name: [remark keys]}}. On the Dashboard, a click on a finding in the
    Findings share pie opens its own pie of remark categories, empty until remarks are combined. A remark key is the remark text,
    trimmed, spaces collapsed, lower case. Kept on this device only (not synced to the Sheet). A remark belongs to at most one category. */
@@ -2142,6 +2237,8 @@ function renderGuide() {
         <h3>4. Document checks</h3>
         <ul class="tips"><li>Start with the plan and the title, and keep both open: most checks compare another paper with them.</li>
           <li>Go down the documents in order and answer the checks inside each one.</li>
+          <li><b>Guided, one at a time</b> (the default) shows one check over a drawing of the document: the spot glows, a round close-up shows it larger, and the how-to note is written under the check. Pass or N/A moves on by itself; Fail waits for your note. Keys: P, F, N, and the arrows. "Read aloud" speaks each check. <b>Full list</b> shows every check at once, as before; both use the same answers.</li>
+          <li>To learn without touching real SRs, open the <b>practice SR</b> and walk through it in Guided mode (the button "Open the practice SR" above).</li>
           <li>Look at the paper for every item. "Pass the unchecked items" is for the items you have already looked at.</li></ul>
         <h3>5. Notice and decision</h3>
         <ul class="tips"><li>Read the notice of findings as the DARMO will read it. Each line must say what to correct.</li>
@@ -2543,6 +2640,8 @@ function showStep(step) {
   const dw = document.querySelector(".drawer"); if (dw) dw.classList.toggle("wide", step === "checks"); // room for the document models
   const b = document.querySelector(".dw-body"); if (b) b.scrollTop = 0;
   stepIntoView();
+  if (step === "checks") { const m = document.querySelector(".gd-mode"); if (m && document.querySelector(".gd-split")) m.scrollIntoView({ block: "start" });
+    gdFocus(document.getElementById("drawer-root")); if (ui.open) gdSay(ui.open); } else gdHush();
 }
 // Five tabs do not fit a phone: keep the open one inside the tab strip.
 function stepIntoView() { const el = document.querySelector('.step[aria-selected="true"]'), st = el && el.parentElement; if (!st) return;
@@ -2588,6 +2687,57 @@ function openSR(seq) {
             + (ty(j) === "auto" ? fxBox(s, di, j, t, off, editable, FXD, FXE).replace('<div class="fx"', `<div data-for="${k}" class="fx"`) : ""); };
         return au.length ? `<div class="grp-label">From the documents (Auto) · ${au.length}</div>${au.map(r).join("")}${hand.length ? `<div class="grp-label">Check by hand · ${hand.length}</div>${hand.map(r).join("")}` : ""}` : ord.map(r).join(""); })()}
       ${dis ? "" : `<div class="tools">${d.checks.some(t => checkType(s.route, di, t) === "auto") ? `<button class="btn small" data-fxmark="${di}">Mark the Auto items from the data</button>` : ""}<button class="btn small" data-passall="${di}">Pass the unchecked items</button></div>`}`}</div>${dmS ? "</div>" : ""}</div>`; };
+  // Guided mode (2026-11-28): the same checks, the same answer keys and the same order as the list, shown one at a time.
+  const gDocs = [], gSteps = [];
+  if (c) c.docGroups.forEach((g, gi) => g.items.forEach((text, i) => { const di = guideOf(gi, i); if (di === null) return; const dk = `d${gi}.${i}`, d = c.guide[di], off = skipped(a, dk);
+    const ty = j => checkType(s.route, di, d.checks[j]), ord = checkOrder(s.route, di), au = ord.filter(j => ty(j) === "auto"), list = au.length ? au.concat(ord.filter(j => ty(j) !== "auto")) : ord;
+    const D = { gi, i, di, dk, doc: text, off, mark: a[dk] === "missing" ? "Missing" : a[dk] === "na" ? "N/A" : "", first: gSteps.length, steps: [] }; gDocs.push(D);
+    if (!off) list.forEach((j, n) => { D.steps.push(gSteps.length); gSteps.push({ D, di, j, key: `g${di}.${j}`, n: `${i + 1}.${n + 1}`, t: d.checks[j], ty: ty(j) }); }); }));
+  gdCur = { seq, steps: gSteps };
+  const gHtml = () => {
+    if (!gSteps.length) return `<div class="banner"><div>No checks to walk through: every document that has checks is marked Missing or N/A in Attachments.</div></div>`;
+    let ix = ui.gPos[seq]; if (ix === undefined) { ix = gSteps.findIndex(x => !a[x.key]); if (ix < 0) ix = gSteps.length; }
+    ix = ui.gPos[seq] = Math.max(0, Math.min(ix, gSteps.length));
+    const ring = (f, fail) => `<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle class="rb" cx="10" cy="10" r="7.5" fill="none" stroke-width="3"/><circle class="rf" cx="10" cy="10" r="7.5" fill="none" stroke-width="3" stroke-linecap="round" transform="rotate(-90 10 10)" stroke-dasharray="47.1" stroke-dashoffset="${(47.1 * (1 - f)).toFixed(1)}"/></svg>`;
+    const cur = gSteps[ix], rail = `<div class="gd-rail" role="group" aria-label="Documents">${gDocs.map(D => { const n = D.steps.length, dn = D.steps.filter(k => a[gSteps[k].key]).length, fl = D.steps.some(k => a[gSteps[k].key] === "fail");
+      return `<button type="button" class="gd-doc ${cur && cur.D === D ? "is-cur" : ""} ${n && dn === n ? "is-full" : ""} ${fl ? "has-fail" : ""}" ${D.off ? `disabled title="Skipped: attachment marked ${D.mark}"` : `data-gto="${D.steps[D.steps.findIndex(k => !a[gSteps[k].key])] ?? D.first}" title="${esc(D.doc)}"`}>${ring(n ? dn / n : 0)}<span class="nm">${esc(D.doc)}</span><span class="c">${D.off ? D.mark : `${dn}/${n}`}</span></button>`; }).join("")}</div>`;
+    const bar = `<div class="gd-bar" role="group" aria-label="Every check, in order">${gSteps.map((x, k) => `<button type="button" class="gd-tick ${a[x.key] ? "v-" + a[x.key] : ""} ${k === ix ? "is-cur" : ""} ${k && gSteps[k - 1].D !== x.D ? "gap" : ""}" data-gto="${k}" aria-label="Check ${esc(x.n)}" title="${esc(x.n + " · " + x.t)}"></button>`).join("")}</div>`;
+    const go = (lbl, done, last) => `<div class="gd-nav"><button type="button" class="gd-back" data-gstep="-1" aria-label="Previous check" ${ix ? "" : "disabled"}>←</button>
+      <button type="button" class="gd-go ${done ? "is-done" : ""}" data-gstep="1" ${last ? "data-glast" : ""}><span class="ck">${done ? "✓" : "»"}</span><span>${lbl}</span><span class="ar">→</span></button></div>`;
+    if (!cur) { // the end: what was found, what is still open
+      const cnt = v => gSteps.filter(x => a[x.key] === v).length, open = gSteps.filter(x => !a[x.key]), fails = gSteps.filter(x => a[x.key] === "fail");
+      const item = x => `<button type="button" data-gto="${gSteps.indexOf(x)}"><span class="no">${esc(x.n)}</span>${esc(x.t)} <span class="sub">· ${esc(x.D.doc)}</span>${a[x.key] === "fail" && !(nt[x.key] || "").trim() ? ` <span class="miss">· note missing</span>` : ""}</button>`;
+      return `${rail}${bar}<div class="gd-finish" style="position:relative"><div class="gd-confetti" ${open.length || fails.length ? "hidden" : ""}>${open.length || fails.length ? "" : Array.from({ length: 36 }, (_, k) => `<i style="left:${(k * 37) % 100}%;background:${["var(--pass)", "#F5C518", "var(--accent)", "var(--fail)"][k % 4]};animation-delay:${(k % 9) * 60}ms"></i>`).join("")}</div>
+        <div class="gd-medal ${open.length ? "open" : fails.length ? "has-fail" : ""}">${open.length ? open.length : fails.length ? "!" : "✓"}</div>
+        <h3>${open.length ? `${open.length} check${open.length > 1 ? "s" : ""} still open` : fails.length ? `All ${gSteps.length} checks done · ${fails.length} finding${fails.length > 1 ? "s" : ""}` : `All ${gSteps.length} checks passed or N/A`}</h3>
+        <div class="gd-stats"><div class="gd-stat pass"><b>${cnt("pass")}</b>Pass</div><div class="gd-stat fail"><b>${fails.length}</b>Fail</div><div class="gd-stat na"><b>${cnt("na")}</b>N/A</div><div class="gd-stat open"><b>${open.length}</b>Not answered</div></div>
+        ${open.length ? `<div class="gd-list"><span class="eyebrow">Still open: click one to go back to it</span>${open.slice(0, 40).map(item).join("")}</div>` : ""}
+        ${fails.length ? `<div class="gd-list"><span class="eyebrow">Findings: these go to the Notice</span>${fails.map(item).join("")}</div>` : ""}
+        <div class="gd-tools">${open.length ? `<button type="button" class="btn primary" data-gto="${gSteps.indexOf(open[0])}">Go to the first open check</button>` : `<button type="button" class="btn primary" data-gnotice>Go to the Notice</button>`}<button type="button" class="btn" data-gto="0">Walk through again from 1.1</button></div></div>
+        ${go("Back to the last check", false, true).replace('data-gstep="1"', 'data-gto="' + (gSteps.length - 1) + '"').replace('<span class="ck">»</span>', '<span class="ck">←</span>').replace('<span class="ar">→</span>', "")}`;
+    }
+    const d = c.guide[cur.di], h = howOf(cur.t, "check", d.doc), mdl = dmModelFor(d.doc), ids = mdl ? dmIds(mdl, cur.t) : [];
+    const labels = mdl ? [...new Set(ids.map(id => (dmRegs(mdl).find(r => r.g[0] === id) || { g: [] }).g[1]).filter(Boolean))] : [];
+    const dmS = dmSide(s, cur.di, d, a, FXD), di0 = gDocs.indexOf(cur.D), nx = gSteps[ix + 1], answered = !!a[cur.key];
+    const stage = dmS || `<div class="dm-side gd-paper"><div class="gd-sheet"><b>${esc(cur.D.doc)}</b>${"<i></i>".repeat(11)}</div><p class="sub" style="margin:0">No drawing of this document yet: read it from the SR envelope.</p></div>`;
+    const answer = row(cur.key, cur.n, cur.t, "check", false, d.doc, cur.ty).replace('<div class="row', `<div data-rg="${ids.join(" ")}" class="row`)
+      + (cur.ty === "auto" ? fxBox(s, cur.di, cur.j, cur.t, false, editable, FXD, FXE).replace('<div class="fx"', `<div data-for="${cur.key}" class="fx"`) : "");
+    const fresh = ui.gLast !== seq + "|" + ix; ui.gLast = seq + "|" + ix;
+    return `${rail}${bar}<div class="dm-split gd-split"><div class="gd-stage-box">${stage}</div>
+      <div class="gd-card ${fresh ? "enter" : ""}"><div class="gd-meta"><span>Check ${ix + 1} of ${gSteps.length}</span><span class="pill-t">Document ${di0 + 1} of ${gDocs.length}</span></div>
+        <div class="gd-eyebrow">${esc(cur.D.doc)}</div><div class="gd-num">${esc(cur.n)}</div>
+        <h3 class="gd-title">${esc(cur.t)}${typeTag(cur.ty)}</h3>
+        ${h ? `<p class="gd-how">${esc(h[0])}${h[1] ? ' <span class="tbc">To confirm</span>' : ""}</p>` : `<p class="gd-how none">No how-to note written for this check yet.</p>`}
+        ${labels.length ? `<div class="gd-look"><span class="k">Look at</span>${labels.map(l => `<span class="chip">${esc(l)}</span>`).join("")}</div>` : mdl ? `<div class="gd-look"><span class="k">Look at</span><span class="chip">The whole document</span></div>` : ""}
+        <div class="gd-answer">${answer}</div>
+        ${dis ? "" : `<div class="gd-keys">Keys: <kbd>P</kbd> Pass · <kbd>F</kbd> Fail · <kbd>N</kbd> N/A · <kbd>←</kbd> <kbd>→</kbd> move</div>`}
+        ${dis ? "" : `<div class="gd-tools">${cur.ty === "auto" ? `<button class="btn small" data-fxmark="${cur.di}">Mark this document's Auto items from the data</button>` : ""}<button class="btn small" data-passall="${cur.di}">Pass this document's unchecked items</button></div>`}
+        ${nx ? `<div class="gd-next"><span class="k">Up next</span><span class="no">${esc(nx.n)}</span><span>${esc(nx.t)}</span>${nx.D !== cur.D ? `<span class="sub">· next document: ${esc(nx.D.doc)}</span>` : ""}</div>` : `<div class="gd-next"><span class="k">Up next</span><span>The summary of this SR's checks</span></div>`}
+      </div></div>
+      ${go(answered ? (nx ? "Done, next check" : "Done, see the summary") : "Skip for now", answered)}`;
+  };
+  const gToggle = `<div class="gd-mode no-print"><div class="seg" role="group" aria-label="How to show the checks"><button type="button" data-gmode="guided" aria-pressed="${ui.gMode === "guided"}">Guided, one at a time</button><button type="button" data-gmode="list" aria-pressed="${ui.gMode !== "guided"}">Full list</button></div>
+    ${ui.gMode === "guided" ? `<button type="button" class="btn small gd-voice" data-gvoice aria-pressed="${ui.gVoice}">${ui.gVoice ? "Reading aloud: on" : "Read aloud"}</button>` : ""}</div>`;
   const lockNote = !c || canCheck(s) ? "" : `<p class="readonly-note">${s.status === "Compliance" ? "Locked while the SR is with the DARMO for compliance." : `Read only: the checklist is used while the survey status is ${AT_DARPO}.`}</p>`;
   const noRoute = `<div class="banner"><div>${s.survey === AT_RPMO ? `Choose <b>For approval by</b> (DENR or LRA) in Details to open its attachments. At ${AT_RPMO} only the attachments can be marked.` : isOpen(s) ? "Choose <b>For approval by</b> (DENR or LRA) in Details to open its checklist. Leave it Unassigned for SRs that go to neither." : `The checklist is used while the survey status is ${AT_DARPO}.`}</div></div>`;
   const guideToggle = `<label class="toggle"><input type="checkbox" data-guide-toggle ${ui.guide ? "checked" : ""}> Show how-to notes</label>`;
@@ -2677,7 +2827,8 @@ function openSR(seq) {
               <tr style="cursor:default"><th colspan="2">ARBs not annotated on Collective CLOA</th></tr>
               ${c.notAnnotated.map(([x, y]) => `<tr style="cursor:default"><td>${x}</td><td>${y}</td></tr>`).join("")}</tbody></table></div>
           </div></details>
-          ${c.docGroups.map((g, gi) => { const blocks = g.items.map((t, i) => checkBlock(gi, i, t)).join(""); return blocks ? `<div class="group-label">${g.label}</div><div class="doc-list">${blocks}</div>` : ""; }).join("")}
+          ${gToggle}
+          ${ui.gMode === "guided" ? `<div class="gd">${gHtml()}</div>` : c.docGroups.map((g, gi) => { const blocks = g.items.map((t, i) => checkBlock(gi, i, t)).join(""); return blocks ? `<div class="group-label">${g.label}</div><div class="doc-list">${blocks}</div>` : ""; }).join("")}
         </section>`}
         </div>
         <div class="pane" data-pane="notice" ${hid("notice")}>
@@ -2751,6 +2902,7 @@ function openSR(seq) {
   if (p) p.onclick = () => decide(seq);
   xcBind(seq, root);
   dmBind(root);
+  gdBind(root, seq);
   loadHistory(seq);
   refresh(seq);
   stepIntoView();
@@ -2977,9 +3129,89 @@ function decide(seq) {
   if (t.fail) { toast(`SR ${seq} returned to DARMO for compliance, ${t.fail} finding${t.fail > 1 ? "s" : ""}`); closeSR(); }
   else { toast(`SR ${seq} moved to ${AT_RPMO}. Enter the date RPMO received the transmittal.`); ui.step = "details"; openSR(seq); const el = document.getElementById("dw-sdate"); if (el) el.focus(); }
 }
-function closeSR() { document.getElementById("drawer-root").innerHTML = ""; ui.open = null; ui.step = null; render(); if (lastFocus && lastFocus.isConnected) lastFocus.focus();
+function closeSR() { gdHush(); document.getElementById("drawer-root").innerHTML = ""; ui.open = null; ui.step = null; render(); if (lastFocus && lastFocus.isConnected) lastFocus.focus();
   if (document.documentElement.classList.contains("peek") && window.parent !== window) window.parent.postMessage({ type: "aw-peek-closed" }, location.origin); } // back to the panel's app
 document.addEventListener("keydown", e => { if (e.key === "Escape" && ui.open) closeSR(); });
+
+/* ---------- Guided document checks: moving, the close-up lens, read aloud, keys ---------- */
+function gdHush() { try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {} ui.gSpoken = ""; }
+function gdGo(seq, to) {
+  if (!gdCur || gdCur.seq !== seq) return;
+  const prev = gdCur.steps[ui.gPos[seq]], next = gdCur.steps[to];
+  ui.gPos[seq] = Math.max(0, Math.min(to, gdCur.steps.length)); rerender(seq);
+  const s = sr(seq), a = (s.ans || {})[s.route] || {};
+  if (prev && (!next || next.D !== prev.D) && prev.D.steps.every(k => a[gdCur.steps[k].key])) gdFlash(`✓ ${prev.D.doc}: all ${prev.D.steps.length} checked`);
+  const g = document.querySelector(".gd"), b = document.querySelector(".dw-body");
+  if (g && b && g.getBoundingClientRect().top < b.getBoundingClientRect().top) g.scrollIntoView({ block: "start" });
+}
+function gdMove(seq, dir) { if (gdCur && gdCur.seq === seq) { const ix = ui.gPos[seq] || 0, to = Math.max(0, Math.min(gdCur.steps.length, ix + dir)); if (to !== ix) gdGo(seq, to); } }
+function gdFlash(msg) { const box = document.querySelector(".gd-stage-box") || document.querySelector(".gd-finish"); if (!box) return;
+  const f = document.createElement("div"); f.className = "gd-done-flash"; f.innerHTML = `<span>${esc(msg)}</span>`; box.appendChild(f); setTimeout(() => f.remove(), 1700); }
+// The lens: a copy of the lit page, scaled so the spot fills most of a circle, set in the corner away from the spot, with a dashed leader line.
+function gdLens(sp) {
+  const stage = sp && sp.querySelector(".dm-stage"); if (!stage) return;
+  stage.querySelectorAll(".gd-lens, .gd-lead").forEach(x => x.remove());
+  const page = stage.querySelector(".dm.has-focus:not([hidden])"), f = page && page.querySelector(".dm-focus"); if (!f) return;
+  const W = page.offsetWidth, H = page.offsetHeight; if (!W || !H) return;
+  const [x, y, w, h] = ["left", "top", "width", "height"].map(p => parseFloat(f.style[p]) || 0);
+  if (w > 80 && h > 60) return; // the spot is most of the page: nothing to enlarge
+  const L = W < 360 ? 112 : W < 520 ? 148 : 176, cx = (x + w / 2) / 100 * W, cy = (y + h / 2) / 100 * H;
+  const k = Math.max(1.6, Math.min(6, L * .72 / Math.max(w / 100 * W, h / 100 * H, 10)));
+  const ox = page.offsetLeft, oy = page.offsetTop, lx = ox + (cx / W > .5 ? 10 : W - L - 10), ly = oy + (cy / H > .5 ? 10 : H - L - 10);
+  const lens = document.createElement("div"); lens.className = "gd-lens"; lens.setAttribute("aria-hidden", "true");
+  Object.assign(lens.style, { left: lx + "px", top: ly + "px" }); lens.style.setProperty("--L", L + "px");
+  const cl = page.cloneNode(true); cl.removeAttribute("data-page"); cl.hidden = false;
+  Object.assign(cl.style, { width: W + "px", height: H + "px", transform: `translate(${L / 2 - cx * k}px, ${L / 2 - cy * k}px) scale(${k})` });
+  lens.appendChild(cl);
+  stage.insertAdjacentHTML("beforeend", `<svg class="gd-lead" aria-hidden="true"><line x1="${ox + cx}" y1="${oy + cy}" x2="${lx + L / 2}" y2="${ly + L / 2}"/><circle cx="${ox + cx}" cy="${oy + cy}" r="${Math.max(7, Math.min(40, Math.max(w / 100 * W, h / 100 * H) / 2 + 4))}"/></svg>`);
+  stage.appendChild(lens);
+}
+function gdFocus(root) {
+  const sp = root && root.querySelector(".gd-split"), row = sp && sp.querySelector(".gd-answer .row"); if (!row || !sp.querySelector(".dm")) return;
+  dmFocus(sp, row);
+  const draw = () => gdLens(sp), img = sp.querySelector(".dm:not([hidden]) .dm-scan"), st = sp.querySelector(".dm-stage");
+  if (img && !img.complete) img.addEventListener("load", draw, { once: true });
+  requestAnimationFrame(draw);
+  // The panel widens with an animation when this tab opens, and the window can be resized: redraw the lens on every size change.
+  if (st && window.ResizeObserver && !st._gdRo) { let t = 0; st._gdRo = new ResizeObserver(() => { cancelAnimationFrame(t); t = requestAnimationFrame(draw); }); st._gdRo.observe(st); }
+}
+function gdSay(seq) {
+  if (!ui.gVoice || ui.step !== "checks" || ui.gMode !== "guided" || !window.speechSynthesis) return;
+  const id = seq + "|" + ui.gPos[seq]; if (ui.gSpoken === id) return; ui.gSpoken = id;
+  const g = document.querySelector(".gd"); if (!g) return;
+  const fin = g.querySelector(".gd-finish h3"), t = g.querySelector(".gd-title"), how = g.querySelector(".gd-how:not(.none)"), num = g.querySelector(".gd-num");
+  const text = fin ? fin.textContent : `Check ${num ? num.textContent : ""}. ${t && t.firstChild ? t.firstChild.textContent : ""}. ${how ? how.textContent.replace("To confirm", "") : ""}`;
+  try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch (e) {}
+}
+function gdBind(root, seq) {
+  root.querySelectorAll("[data-gmode]").forEach(b => b.onclick = () => { ui.gMode = b.dataset.gmode; try { localStorage.setItem(STORE + "-gmode", ui.gMode); } catch (e) {} gdHush(); rerender(seq); });
+  root.querySelectorAll("[data-gvoice]").forEach(b => b.onclick = () => { ui.gVoice = !ui.gVoice; try { localStorage.setItem(STORE + "-gvoice", ui.gVoice ? "1" : "0"); } catch (e) {} gdHush(); rerender(seq); });
+  const g = root.querySelector(".gd"); if (!g) return;
+  g.querySelectorAll("[data-gto]").forEach(b => b.onclick = () => gdGo(seq, +b.dataset.gto));
+  g.querySelectorAll("[data-gstep]").forEach(b => b.onclick = () => gdMove(seq, +b.dataset.gstep));
+  const nb = g.querySelector("[data-gnotice]"); if (nb) nb.onclick = () => showStep("notice");
+  // After a Pass or N/A, move on by itself; after a Fail, stay for the note.
+  g.querySelectorAll(".gd-answer .seg button").forEach(b => b.addEventListener("click", () => {
+    const ix = ui.gPos[seq], key = b.dataset.key, s = sr(seq), v = ((s.ans || {})[s.route] || {})[key];
+    const nbtn = document.querySelector(`.gd-answer .seg button[data-key="${key}"][data-v="${b.dataset.v}"]`); if (nbtn) nbtn.classList.add("pop");
+    if (v === "pass" || v === "na") setTimeout(() => { if (ui.open === seq && ui.step === "checks" && ui.gMode === "guided" && ui.gPos[seq] === ix) gdGo(seq, ix + 1); }, 480);
+  }));
+  // A click on a spot of the model jumps to the check that looks at it (the next one, when several do).
+  const sp = g.querySelector(".gd-split");
+  if (sp) sp.addEventListener("click", e => { const rg = e.target.closest(".dm-r"), cur = gdCur && gdCur.steps[ui.gPos[seq]]; if (!rg || !cur) return;
+    const s = sr(seq), m = dmModelFor(CL[s.route].guide[cur.di].doc); if (!m) return;
+    const hits = cur.D.steps.filter(k => dmIds(m, gdCur.steps[k].t).includes(rg.dataset.rg)); if (!hits.length) return;
+    const k = hits.find(k => k > ui.gPos[seq]) ?? hits[0]; if (k !== ui.gPos[seq]) gdGo(seq, k); });
+  if (ui.step === "checks") { gdFocus(root); gdSay(seq); }
+}
+document.addEventListener("keydown", e => {
+  if (!ui.open || ui.step !== "checks" || ui.gMode !== "guided" || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target && e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
+  const g = document.querySelector(".gd"); if (!g) return;
+  const v = { p: "pass", f: "fail", n: "na" }[e.key.toLowerCase()];
+  if (v) { const b = g.querySelector(`.gd-answer .seg button[data-v="${v}"]:not(:disabled)`); if (b) { e.preventDefault(); b.click(); } return; }
+  if (e.key === "ArrowRight") { e.preventDefault(); gdMove(ui.open, 1); } else if (e.key === "ArrowLeft") { e.preventDefault(); gdMove(ui.open, -1); }
+});
 
 function copyText(txt) {
   const fallback = () => { const pre = document.getElementById("dw-findings"); if (!pre) return; const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Text selected. Press Ctrl+C to copy."); };
