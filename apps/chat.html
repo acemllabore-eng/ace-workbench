@@ -261,10 +261,7 @@ function render() {
   const r = room();
   if (!signed) {
     $("rooms").innerHTML = ""; $("rhead").innerHTML = ""; $("compose").hidden = true; $("note").hidden = true;
-    $("log").innerHTML = `<div class="setup"><h2 style="font-size:16px">Sign in to chat</h2><p class="muted">Sign in once from the panel (top right), or here. Same web app address and key as every Survey Unit app.</p>
-      <label>Web app address<input id="cUrl" value="${esc(state.cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label>
-      <label>Your key<input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
-      <button class="btn primary" id="cSave" type="button">Sign in</button></div>`;
+    $("log").innerHTML = `<div class="setup"><h2 style="font-size:16px">Sign in to chat</h2><p class="muted">Sign in once with <b>Sign in</b> in the top bar of the Survey Unit panel. It signs in every app.</p></div>`;
     return;
   }
   if (state.me && seen()) { state.read[r.id] = Math.max(state.read[r.id] || 0, ...roomMsgs(r.id).map(m => m.seq), 0); save(); }

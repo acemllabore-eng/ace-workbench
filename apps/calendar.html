@@ -309,7 +309,7 @@ function render() {
 function renderSync() {
   const n = state.outbox.length;
   let c = "", text;
-  if (!state.cfg.url || !state.cfg.key) text = "Not connected. Sign in from the panel's top bar.";
+  if (!state.cfg.url || !state.cfg.key) text = "Not connected. Sign in from the top bar of the panel.";
   else if (syncing) { c = "on"; text = "Syncing…"; }
   else if (lastError) { c = "err"; text = lastError; }
   else if (!online) { c = "off"; text = "Offline · " + (n ? n + (n === 1 ? " change" : " changes") + " kept on this device, will send when online" : "showing the copy on this device"); }
@@ -388,7 +388,7 @@ function shareHtml() {
     <section class="panel"><h2>One activity</h2><p>Open an activity and use "Add to my calendar" to save just that one to this phone or PC.</p></section>`;
 }
 function settingsHtml() {
-  return `<section class="panel"><h2>Sign-in</h2><p>One sign-in for every app: <b>Sign in</b> in the Survey Unit panel's top bar. Sign out there too.</p>
+  return `<section class="panel"><h2>Sign-in</h2><p>One sign-in for every app: <b>Sign in</b> in the top bar of the Survey Unit panel. Sign out there too.</p>
       <p style="margin:12px 0 0">This device: <span class="mono">${esc(state.cfg.device)}</span>${state.me ? ` · Signed in as <b>${esc(state.me.name)}</b> (${esc(state.me.role)})` : ""}</p></section>
     <section class="panel"><h2>On this device</h2><p>${Object.keys(state.items).length} activities kept here · ${state.outbox.length} waiting to send${state.lastSync ? " · last synced " + esc(fmtTime(state.lastSync)) : ""}.</p>
       <button class="btn" id="cForget">Remove this device's copy</button></section>`;

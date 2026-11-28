@@ -424,7 +424,7 @@ function render() {
 function renderSync() {
   const n = state.outbox.length;
   let cls = "", text;
-  if (!state.cfg.url || !state.cfg.key) text = window.TL_HOSTED ? "Not connected. Add your key in Settings." : "Not connected. Sign in from the panel's top bar.";
+  if (!state.cfg.url || !state.cfg.key) text = window.TL_HOSTED ? "Not connected. Add your key in Settings." : "Not connected. Sign in from the top bar of the panel.";
   else if (syncing) { cls = "on"; text = "Syncing…"; }
   else if (lastError) { cls = "err"; text = lastError; }
   else if (!online) { cls = "off"; text = "Offline · " + (n ? n + (n === 1 ? " change" : " changes") + " kept on this device, will send when online" : "showing the copy on this device"); }
@@ -461,7 +461,7 @@ function todayHtml() {
 }
 
 function calHtml() {
-  if (!state.me) return `<div class="empty"><b>Connect first</b>${window.TL_HOSTED ? `Open Settings and enter your key from the Admin. Your calendar then shows here, and works offline after that.<br><br><button class="btn primary" data-go="settings">Open Settings</button>` : "Sign in with <b>Sign in</b> in the Survey Unit panel's top bar. Your calendar then shows here, and works offline after that."}</div>`;
+  if (!state.me) return `<div class="empty"><b>Connect first</b>${window.TL_HOSTED ? `Open Settings and enter your key from the Admin. Your calendar then shows here, and works offline after that.<br><br><button class="btn primary" data-go="settings">Open Settings</button>` : "Sign in with <b>Sign in</b> in the top bar of the Survey Unit panel. Your calendar then shows here, and works offline after that."}</div>`;
   if (!who) who = state.me.name;
   const st = monthStats(who, month), first = new Date(month + "-01T00:00:00");
   const start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7));   // back to Monday
@@ -524,7 +524,7 @@ function settingsHtml() {
   return `<section class="panel"><h2>Sign-in</h2>${window.TL_HOSTED ? `<p>Your own key comes from the Admin. Everything you log is kept on this device and sent when online.</p>
       <div class="row"><input id="cUrl" type="hidden" value="${esc(state.cfg.url)}">
       <label class="f" style="max-width:220px"><span>Your key</span><input id="cKey" value="${esc(state.cfg.key)}" placeholder="ABCDE-12345" autocomplete="off"></label>
-      <button class="btn primary" id="cSave">Save and connect</button></div>` : `<p>One sign-in for every app: <b>Sign in</b> in the Survey Unit panel's top bar. Sign out there too. Everything you log is kept on this device and sent when online.</p>`}
+      <button class="btn primary" id="cSave">Save and connect</button></div>` : `<p>One sign-in for every app: <b>Sign in</b> in the top bar of the Survey Unit panel. Sign out there too. Everything you log is kept on this device and sent when online.</p>`}
       <p style="margin:12px 0 0">This device: <span class="mono">${esc(state.cfg.device)}</span>${state.me ? ` · Signed in as <b>${esc(state.me.name)}</b> (${esc(state.me.role)})` : ""}</p></section>
     ${admin ? `<section class="panel"><h2>Employees</h2><p>Each employee gets their own key and logs only their own days. Hand the key over in person; it shows here until you hide it.</p>
       <div class="row"><label class="f"><span>Full name</span><input id="mName" maxlength="80" placeholder="e.g. JUAN DELA CRUZ"></label>
@@ -650,7 +650,7 @@ $("main").addEventListener("click", e => {
     return render();
   }
   if (t.id === "cSave") {
-    if (!okAddr($("cUrl").value.trim())) return toast("That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec");
+    if (!okAddr($("cUrl").value.trim())) return toast("That is not a Google Apps Script web app address. It looks like https:\/\/script.google.com/macros/s/…/exec");
     state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.lastPull = ""; lastError = ""; save(); awSignin(state.cfg.url, state.cfg.key);
     return sync(false).then(() => { if (state.me) toast("Connected as " + state.me.name); });
   }

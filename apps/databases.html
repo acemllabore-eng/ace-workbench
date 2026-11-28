@@ -372,7 +372,7 @@ function renderNet(){
   const n = $("net"), on = state.online, off = on === false || !navigator.onLine;
   n.querySelector(".dot").className = "dot " + (on === true && navigator.onLine ? "on" : off ? "off" : "");
   n.querySelector(".lbl").textContent = on === true && navigator.onLine ? "Live" : off ? "Saved copy" : "Not connected";
-  n.title = on === true ? "Connected to the Google Sheets" : off ? "No connection: showing what this device kept. Edits are kept here and sent when the connection is back." : (window.DB_HOSTED ? "Open Settings to connect" : "Sign in from the panel's top bar");
+  n.title = on === true ? "Connected to the Google Sheets" : off ? "No connection: showing what this device kept. Edits are kept here and sent when the connection is back." : (window.DB_HOSTED ? "Open Settings to connect" : "Sign in from the top bar of the panel");
   const w = state.outbox.filter(mine), c = w.filter(o => o.status !== "waiting").length, b = $("obBtn");
   b.hidden = !w.length;
   b.innerHTML = `<span class="dot ${c ? "off" : ""}"></span>${c ? c + " edit" + (c > 1 ? "s need" : " needs") + " you" : w.length + " edit" + (w.length > 1 ? "s" : "") + " to sync"}`;
@@ -506,7 +506,7 @@ function drawChecks(){
   el.querySelectorAll("[data-dropcheck]").forEach(b => b.onclick = () => { const l = lsJ("db.checks", []); l.splice(+b.dataset.dropcheck, 1); ls("db.checks", l); drawChecks(); });
 }
 function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => t.hidden = true, 3200); }
-function errText(e){ return e.setup ? (window.DB_HOSTED ? "Open Settings and enter your key." : "Sign in from the Survey Unit panel's top bar.") : e.server ? e.message : "No connection to Google (" + (e.name === "AbortError" ? "took too long" : "offline or blocked") + ")."; }
+function errText(e){ return e.setup ? (window.DB_HOSTED ? "Open Settings and enter your key." : "Sign in from the top bar of the Survey Unit panel.") : e.server ? e.message : "No connection to Google (" + (e.name === "AbortError" ? "took too long" : "offline or blocked") + ")."; }
 
 /* ---------- Navigation ---------- */
 function go(v){ state.view = v; closeDrawer(); render(); $("main").scrollTop = 0; }
@@ -560,7 +560,7 @@ function renderLibrary(){
   const shown = bks.filter(b => (!f.program || b.program === f.program) && (!f.category || b.category === f.category) && (!q || (b.name + " " + b.holds + " " + b.keyTabs + " " + b.category).toLowerCase().includes(q)));
   const savedN = Object.keys(state.saved).length;
   let top = "";
-  if(!state.cfg.url || !state.cfg.key) top = `<div class="banner warn rise"><div class="grow"><b>Not connected yet</b>${window.DB_HOSTED ? "Enter your key in Settings." : "Sign in with <b>Sign in</b> in the Survey Unit panel's top bar."} The admin gives each person their own key.</div>${window.DB_HOSTED ? '<button class="btn sm primary" id="toSet">Settings</button>' : ""}</div>`;
+  if(!state.cfg.url || !state.cfg.key) top = `<div class="banner warn rise"><div class="grow"><b>Not connected yet</b>${window.DB_HOSTED ? "Enter your key in Settings." : "Sign in with <b>Sign in</b> in the top bar of the Survey Unit panel."} The admin gives each person their own key.</div>${window.DB_HOSTED ? '<button class="btn sm primary" id="toSet">Settings</button>' : ""}</div>`;
   else if(state.libError){ const e = state.libError; top = `<div class="banner ${e.server ? "bad" : "warn"} rise"><div class="grow"><b>${e.server ? "Could not load the Directory" : "Showing the list this device kept"}</b>${esc(errText(e))}${state.booksAt ? " List from " + new Date(state.booksAt).toLocaleString("en-PH") + "." : ""}</div></div>`; state.libError = null; }
   const groups = programs.length ? (f.program ? [f.program] : programs) : [""];
   const body = groups.map(g => {
@@ -728,7 +728,7 @@ function renderTable(){
       <select class="f" id="fcol" aria-label="Filter column"><option value="">Filter by column…</option>${colOpts}</select>
       ${vals.length ? `<select class="f" id="fval" aria-label="Filter value"><option value="">Any value</option>${vals.map(x => `<option ${d.fval === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>` : ""}
       <button class="btn sm" id="colsBtn">Columns</button>
-      ${b && b.id && b.url ? `<a class="btn sm" href="https://docs.google.com/spreadsheets/d/${esc(b.id)}/edit#gid=${esc(d.gid || "")}" target="_blank" rel="noopener">${ICO.ext} Sheets</a>` : ""}
+      ${b && b.id && b.url ? `<a class="btn sm" href="https:\/\/docs.google.com/spreadsheets/d/${esc(b.id)}/edit#gid=${esc(d.gid || "")}" target="_blank" rel="noopener">${ICO.ext} Sheets</a>` : ""}
     </div>
     <div class="tbar"><span class="count" id="count"></span><span class="grow"></span>
       <span class="count">Header row <b>${d.headerRow}</b><button class="btn sm" id="hdrBtn" title="Pick which row holds the column names">Change</button></span>
@@ -932,7 +932,7 @@ function renderSettings(){
         <label class="l">This device's name<input class="f" id="cDev" value="${esc(state.cfg.device)}"></label>
       </div>
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center"><button class="btn primary" id="cSave">${window.DB_HOSTED ? "Save and connect" : "Save device name"}</button><span class="muted" id="cMsg">${state.me ? "Connected as " + esc(state.me.name) + " (" + esc(state.me.role) + ")" : window.DB_HOSTED ? "" : "Not signed in."}</span></div>
-      <p class="muted" style="margin:14px 0 0;font-size:12.5px">${window.DB_HOSTED ? "Your key is kept on this device only." : "One sign-in for every app: <b>Sign in</b> in the Survey Unit panel's top bar. Sign out there too. The key is kept on this device only."} The workbooks stay in Google Sheets; this device keeps a copy of each tab you open, for reading offline.</p>
+      <p class="muted" style="margin:14px 0 0;font-size:12.5px">${window.DB_HOSTED ? "Your key is kept on this device only." : "One sign-in for every app: <b>Sign in</b> in the top bar of the Survey Unit panel. Sign out there too. The key is kept on this device only."} The workbooks stay in Google Sheets; this device keeps a copy of each tab you open, for reading offline.</p>
     </div>
     ${admin ? `<div class="panel rise" style="--i:1"><h2>People</h2>
       <div class="grid2"><label class="l">Name<input class="f" id="pName" placeholder="Full name"></label>
@@ -940,8 +940,8 @@ function renderSettings(){
       <div style="margin-top:12px"><button class="btn primary" id="pAdd">Add and make a key</button></div><div id="pKey"></div>
       <div class="people">${state.people.map(p => `<div class="person"><b>${esc(p.name)}</b><span class="tag ${p.role === "member" ? "dim" : "cy"}">${esc(p.role)}</span>${p.active ? "" : '<span class="tag dim">off</span>'}${p.name === state.me.name ? "" : `<button class="btn sm" data-newkey="${esc(p.name)}">New key</button><button class="btn sm" data-act="${esc(p.name)}" data-on="${p.active ? "0" : "1"}">${p.active ? "Switch off" : "Switch on"}</button>`}</div>`).join("") || '<span class="muted">Loading…</span>'}</div></div>` : ""}`;
   $("cSave").onclick = async () => {
-    if(!window.DB_HOSTED && !state.cfg.key){ state.cfg.device = $("cDev").value.trim().slice(0, 40) || state.cfg.device; saveCfg(); $("cMsg").textContent = "Device name saved. Sign in from the panel's top bar."; return; }
-    if(!okAddr($("cUrl").value.trim())){ $("cMsg").textContent = "That is not a Google Apps Script web app address. It looks like https://script.google.com/macros/s/…/exec"; return; }
+    if(!window.DB_HOSTED && !state.cfg.key){ state.cfg.device = $("cDev").value.trim().slice(0, 40) || state.cfg.device; saveCfg(); $("cMsg").textContent = "Device name saved. Sign in from the top bar of the panel."; return; }
+    if(!okAddr($("cUrl").value.trim())){ $("cMsg").textContent = "That is not a Google Apps Script web app address. It looks like https:\/\/script.google.com/macros/s/…/exec"; return; }
     state.cfg.url = $("cUrl").value.trim(); state.cfg.key = $("cKey").value.trim().toUpperCase(); state.cfg.device = $("cDev").value.trim().slice(0, 40) || state.cfg.device; saveCfg(); awSignin(state.cfg.url, state.cfg.key);
     $("cMsg").textContent = "Connecting…";
     try{ const j = await api("GET", { action:"books" }); state.books = j.books; state.people = j.people || []; ls("db.books", state.books); toast("Connected as " + j.me.name); renderSettings(); }
@@ -955,7 +955,7 @@ function renderSettings(){
       const j = await api("POST", { changes:[{ type:"addMember", name, role:$("pRole").value }] }), r = j.results[0];
       if(r.result !== "saved") return toast(r.error);
       state.people = j.people; renderSettings();
-      $("pKey").innerHTML = `<div class="banner ok" style="margin-top:12px"><div class="grow"><b>Key for ${esc(r.name)} (${esc(r.role)})</b>Shown once. Give it to them privately; they sign in with it from the panel's top bar.<div class="keybox">${esc(r.key)}</div><button class="btn sm" id="cpKey">Copy key</button></div></div>`;
+      $("pKey").innerHTML = `<div class="banner ok" style="margin-top:12px"><div class="grow"><b>Key for ${esc(r.name)} (${esc(r.role)})</b>Shown once. Give it to them privately; they sign in with it from the top bar of the panel.<div class="keybox">${esc(r.key)}</div><button class="btn sm" id="cpKey">Copy key</button></div></div>`;
       $("cpKey").onclick = () => navigator.clipboard && navigator.clipboard.writeText(r.key).then(() => toast("Key copied"));
     }catch(e){ toast(errText(e)); }
   };

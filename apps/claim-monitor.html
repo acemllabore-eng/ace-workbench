@@ -440,7 +440,7 @@ function renderSync() {
 function render() {
   renderSync();
   const signed = state.cfg.url && state.cfg.key;
-  $("signin").innerHTML = signed ? "" : `<section class="setup"><h2 class="sec">Sign in</h2><p class="muted">Sign in once with <b>Sign in</b> in the Survey Unit panel's top bar. It signs in every app.</p></section>`;
+  $("signin").innerHTML = signed ? "" : `<section class="setup"><h2 class="sec">Sign in</h2><p class="muted">Sign in once with <b>Sign in</b> in the top bar of the Survey Unit panel. It signs in every app.</p></section>`;
   if (signed && locked) $("signin").innerHTML = `<div class="empty"><b>Claim Monitor is for the admin only</b>Sign in with the admin key to use it.</div>`;
   $("work").hidden = !signed || locked;
   if (!signed || locked) return;
